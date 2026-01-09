@@ -61,9 +61,16 @@ export const POSPage: React.FC = () => {
   const handleCheckout = () => {
     if (cartItems.length === 0) return;
     
+    // Validar que no haya items con cantidad 0
+    const hasInvalidItems = cartItems.some(item => item.qty <= 0);
+    if (hasInvalidItems) {
+      alert('Por favor, ingrese cantidades válidas para todos los productos');
+      return;
+    }
+    
     // Pre-llenar con el total si es efectivo
     if (paymentMethod === 'CASH') {
-      setCashPaid(getCartTotal().toFixed(2));
+      setCashPaid(Math.round(getCartTotal()).toString());
     }
     
     setShowPaymentModal(true);
@@ -88,8 +95,8 @@ export const POSPage: React.FC = () => {
     setLastSale(null);
   };
   
-  const cartTotal = getCartTotal();
-  const cashPaidNum = parseFloat(cashPaid) || 0;
+  const cartTotal = Math.round(getCartTotal());
+  const cashPaidNum = Math.round(parseFloat(cashPaid) || 0);
   const change = cashPaidNum - cartTotal;
   const canCompleteSale =
     paymentMethod === 'CASH' ? cashPaidNum >= cartTotal : true;
@@ -280,18 +287,45 @@ export const POSPage: React.FC = () => {
                       <Minus className="w-4 h-4" />
                     </button>
                     <input
-                      type="number"
-                      value={item.qty}
+                      type="text"
+                      value={item.product.saleType === 'WEIGHT' && item.qty > 0 ? item.qty.toFixed(3) : item.qty}
                       onChange={(e) => {
-                        const value = parseFloat(e.target.value);
-                        if (value > 0) {
-                          // Si es UNIT, redondear a entero
-                          const finalValue = item.product.saleType === 'UNIT' ? Math.round(value) : value;
-                          updateCartItem(item.id, finalValue);
+                        const inputValue = e.target.value;
+                        
+                        // Permitir campo vacío (para poder borrar y escribir)
+                        if (inputValue === '' || inputValue === '0') {
+                          updateCartItem(item.id, 0);
+                          return;
+                        }
+                        
+                        // Reemplazar coma por punto para permitir ambos formatos
+                        const normalizedValue = inputValue.replace(',', '.');
+                        
+                        if (item.product.saleType === 'UNIT') {
+                          // Solo permitir números enteros
+                          if (/^\d+$/.test(normalizedValue)) {
+                            const value = parseInt(normalizedValue, 10);
+                            if (value > 0) {
+                              updateCartItem(item.id, value);
+                            }
+                          }
+                        } else {
+                          // Permitir decimales para WEIGHT - MÁXIMO 2 DECIMALES (precisión de balanza: 10g)
+                          if (/^\d*\.?\d{0,2}$/.test(normalizedValue)) {
+                            const value = parseFloat(normalizedValue);
+                            if (!isNaN(value) && value > 0) {
+                              updateCartItem(item.id, value);
+                            }
+                          }
                         }
                       }}
-                      step={item.product.saleType === 'UNIT' ? '1' : '0.5'}
-                      min="0.5"
+                      onBlur={(e) => {
+                        // Al salir del campo, si está vacío o en 0, poner valor mínimo
+                        const value = parseFloat(e.target.value.replace(',', '.'));
+                        if (isNaN(value) || value <= 0) {
+                          updateCartItem(item.id, item.product.saleType === 'UNIT' ? 1 : 0.01);
+                        }
+                      }}
                       className="w-16 text-center border border-gray-300 rounded py-1 font-medium"
                     />
                     <button
@@ -311,7 +345,7 @@ export const POSPage: React.FC = () => {
                       Bs {item.unitPrice.toFixed(2)}/{item.product.unit}
                     </p>
                     <p className="text-lg font-bold text-primary-700">
-                      Bs {item.total.toFixed(2)}
+                      Bs {Math.round(item.total)}
                     </p>
                   </div>
                 </div>
@@ -326,12 +360,12 @@ export const POSPage: React.FC = () => {
             <div className="flex justify-between items-center mb-2">
               <span className="text-gray-600">Subtotal:</span>
               <span className="font-semibold text-gray-900">
-                Bs {cartTotal.toFixed(2)}
+                Bs {Math.round(cartTotal)}
               </span>
             </div>
             <div className="flex justify-between items-center text-2xl font-bold">
               <span className="text-gray-900">TOTAL:</span>
-              <span className="text-primary-700">Bs {cartTotal.toFixed(2)}</span>
+              <span className="text-primary-700">Bs {Math.round(cartTotal)}</span>
             </div>
           </div>
           
@@ -359,7 +393,7 @@ export const POSPage: React.FC = () => {
           <div className="bg-gray-50 rounded-lg p-4">
             <p className="text-sm text-gray-600 mb-1">Total a Cobrar</p>
             <p className="text-4xl font-bold text-primary-700">
-              Bs {cartTotal.toFixed(2)}
+              Bs {cartTotal}
             </p>
           </div>
           
@@ -368,7 +402,7 @@ export const POSPage: React.FC = () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Método de Pago
             </label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => setPaymentMethod('CASH')}
                 className={`py-3 px-4 rounded-lg font-medium transition-all ${
@@ -388,16 +422,6 @@ export const POSPage: React.FC = () => {
                 }`}
               >
                 QR
-              </button>
-              <button
-                onClick={() => setPaymentMethod('CARD')}
-                className={`py-3 px-4 rounded-lg font-medium transition-all ${
-                  paymentMethod === 'CARD'
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Tarjeta
               </button>
             </div>
           </div>
@@ -422,7 +446,7 @@ export const POSPage: React.FC = () => {
                 <div className="mt-4 bg-green-50 rounded-lg p-4">
                   <p className="text-sm text-green-700 mb-1">Cambio</p>
                   <p className="text-3xl font-bold text-green-700">
-                    Bs {change.toFixed(2)}
+                    Bs {change}
                   </p>
                 </div>
               )}
@@ -430,7 +454,7 @@ export const POSPage: React.FC = () => {
               {change < 0 && cashPaidNum > 0 && (
                 <div className="mt-4 bg-red-50 rounded-lg p-4">
                   <p className="text-sm text-red-700">
-                    Efectivo insuficiente. Faltan Bs {Math.abs(change).toFixed(2)}
+                    Efectivo insuficiente. Faltan Bs {Math.abs(change)}
                   </p>
                 </div>
               )}

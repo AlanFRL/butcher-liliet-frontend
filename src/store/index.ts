@@ -273,7 +273,7 @@ export const useCartStore = create<CartState>((set, get) => ({
   },
   
   updateCartItem: (itemId, qty) => {
-    // No eliminar durante edición, solo validar que no sea negativo
+    // Permitir 0 temporalmente (mientras escribe), pero no negativos
     if (qty < 0) {
       return;
     }
@@ -284,7 +284,8 @@ export const useCartStore = create<CartState>((set, get) => ({
           ? {
               ...item,
               qty,
-              total: qty * item.unitPrice - item.discount,
+              // Redondear el total al entero más cercano
+              total: Math.round(qty * item.unitPrice - item.discount),
             }
           : item
       ),

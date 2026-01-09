@@ -290,7 +290,7 @@ export const OrdersPage: React.FC = () => {
                   <div className="text-right ml-6">
                     <p className="text-sm text-gray-600 mb-1">{order.items.length} productos</p>
                     <p className="text-2xl font-bold text-primary-700">
-                      Bs {order.total.toFixed(2)}
+                      Bs {Math.round(order.total)}
                     </p>
                   </div>
                 </div>
@@ -391,9 +391,14 @@ const NewOrderModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   };
 
   const handleUpdateQty = (productId: string, qty: number) => {
+    // Permitir 0 temporalmente mientras escribe, pero no negativos
+    if (qty < 0) {
+      return;
+    }
+    
     setSelectedItems(
       selectedItems.map((item) =>
-        item.product.id === productId ? { ...item, qty: Math.max(0.1, qty) } : item
+        item.product.id === productId ? { ...item, qty } : item
       )
     );
   };
@@ -401,6 +406,13 @@ const NewOrderModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const handleSubmit = () => {
     if (!customerName || !customerPhone || !deliveryDate || !deliveryTime || selectedItems.length === 0) {
       alert('Por favor completa todos los campos requeridos');
+      return;
+    }
+    
+    // Validar que no haya items con cantidad 0
+    const hasInvalidItems = selectedItems.some(item => item.qty <= 0);
+    if (hasInvalidItems) {
+      alert('Por favor, ingrese cantidades válidas para todos los productos');
       return;
     }
 
@@ -412,7 +424,8 @@ const NewOrderModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       qty: item.qty,
       unit: item.product.unit,
       unitPrice: item.product.price,
-      total: item.qty * item.product.price,
+      // Redondear el total al entero más cercano
+      total: Math.round(item.qty * item.product.price),
       notes: item.notes || undefined,
     }));
 
@@ -582,16 +595,50 @@ const NewOrderModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                         </div>
                         <div className="flex items-center gap-2">
                           <input
-                            type="number"
-                            value={item.qty}
-                            onChange={(e) => handleUpdateQty(item.product.id, parseFloat(e.target.value) || 0.1)}
-                            step={item.product.saleType === 'WEIGHT' ? '0.1' : '1'}
-                            min={item.product.saleType === 'WEIGHT' ? '0.1' : '1'}
+                            type="text"
+                            value={item.product.saleType === 'WEIGHT' && item.qty > 0 ? item.qty.toFixed(3) : item.qty}
+                            onChange={(e) => {
+                              const inputValue = e.target.value;
+                              
+                              // Permitir campo vacío
+                              if (inputValue === '' || inputValue === '0') {
+                                handleUpdateQty(item.product.id, 0);
+                                return;
+                              }
+                              
+                              // Reemplazar coma por punto
+                              const normalizedValue = inputValue.replace(',', '.');
+                              
+                              if (item.product.saleType === 'UNIT') {
+                                // Solo enteros
+                                if (/^\d+$/.test(normalizedValue)) {
+                                  const value = parseInt(normalizedValue, 10);
+                                  if (value > 0) {
+                                    handleUpdateQty(item.product.id, value);
+                                  }
+                                }
+                              } else {
+                                // Permitir decimales para WEIGHT - MÁXIMO 2 DECIMALES (precisión de balanza: 10g)
+                                if (/^\d*\.?\d{0,2}$/.test(normalizedValue)) {
+                                  const value = parseFloat(normalizedValue);
+                                  if (!isNaN(value) && value > 0) {
+                                    handleUpdateQty(item.product.id, value);
+                                  }
+                                }
+                              }
+                            }}
+                            onBlur={(e) => {
+                              // Al salir, si está vacío poner valor mínimo
+                              const value = parseFloat(e.target.value.replace(',', '.'));
+                              if (isNaN(value) || value <= 0) {
+                                handleUpdateQty(item.product.id, item.product.saleType === 'UNIT' ? 1 : 0.01);
+                              }
+                            }}
                             className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary-500"
                           />
                           <span className="text-xs text-gray-500">{item.product.unit}</span>
                           <span className="ml-auto font-semibold text-gray-900 text-sm">
-                            Bs {(item.qty * item.product.price).toFixed(2)}
+                            Bs {Math.round(item.qty * item.product.price)}
                           </span>
                         </div>
                       </div>
@@ -601,7 +648,7 @@ const NewOrderModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 <div className="p-3 bg-white border-t-2 border-primary-600">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-700 font-semibold">Total:</span>
-                    <span className="text-xl font-bold text-primary-700">Bs {totalAmount.toFixed(2)}</span>
+                    <span className="text-xl font-bold text-primary-700">Bs {Math.round(totalAmount)}</span>
                   </div>
                 </div>
               </div>
@@ -728,7 +775,7 @@ const NewOrderModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 </div>
                 <div className="flex justify-between text-lg font-bold pt-2 border-t border-gray-200">
                   <span>Total:</span>
-                  <span className="text-primary-700">Bs {totalAmount.toFixed(2)}</span>
+                  <span className="text-primary-700">Bs {Math.round(totalAmount)}</span>
                 </div>
               </div>
             </div>
@@ -894,7 +941,7 @@ const OrderDetailModal: React.FC<{
                         Bs {item.unitPrice.toFixed(2)}
                       </td>
                       <td className="px-4 py-3 text-right font-semibold text-gray-900">
-                        Bs {item.total.toFixed(2)}
+                        Bs {Math.round(item.total)}
                       </td>
                     </tr>
                   ))}
@@ -905,7 +952,7 @@ const OrderDetailModal: React.FC<{
                       Total:
                     </td>
                     <td className="px-4 py-3 text-right text-lg font-bold text-primary-700">
-                      Bs {currentOrder.total.toFixed(2)}
+                      Bs {Math.round(currentOrder.total)}
                     </td>
                   </tr>
                 </tfoot>
