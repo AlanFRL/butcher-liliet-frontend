@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DollarSign } from 'lucide-react';
-import { Button, Input } from '../components/ui';
+import { Button } from '../components/ui';
 import { useCashStore, useAuthStore, useAppStore } from '../store';
 
 export const CashOpenPage: React.FC = () => {

@@ -15,7 +15,7 @@ export const CashClosePage: React.FC = () => {
   const navigate = useNavigate();
   const { currentSession, cashMovements, closeCashSession } = useCashStore();
   const { sales } = useSalesStore();
-  const { currentUser, terminals } = useAuthStore();
+  const { currentUser } = useAuthStore();
   
   // Si no hay caja abierta
   if (!currentSession || currentSession.status !== 'OPEN') {
@@ -362,8 +362,8 @@ export const CashClosePage: React.FC = () => {
                     month: 'long',
                     day: 'numeric',
                   }),
-                  cashier: currentUser?.name || 'Usuario',
-                  terminal: terminals.find(t => t.id === currentSession?.terminalId)?.name || 'Terminal 1',
+                  cashier: currentUser?.username || 'Usuario',
+                  terminal: 'Terminal 1',
                   openTime: new Date(currentSession!.openedAt).toLocaleTimeString('es-BO', {
                     hour: '2-digit',
                     minute: '2-digit',
@@ -373,7 +373,7 @@ export const CashClosePage: React.FC = () => {
                     minute: '2-digit',
                   }),
                   initialAmount: currentSession!.openingAmount,
-                  sales: sessionSales.map((sale, index) => ({
+                  sales: sessionSales.map((sale) => ({
                     id: sale.id,
                     time: new Date(sale.createdAt).toLocaleTimeString('es-BO', {
                       hour: '2-digit',

@@ -5,9 +5,7 @@ import {
   Package,
   DollarSign,
   TrendingUp,
-  Clock,
   CheckCircle,
-  XCircle,
   AlertCircle,
 } from 'lucide-react';
 import { useCashStore, useSalesStore, useAuthStore } from '../store';

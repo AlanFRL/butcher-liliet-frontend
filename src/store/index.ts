@@ -7,8 +7,8 @@ import type {
   CashSession,
   CashMovement,
   Sale,
-  SaleItem,
-  Payment,
+  // SaleItem,
+  // Payment,
   Terminal,
   CartItem,
   Order,
@@ -74,7 +74,7 @@ interface AppState {
 
 // ============= STORE DE AUTENTICACIÓN =============
 
-export const useAuthStore = create<AuthState>((set, get) => ({
+export const useAuthStore = create<AuthState>((set) => ({
   currentUser: null,
   isAuthenticated: false,
   
@@ -316,7 +316,7 @@ export const useSalesStore = create<SalesState>((set, get) => ({
   sales: [],
   saleCounter: 1,
   
-  completeSale: (paymentMethod, cashPaid) => {
+  completeSale: (_paymentMethod, _cashPaid) => {
     const cashState = useCashStore.getState();
     const cartState = useCartStore.getState();
     const authState = useAuthStore.getState();
@@ -361,16 +361,16 @@ export const useSalesStore = create<SalesState>((set, get) => ({
     };
     
     // Crear pago
-    const payment: Payment = {
-      id: uuidv4(),
-      saleId: newSale.id,
-      method: paymentMethod,
-      amount: total,
-      cashPaid: paymentMethod === 'CASH' ? cashPaid : undefined,
-      cashChange: paymentMethod === 'CASH' && cashPaid ? cashPaid - total : undefined,
-      status: 'CONFIRMED',
-      createdAt: new Date().toISOString(),
-    };
+    // const _payment: Payment = {
+    //   id: uuidv4(),
+    //   saleId: newSale.id,
+    //   method: paymentMethod,
+    //   amount: total,
+    //   cashPaid: paymentMethod === 'CASH' ? cashPaid : undefined,
+    //   cashChange: paymentMethod === 'CASH' && cashPaid ? cashPaid - total : undefined,
+    //   status: 'CONFIRMED',
+    //   createdAt: new Date().toISOString(),
+    // };
     
     set((state) => ({
       sales: [...state.sales, newSale],

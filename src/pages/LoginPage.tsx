@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogIn, User, Lock } from 'lucide-react';
-import { Button, Input } from '../components/ui';
+import { Button } from '../components/ui';
 import { useAuthStore } from '../store';
 
 export const LoginPage: React.FC = () => {

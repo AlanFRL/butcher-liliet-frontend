@@ -11,7 +11,7 @@ export const ReportsPage: React.FC = () => {
   );
   
   const { sales } = useSalesStore();
-  const { products } = useProductStore();
+  const { } = useProductStore();
   
   // Filtrar ventas por fecha
   const filteredSales = sales.filter((s) => {
