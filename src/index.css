@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Colores primarios - Rojo Tradicional por defecto */
+    --color-primary-50: 254 242 242;
+    --color-primary-100: 254 226 226;
+    --color-primary-200: 254 202 202;
+    --color-primary-300: 252 165 165;
+    --color-primary-400: 248 113 113;
+    --color-primary-500: 239 68 68;
+    --color-primary-600: 220 38 38;
+    --color-primary-700: 185 28 28;
+    --color-primary-800: 153 27 27;
+    --color-primary-900: 127 29 29;
+    --color-primary-950: 69 10 10;
+    
+    /* Colores accent - Amarillo/Dorado por defecto */
+    --color-accent-50: 254 252 232;
+    --color-accent-100: 254 249 195;
+    --color-accent-200: 254 240 138;
+    --color-accent-300: 253 224 71;
+    --color-accent-400: 250 204 21;
+    --color-accent-500: 234 179 8;
+    --color-accent-600: 202 138 4;
+    --color-accent-700: 161 98 7;
+    --color-accent-800: 133 77 14;
+    --color-accent-900: 113 63 18;
+  }
+  
+  body {
+    @apply bg-gray-50 text-gray-900 antialiased;
+    margin: 0;
+    min-height: 100vh;
+  }
+}
