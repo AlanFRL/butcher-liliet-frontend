@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Plus, Search, Calendar, Clock, Phone, User, Package, AlertCircle, CheckCircle, XCircle, Eye } from 'lucide-react';
 import { Button, Modal } from '../components/ui';
 import { useOrderStore, useProductStore } from '../store';
-import type { Order, OrderPriority, OrderStatus, Product } from '../types';
+import type { Order, OrderStatus, Product } from '../types';
 
 export const OrdersPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -51,16 +51,6 @@ export const OrdersPage: React.FC = () => {
       CANCELLED: { color: 'bg-red-100 text-red-800', text: 'Cancelado' },
     };
     return badges[status];
-  };
-
-  const getPriorityBadge = (priority: OrderPriority) => {
-    const badges = {
-      LOW: { color: 'bg-gray-100 text-gray-600', text: 'Baja' },
-      NORMAL: { color: 'bg-blue-100 text-blue-600', text: 'Normal' },
-      HIGH: { color: 'bg-orange-100 text-orange-600', text: 'Alta' },
-      URGENT: { color: 'bg-red-100 text-red-600', text: 'Urgente' },
-    };
-    return badges[priority];
   };
 
   const isOrderOverdue = (order: Order) => {
@@ -235,7 +225,6 @@ export const OrdersPage: React.FC = () => {
           {filteredOrders.map((order) => {
             const isOverdue = isOrderOverdue(order);
             const statusBadge = getStatusBadge(order.status);
-            const priorityBadge = getPriorityBadge(order.priority);
 
             return (
               <div
@@ -252,9 +241,6 @@ export const OrdersPage: React.FC = () => {
                       </h3>
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusBadge.color}`}>
                         {statusBadge.text}
-                      </span>
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${priorityBadge.color}`}>
-                        {priorityBadge.text}
                       </span>
                       {isOverdue && (
                         <span className="px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
@@ -346,7 +332,6 @@ const NewOrderModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [customerPhone, setCustomerPhone] = useState('');
   const [deliveryDate, setDeliveryDate] = useState('');
   const [deliveryTime, setDeliveryTime] = useState('');
-  const [priority, setPriority] = useState<OrderPriority>('NORMAL');
   const [notes, setNotes] = useState('');
   const [selectedItems, setSelectedItems] = useState<Array<{
     product: Product;
@@ -483,7 +468,6 @@ const NewOrderModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       deliveryDate,
       deliveryTime,
       orderItems,
-      priority,
       notes || undefined
     );
 
@@ -738,27 +722,6 @@ const NewOrderModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                   required
                 />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Prioridad
-              </label>
-              <div className="grid grid-cols-4 gap-2">
-                {(['LOW', 'NORMAL', 'HIGH', 'URGENT'] as OrderPriority[]).map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => setPriority(p)}
-                    className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                      priority === p
-                        ? 'bg-primary-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    {p === 'LOW' ? 'Baja' : p === 'NORMAL' ? 'Normal' : p === 'HIGH' ? 'Alta' : 'Urgente'}
-                  </button>
-                ))}
               </div>
             </div>
 

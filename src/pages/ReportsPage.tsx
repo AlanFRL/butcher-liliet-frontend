@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { BarChart3, TrendingUp, Package, DollarSign } from 'lucide-react';
+import { BarChart3, TrendingUp, Package, DollarSign, Eye, Receipt } from 'lucide-react';
+import { Button, Modal } from '../components/ui';
 import { useSalesStore, useProductStore } from '../store';
+import type { Sale } from '../types';
 
 export const ReportsPage: React.FC = () => {
   const [dateFrom, setDateFrom] = useState(
@@ -9,6 +11,9 @@ export const ReportsPage: React.FC = () => {
   const [dateTo, setDateTo] = useState(
     new Date().toISOString().split('T')[0]
   );
+  const [viewMode, setViewMode] = useState<'summary' | 'sales'>('summary');
+  const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
+  const [showSaleDetailModal, setShowSaleDetailModal] = useState(false);
   
   const { sales } = useSalesStore();
   const { } = useProductStore();
@@ -18,6 +23,16 @@ export const ReportsPage: React.FC = () => {
     const saleDate = new Date(s.createdAt).toISOString().split('T')[0];
     return saleDate >= dateFrom && saleDate <= dateTo && s.status === 'COMPLETED';
   });
+  
+  // Ordenar ventas por fecha (más reciente primero)
+  const sortedSales = [...filteredSales].sort((a, b) => 
+    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+  
+  const handleViewSale = (sale: Sale) => {
+    setSelectedSale(sale);
+    setShowSaleDetailModal(true);
+  };
   
   // Calcular métricas
   const totalSales = filteredSales.reduce((sum, s) => sum + s.total, 0);
@@ -68,10 +83,38 @@ export const ReportsPage: React.FC = () => {
     <div className="max-w-7xl mx-auto px-4 py-8">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Reportes</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Reportes y Ventas</h1>
         <p className="text-gray-600">
-          Análisis de ventas y productos
+          Análisis de ventas, productos e historial
         </p>
+      </div>
+      
+      {/* Tabs */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
+        <div className="flex border-b border-gray-200">
+          <button
+            onClick={() => setViewMode('summary')}
+            className={`flex-1 px-6 py-4 text-sm font-medium transition-colors ${
+              viewMode === 'summary'
+                ? 'border-b-2 border-primary-600 text-primary-600'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <BarChart3 className="w-5 h-5 inline-block mr-2" />
+            Resumen y Análisis
+          </button>
+          <button
+            onClick={() => setViewMode('sales')}
+            className={`flex-1 px-6 py-4 text-sm font-medium transition-colors ${
+              viewMode === 'sales'
+                ? 'border-b-2 border-primary-600 text-primary-600'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <Receipt className="w-5 h-5 inline-block mr-2" />
+            Historial de Ventas
+          </button>
+        </div>
       </div>
       
       {/* Filtros de Fecha */}
@@ -104,6 +147,8 @@ export const ReportsPage: React.FC = () => {
       </div>
       
       {/* Métricas Principales */}
+      {viewMode === 'summary' && (
+        <>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white rounded-xl shadow-md p-6 border border-gray-200">
           <div className="flex items-center justify-between mb-3">
@@ -243,6 +288,228 @@ export const ReportsPage: React.FC = () => {
           </div>
         </div>
       </div>
+      </>
+      )}
+      
+      {/* Historial de Ventas */}
+      {viewMode === 'sales' && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <h2 className="text-lg font-bold text-gray-900 flex items-center">
+              <Receipt className="w-5 h-5 mr-2 text-primary-600" />
+              Historial de Ventas
+              <span className="ml-2 text-sm font-normal text-gray-500">
+                ({sortedSales.length} ventas)
+              </span>
+            </h2>
+          </div>
+          <div className="overflow-x-auto">
+            {sortedSales.length === 0 ? (
+              <div className="p-12 text-center">
+                <Receipt className="w-16 h-16 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500">No hay ventas en el período seleccionado</p>
+              </div>
+            ) : (
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      # Venta
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      Fecha y Hora
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      Items
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                      Total
+                    </th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                      Acciones
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {sortedSales.map((sale) => (
+                    <tr key={sale.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="font-mono font-semibold text-gray-900">
+                          #{sale.saleNumber.toString().padStart(6, '0')}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {new Date(sale.createdAt).toLocaleDateString('es', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric',
+                        })}
+                        {' '}
+                        {new Date(sale.createdAt).toLocaleTimeString('es', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {sale.items.length} item{sale.items.length !== 1 ? 's' : ''}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                        <span className="text-lg font-bold text-primary-700">
+                          Bs {Math.round(sale.total)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <Button
+                          onClick={() => handleViewSale(sale)}
+                          variant="outline"
+                          size="sm"
+                        >
+                          <Eye className="w-4 h-4 mr-1" />
+                          Ver Detalles
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      )}
+      
+      {/* Modal de Detalle de Venta */}
+      {selectedSale && (
+        <SaleDetailModal
+          sale={selectedSale}
+          isOpen={showSaleDetailModal}
+          onClose={() => {
+            setShowSaleDetailModal(false);
+            setSelectedSale(null);
+          }}
+        />
+      )}
     </div>
+  );
+};
+
+// Modal de Detalle de Venta
+const SaleDetailModal: React.FC<{
+  sale: Sale;
+  isOpen: boolean;
+  onClose: () => void;
+}> = ({ sale, isOpen, onClose }) => {
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Detalle de Venta" size="lg">
+      <div className="space-y-6">
+        {/* Info de la Venta */}
+        <div className="bg-gray-50 rounded-lg p-4">
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <p className="text-gray-600">Número de Venta</p>
+              <p className="font-bold text-lg text-gray-900">
+                #{sale.saleNumber.toString().padStart(6, '0')}
+              </p>
+            </div>
+            <div>
+              <p className="text-gray-600">Fecha y Hora</p>
+              <p className="font-semibold text-gray-900">
+                {new Date(sale.createdAt).toLocaleDateString('es', {
+                  day: '2-digit',
+                  month: 'long',
+                  year: 'numeric',
+                })}
+              </p>
+              <p className="text-gray-600">
+                {new Date(sale.createdAt).toLocaleTimeString('es', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Items de la Venta */}
+        <div>
+          <h3 className="font-semibold text-gray-900 mb-3">Productos</h3>
+          <div className="border border-gray-200 rounded-lg overflow-hidden">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">
+                    Producto
+                  </th>
+                  <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">
+                    Cantidad
+                  </th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">
+                    Precio Unit.
+                  </th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">
+                    Total
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {sale.items.map((item) => (
+                  <tr key={item.id}>
+                    <td className="px-4 py-3">
+                      <p className="font-medium text-gray-900">{item.productName}</p>
+                      {item.saleType === 'WEIGHT' && (
+                        <p className="text-xs text-gray-500">Por peso</p>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-center text-gray-900">
+                      {item.saleType === 'WEIGHT' ? item.qty.toFixed(3) : item.qty}
+                    </td>
+                    <td className="px-4 py-3 text-right text-gray-600">
+                      Bs {item.unitPrice.toFixed(2)}
+                    </td>
+                    <td className="px-4 py-3 text-right font-semibold text-gray-900">
+                      Bs {Math.round(item.total)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Totales */}
+        <div className="border-t-2 border-gray-200 pt-4">
+          <div className="space-y-2">
+            <div className="flex justify-between text-gray-600">
+              <span>Subtotal:</span>
+              <span className="font-semibold">Bs {Math.round(sale.subtotal)}</span>
+            </div>
+            {sale.discountTotal > 0 && (
+              <div className="flex justify-between text-gray-600">
+                <span>Descuento:</span>
+                <span className="font-semibold text-red-600">
+                  -Bs {Math.round(sale.discountTotal)}
+                </span>
+              </div>
+            )}
+            <div className="flex justify-between text-xl font-bold text-primary-700 pt-2 border-t border-gray-200">
+              <span>TOTAL:</span>
+              <span>Bs {Math.round(sale.total)}</span>
+            </div>
+          </div>
+        </div>
+
+        {sale.notes && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+            <p className="text-sm font-medium text-yellow-900">Notas:</p>
+            <p className="text-sm text-yellow-800">{sale.notes}</p>
+          </div>
+        )}
+
+        <div className="flex justify-end">
+          <Button onClick={onClose} variant="outline">
+            Cerrar
+          </Button>
+        </div>
+      </div>
+    </Modal>
   );
 };

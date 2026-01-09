@@ -15,7 +15,6 @@ import type {
   OrderItem,
   Customer,
   OrderStatus,
-  OrderPriority,
 } from '../types';
 import { mockUsers, mockProducts, mockCategories, mockTerminals } from '../data/mockData';
 
@@ -428,7 +427,6 @@ interface OrderState {
     deliveryDate: string,
     deliveryTime: string,
     items: Omit<OrderItem, 'id' | 'orderId'>[],
-    priority: OrderPriority,
     notes?: string
   ) => Order;
   updateOrderStatus: (orderId: string, status: OrderStatus, reason?: string) => void;
@@ -450,7 +448,7 @@ export const useOrderStore = create<OrderState>((set, get) => ({
   customers: [],
   orderCounter: 1,
 
-  createOrder: (customerId, customerName, customerPhone, deliveryDate, deliveryTime, items, priority, notes) => {
+  createOrder: (customerId, customerName, customerPhone, deliveryDate, deliveryTime, items, notes) => {
     const orderNumber = get().orderCounter;
     const { currentUser } = useAuthStore.getState();
     
@@ -469,7 +467,6 @@ export const useOrderStore = create<OrderState>((set, get) => ({
       customerName,
       customerPhone,
       status: 'PENDING',
-      priority,
       deliveryDate,
       deliveryTime,
       items: orderItems.map(item => ({ ...item, orderId: '' })),

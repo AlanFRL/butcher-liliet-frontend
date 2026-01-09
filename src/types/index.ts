@@ -22,8 +22,6 @@ export type CashMovementType = 'IN' | 'OUT';
 
 export type OrderStatus = 'PENDING' | 'READY' | 'DELIVERED' | 'CANCELLED';
 
-export type OrderPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
-
 // ============= INTERFACES =============
 
 export interface User {
@@ -188,7 +186,6 @@ export interface Order {
   customerName: string; // Snapshot para histórico
   customerPhone: string; // Snapshot
   status: OrderStatus;
-  priority: OrderPriority;
   deliveryDate: string; // Fecha de entrega
   deliveryTime: string; // Hora de entrega (HH:mm)
   items: OrderItem[];
