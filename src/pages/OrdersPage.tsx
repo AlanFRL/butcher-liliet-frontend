@@ -354,6 +354,8 @@ const NewOrderModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     notes: string;
   }>>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  // Estado local para los inputs de cantidad (permite edición libre)
+  const [qtyInputs, setQtyInputs] = useState<{ [key: string]: string }>({});
 
   const { products } = useProductStore();
   const { createOrder } = useOrderStore();
@@ -401,6 +403,51 @@ const NewOrderModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         item.product.id === productId ? { ...item, qty } : item
       )
     );
+  };
+  
+  // Obtener valor del input (local o del item)
+  const getInputValue = (productId: string, qty: number, saleType: 'UNIT' | 'WEIGHT') => {
+    if (qtyInputs[productId] !== undefined) {
+      return qtyInputs[productId];
+    }
+    return saleType === 'WEIGHT' ? qty.toFixed(3) : qty.toString();
+  };
+  
+  // Manejar cambio en input
+  const handleQtyInputChange = (productId: string, value: string) => {
+    // Guardar en estado local
+    setQtyInputs(prev => ({ ...prev, [productId]: value }));
+  };
+  
+  // Manejar blur (cuando pierde foco)
+  const handleQtyInputBlur = (productId: string, saleType: 'UNIT' | 'WEIGHT') => {
+    const inputValue = qtyInputs[productId] || '';
+    const normalizedValue = inputValue.replace(',', '.');
+    
+    let finalQty: number;
+    
+    if (saleType === 'UNIT') {
+      // Unidades: debe ser entero >= 1
+      const parsed = parseInt(normalizedValue, 10);
+      finalQty = isNaN(parsed) || parsed < 1 ? 1 : parsed;
+    } else {
+      // Peso: debe ser >= 0.01 con máx 2 decimales
+      const parsed = parseFloat(normalizedValue);
+      if (isNaN(parsed) || parsed < 0.01) {
+        finalQty = 0.01;
+      } else {
+        // Limitar a 2 decimales
+        finalQty = Math.round(parsed * 100) / 100;
+      }
+    }
+    
+    // Actualizar item y limpiar estado local
+    handleUpdateQty(productId, finalQty);
+    setQtyInputs(prev => {
+      const newInputs = { ...prev };
+      delete newInputs[productId];
+      return newInputs;
+    });
   };
 
   const handleSubmit = () => {
@@ -596,42 +643,12 @@ const NewOrderModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                         <div className="flex items-center gap-2">
                           <input
                             type="text"
-                            value={item.product.saleType === 'WEIGHT' && item.qty > 0 ? item.qty.toFixed(3) : item.qty}
-                            onChange={(e) => {
-                              const inputValue = e.target.value;
-                              
-                              // Permitir campo vacío
-                              if (inputValue === '' || inputValue === '0') {
-                                handleUpdateQty(item.product.id, 0);
-                                return;
-                              }
-                              
-                              // Reemplazar coma por punto
-                              const normalizedValue = inputValue.replace(',', '.');
-                              
-                              if (item.product.saleType === 'UNIT') {
-                                // Solo enteros
-                                if (/^\d+$/.test(normalizedValue)) {
-                                  const value = parseInt(normalizedValue, 10);
-                                  if (value > 0) {
-                                    handleUpdateQty(item.product.id, value);
-                                  }
-                                }
-                              } else {
-                                // Permitir decimales para WEIGHT - MÁXIMO 2 DECIMALES (precisión de balanza: 10g)
-                                if (/^\d*\.?\d{0,2}$/.test(normalizedValue)) {
-                                  const value = parseFloat(normalizedValue);
-                                  if (!isNaN(value) && value > 0) {
-                                    handleUpdateQty(item.product.id, value);
-                                  }
-                                }
-                              }
-                            }}
-                            onBlur={(e) => {
-                              // Al salir, si está vacío poner valor mínimo
-                              const value = parseFloat(e.target.value.replace(',', '.'));
-                              if (isNaN(value) || value <= 0) {
-                                handleUpdateQty(item.product.id, item.product.saleType === 'UNIT' ? 1 : 0.01);
+                            value={getInputValue(item.product.id, item.qty, item.product.saleType)}
+                            onChange={(e) => handleQtyInputChange(item.product.id, e.target.value)}
+                            onBlur={() => handleQtyInputBlur(item.product.id, item.product.saleType)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.currentTarget.blur();
                               }
                             }}
                             className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary-500"

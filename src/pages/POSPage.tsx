@@ -13,6 +13,8 @@ export const POSPage: React.FC = () => {
   const [cashPaid, setCashPaid] = useState('');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [lastSale, setLastSale] = useState<any>(null);
+  // Estado local para los inputs de cantidad (permite edición libre)
+  const [qtyInputs, setQtyInputs] = useState<{ [key: string]: string }>({});
   
   const navigate = useNavigate();
   const { currentSession } = useCashStore();
@@ -56,6 +58,51 @@ export const POSPage: React.FC = () => {
     // Por defecto 1 kg o 1 unidad
     const defaultQty = product.saleType === 'WEIGHT' ? 1 : 1;
     addToCart(product, defaultQty);
+  };
+  
+  // Obtener valor del input (local o del cart)
+  const getInputValue = (itemId: string, qty: number, saleType: 'UNIT' | 'WEIGHT') => {
+    if (qtyInputs[itemId] !== undefined) {
+      return qtyInputs[itemId];
+    }
+    return saleType === 'WEIGHT' ? qty.toFixed(3) : qty.toString();
+  };
+  
+  // Manejar cambio en input
+  const handleQtyInputChange = (itemId: string, value: string) => {
+    // Guardar en estado local
+    setQtyInputs(prev => ({ ...prev, [itemId]: value }));
+  };
+  
+  // Manejar blur (cuando pierde foco)
+  const handleQtyInputBlur = (itemId: string, saleType: 'UNIT' | 'WEIGHT') => {
+    const inputValue = qtyInputs[itemId] || '';
+    const normalizedValue = inputValue.replace(',', '.');
+    
+    let finalQty: number;
+    
+    if (saleType === 'UNIT') {
+      // Unidades: debe ser entero >= 1
+      const parsed = parseInt(normalizedValue, 10);
+      finalQty = isNaN(parsed) || parsed < 1 ? 1 : parsed;
+    } else {
+      // Peso: debe ser >= 0.01 con máx 2 decimales
+      const parsed = parseFloat(normalizedValue);
+      if (isNaN(parsed) || parsed < 0.01) {
+        finalQty = 0.01;
+      } else {
+        // Limitar a 2 decimales
+        finalQty = Math.round(parsed * 100) / 100;
+      }
+    }
+    
+    // Actualizar cart y limpiar estado local
+    updateCartItem(itemId, finalQty);
+    setQtyInputs(prev => {
+      const newInputs = { ...prev };
+      delete newInputs[itemId];
+      return newInputs;
+    });
   };
   
   const handleCheckout = () => {
@@ -288,42 +335,12 @@ export const POSPage: React.FC = () => {
                     </button>
                     <input
                       type="text"
-                      value={item.product.saleType === 'WEIGHT' && item.qty > 0 ? item.qty.toFixed(3) : item.qty}
-                      onChange={(e) => {
-                        const inputValue = e.target.value;
-                        
-                        // Permitir campo vacío (para poder borrar y escribir)
-                        if (inputValue === '' || inputValue === '0') {
-                          updateCartItem(item.id, 0);
-                          return;
-                        }
-                        
-                        // Reemplazar coma por punto para permitir ambos formatos
-                        const normalizedValue = inputValue.replace(',', '.');
-                        
-                        if (item.product.saleType === 'UNIT') {
-                          // Solo permitir números enteros
-                          if (/^\d+$/.test(normalizedValue)) {
-                            const value = parseInt(normalizedValue, 10);
-                            if (value > 0) {
-                              updateCartItem(item.id, value);
-                            }
-                          }
-                        } else {
-                          // Permitir decimales para WEIGHT - MÁXIMO 2 DECIMALES (precisión de balanza: 10g)
-                          if (/^\d*\.?\d{0,2}$/.test(normalizedValue)) {
-                            const value = parseFloat(normalizedValue);
-                            if (!isNaN(value) && value > 0) {
-                              updateCartItem(item.id, value);
-                            }
-                          }
-                        }
-                      }}
-                      onBlur={(e) => {
-                        // Al salir del campo, si está vacío o en 0, poner valor mínimo
-                        const value = parseFloat(e.target.value.replace(',', '.'));
-                        if (isNaN(value) || value <= 0) {
-                          updateCartItem(item.id, item.product.saleType === 'UNIT' ? 1 : 0.01);
+                      value={getInputValue(item.id, item.qty, item.product.saleType)}
+                      onChange={(e) => handleQtyInputChange(item.id, e.target.value)}
+                      onBlur={() => handleQtyInputBlur(item.id, item.product.saleType)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.currentTarget.blur();
                         }
                       }}
                       className="w-16 text-center border border-gray-300 rounded py-1 font-medium"
