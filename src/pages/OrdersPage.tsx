@@ -10,6 +10,7 @@ export const OrdersPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'ALL' | OrderStatus>('ALL');
   const [showNewOrderModal, setShowNewOrderModal] = useState(false);
   const [showOrderDetailModal, setShowOrderDetailModal] = useState(false);
+  const [showEditOrderModal, setShowEditOrderModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   const navigate = useNavigate();
@@ -73,6 +74,11 @@ export const OrdersPage: React.FC = () => {
   const handleViewOrder = (order: Order) => {
     setSelectedOrder(order);
     setShowOrderDetailModal(true);
+  };
+
+  const handleEditOrder = (order: Order) => {
+    setSelectedOrder(order);
+    setShowEditOrderModal(true);
   };
 
   return (
@@ -298,6 +304,16 @@ export const OrdersPage: React.FC = () => {
                       Creado {new Date(order.createdAt).toLocaleDateString('es-BO')} {new Date(order.createdAt).toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' })}
                     </div>
                     <div className="flex gap-2">
+                      {/* Botón Editar para pedidos PENDING o READY */}
+                      {(order.status === 'PENDING' || order.status === 'READY') && (
+                        <Button
+                          onClick={() => handleEditOrder(order)}
+                          variant="outline"
+                          size="sm"
+                        >
+                          Editar
+                        </Button>
+                      )}
                       {/* Botón Cobrar en POS para pedidos READY */}
                       {order.status === 'READY' && (
                         <Button
@@ -339,6 +355,21 @@ export const OrdersPage: React.FC = () => {
           order={selectedOrder}
           onClose={() => {
             setShowOrderDetailModal(false);
+            setSelectedOrder(null);
+          }}
+          onEdit={() => {
+            setShowOrderDetailModal(false);
+            setShowEditOrderModal(true);
+          }}
+        />
+      )}
+
+      {/* Modal Editar Pedido */}
+      {showEditOrderModal && selectedOrder && (
+        <EditOrderModal
+          order={selectedOrder}
+          onClose={() => {
+            setShowEditOrderModal(false);
             setSelectedOrder(null);
           }}
         />
@@ -801,13 +832,25 @@ const NewOrderModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 const OrderDetailModal: React.FC<{
   order: Order;
   onClose: () => void;
-}> = ({ order: initialOrder, onClose }) => {
+  onEdit?: (order: Order) => void;
+}> = ({ order: initialOrder, onClose, onEdit }) => {
+  const navigate = useNavigate();
   const { updateOrderStatus, cancelOrder, getOrderById } = useOrderStore();
+  const { loadOrderToCart } = useCartStore();
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showDeliverModal, setShowDeliverModal] = useState(false);
   const [cancellationReason, setCancellationReason] = useState('');
   
   // Estado local para reflejar cambios en tiempo real
   const currentOrder = getOrderById(initialOrder.id) || initialOrder;
+
+  const handleChargeOrder = () => {
+    // Pre-cargar items del pedido al carrito
+    loadOrderToCart(currentOrder);
+    // Navegar al POS con el orderId en el state
+    navigate('/pos', { state: { orderId: currentOrder.id } });
+    onClose();
+  };
 
   const statusBadge = {
     PENDING: { color: 'bg-yellow-100 text-yellow-800', text: 'Pendiente' },
@@ -817,11 +860,19 @@ const OrderDetailModal: React.FC<{
   }[currentOrder.status];
 
   const handleStatusChange = (newStatus: OrderStatus) => {
-    updateOrderStatus(currentOrder.id, newStatus);
     if (newStatus === 'DELIVERED') {
-      alert('Pedido marcado como entregado');
-      onClose();
+      // Mostrar modal de confirmación
+      setShowDeliverModal(true);
+    } else {
+      updateOrderStatus(currentOrder.id, newStatus);
     }
+  };
+
+  const handleDeliverWithoutCharge = () => {
+    updateOrderStatus(currentOrder.id, 'DELIVERED');
+    alert('Pedido marcado como entregado sin registro de venta');
+    setShowDeliverModal(false);
+    onClose();
   };
 
   const handleCancel = () => {
@@ -846,6 +897,25 @@ const OrderDetailModal: React.FC<{
             </span>
             {currentOrder.status !== 'DELIVERED' && currentOrder.status !== 'CANCELLED' && (
               <div className="flex gap-2">
+                {(currentOrder.status === 'PENDING' || currentOrder.status === 'READY') && onEdit && (
+                  <Button
+                    onClick={() => onEdit(currentOrder)}
+                    variant="outline"
+                    size="sm"
+                  >
+                    Editar
+                  </Button>
+                )}
+                {currentOrder.status === 'READY' && (
+                  <Button
+                    onClick={handleChargeOrder}
+                    variant="primary"
+                    size="sm"
+                  >
+                    <CreditCard className="w-4 h-4 mr-1" />
+                    Cobrar en POS
+                  </Button>
+                )}
                 {currentOrder.status === 'PENDING' && (
                   <Button
                     onClick={() => handleStatusChange('READY')}
@@ -858,7 +928,7 @@ const OrderDetailModal: React.FC<{
                 {currentOrder.status === 'READY' && (
                   <Button
                     onClick={() => handleStatusChange('DELIVERED')}
-                    variant="primary"
+                    variant="outline"
                     size="sm"
                   >
                     Marcar como Entregado
@@ -1028,6 +1098,490 @@ const OrderDetailModal: React.FC<{
           </div>
         </Modal>
       )}
+
+      {/* Modal de confirmación para marcar como entregado sin cobrar */}
+      {showDeliverModal && (
+        <Modal
+          isOpen={true}
+          onClose={() => setShowDeliverModal(false)}
+          title="⚠️ Marcar como Entregado"
+          size="md"
+        >
+          <div className="space-y-4">
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <p className="text-yellow-800 font-medium mb-2">
+                ⚠️ ADVERTENCIA
+              </p>
+              <p className="text-yellow-700 text-sm">
+                Al marcar este pedido como entregado <strong>NO se generará un registro de venta</strong>.
+                Esto significa que no habrá ingreso registrado en el sistema.
+              </p>
+            </div>
+
+            <p className="text-gray-600">
+              Si el cliente pagó o pagará, debes usar el botón <strong>"Cobrar en POS"</strong> para registrar la venta correctamente.
+            </p>
+
+            <p className="text-gray-600">
+              ¿Estás seguro que deseas marcar como entregado sin cobrar?
+            </p>
+
+            <div className="flex gap-3">
+              <Button onClick={() => setShowDeliverModal(false)} variant="outline" className="flex-1">
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleDeliverWithoutCharge}
+                variant="primary"
+                className="flex-1"
+              >
+                Sí, Marcar como Entregado
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </>
+  );
+};
+
+// Modal para editar pedido existente
+const EditOrderModal: React.FC<{
+  order: Order;
+  onClose: () => void;
+}> = ({ order, onClose }) => {
+  const [customerName, setCustomerName] = useState(order.customerName);
+  const [customerPhone, setCustomerPhone] = useState(order.customerPhone);
+  const [deliveryDate, setDeliveryDate] = useState(order.deliveryDate);
+  const [deliveryTime, setDeliveryTime] = useState(order.deliveryTime);
+  const [notes, setNotes] = useState(order.notes || '');
+  const [selectedItems, setSelectedItems] = useState<Array<{
+    product: Product;
+    qty: number;
+    notes: string;
+  }>>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [qtyInputs, setQtyInputs] = useState<{ [key: string]: string }>({});
+  const [step, setStep] = useState<'products' | 'details'>('products');
+
+  const { products } = useProductStore();
+  const { updateOrder } = useOrderStore();
+
+  // Cargar productos del pedido al iniciar
+  React.useEffect(() => {
+    const items = order.items.map(item => {
+      // Buscar el producto actual en el sistema
+      const product = products.find(p => p.id === item.productId);
+      
+      // Si no existe, crear temporal con datos del pedido
+      const productData: Product = product || {
+        id: item.productId,
+        categoryId: null,
+        name: item.productName,
+        sku: item.productSku,
+        saleType: item.unit === 'kg' ? 'WEIGHT' as const : 'UNIT' as const,
+        unit: item.unit,
+        price: item.unitPrice,
+        taxRate: 0,
+        isActive: false,
+      };
+
+      return {
+        product: productData,
+        qty: item.qty,
+        notes: item.notes || '',
+      };
+    });
+
+    setSelectedItems(items);
+
+    // Inicializar inputs de cantidad
+    const inputs: { [key: string]: string } = {};
+    items.forEach(item => {
+      inputs[item.product.id] = item.qty.toString();
+    });
+    setQtyInputs(inputs);
+  }, [order, products]);
+
+  const activeProducts = products.filter(p => p.isActive);
+  const filteredProducts = activeProducts.filter(p =>
+    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    p.sku.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleAddProduct = (product: Product) => {
+    const existing = selectedItems.find(item => item.product.id === product.id);
+    if (existing) {
+      setSelectedItems(
+        selectedItems.map(item =>
+          item.product.id === product.id
+            ? { ...item, qty: item.qty + (product.saleType === 'WEIGHT' ? 0.5 : 1) }
+            : item
+        )
+      );
+    } else {
+      setSelectedItems([
+        ...selectedItems,
+        {
+          product,
+          qty: product.saleType === 'WEIGHT' ? 0.5 : 1,
+          notes: '',
+        },
+      ]);
+    }
+  };
+
+  const handleRemoveProduct = (productId: string) => {
+    setSelectedItems(selectedItems.filter(item => item.product.id !== productId));
+  };
+
+  const handleUpdateQty = (productId: string, qty: number) => {
+    if (qty < 0) return;
+    
+    setSelectedItems(
+      selectedItems.map((item) =>
+        item.product.id === productId ? { ...item, qty } : item
+      )
+    );
+  };
+  
+  const getInputValue = (productId: string, qty: number, saleType: 'UNIT' | 'WEIGHT') => {
+    if (qtyInputs[productId] !== undefined) {
+      return qtyInputs[productId];
+    }
+    return saleType === 'WEIGHT' ? qty.toFixed(3) : qty.toString();
+  };
+  
+  const handleQtyInputChange = (productId: string, value: string) => {
+    setQtyInputs(prev => ({ ...prev, [productId]: value }));
+  };
+  
+  const handleQtyInputBlur = (productId: string, saleType: 'UNIT' | 'WEIGHT') => {
+    const inputValue = qtyInputs[productId] || '';
+    const normalizedValue = inputValue.replace(',', '.');
+    
+    let finalQty: number;
+    
+    if (saleType === 'UNIT') {
+      const parsed = parseInt(normalizedValue, 10);
+      finalQty = isNaN(parsed) || parsed < 1 ? 1 : parsed;
+    } else {
+      const parsed = parseFloat(normalizedValue);
+      if (isNaN(parsed) || parsed < 0.01) {
+        finalQty = 0.01;
+      } else {
+        finalQty = Math.round(parsed * 100) / 100;
+      }
+    }
+    
+    handleUpdateQty(productId, finalQty);
+    setQtyInputs(prev => {
+      const newInputs = { ...prev };
+      delete newInputs[productId];
+      return newInputs;
+    });
+  };
+
+  const totalAmount = selectedItems.reduce(
+    (sum, item) => sum + item.product.price * item.qty,
+    0
+  );
+
+  const handleSubmit = () => {
+    if (!customerName.trim()) {
+      alert('Ingresa el nombre del cliente');
+      return;
+    }
+
+    if (!customerPhone.trim()) {
+      alert('Ingresa el teléfono del cliente');
+      return;
+    }
+
+    if (!deliveryDate) {
+      alert('Selecciona una fecha de entrega');
+      return;
+    }
+
+    if (!deliveryTime) {
+      alert('Selecciona una hora de entrega');
+      return;
+    }
+
+    if (selectedItems.length === 0) {
+      alert('Agrega al menos un producto');
+      return;
+    }
+
+    // Actualizar pedido
+    updateOrder(order.id, {
+      customerName: customerName.trim(),
+      customerPhone: customerPhone.trim(),
+      deliveryDate,
+      deliveryTime,
+      notes: notes.trim(),
+      items: selectedItems.map((item, idx) => ({
+        id: `item-${Date.now()}-${idx}`,
+        orderId: order.id,
+        productId: item.product.id,
+        productName: item.product.name,
+        productSku: item.product.sku,
+        saleType: item.product.saleType,
+        qty: item.qty,
+        unit: item.product.saleType === 'WEIGHT' ? 'kg' : 'unidad',
+        unitPrice: item.product.price,
+        total: Math.round(item.product.price * item.qty),
+        notes: item.notes,
+      })),
+      total: Math.round(totalAmount),
+    });
+
+    alert('Pedido actualizado correctamente');
+    onClose();
+  };
+
+  return (
+    <Modal isOpen={true} onClose={onClose} title="Editar Pedido" size="xl">
+      <div className="space-y-6">
+        {/* Steps */}
+        <div className="flex items-center justify-between mb-6">
+          <div className={`flex-1 text-center ${step === 'products' ? 'text-primary-600 font-semibold' : 'text-gray-400'}`}>
+            <div className={`w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center ${step === 'products' ? 'bg-primary-600 text-white' : 'bg-gray-200'}`}>
+              1
+            </div>
+            Productos
+          </div>
+          <div className="flex-1 border-t border-gray-300"></div>
+          <div className={`flex-1 text-center ${step === 'details' ? 'text-primary-600 font-semibold' : 'text-gray-400'}`}>
+            <div className={`w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center ${step === 'details' ? 'bg-primary-600 text-white' : 'bg-gray-200'}`}>
+              2
+            </div>
+            Detalles
+          </div>
+        </div>
+
+        {/* Paso: Productos */}
+        {step === 'products' && (
+          <div className="flex flex-col" style={{ height: '480px' }}>
+            {/* Vista de dos columnas similar al POS */}
+            <div className="grid grid-cols-2 gap-4 overflow-hidden" style={{ height: '410px' }}>
+              {/* Columna izquierda: Productos disponibles */}
+              <div className="flex flex-col border border-gray-200 rounded-lg overflow-hidden">
+                <div className="p-3 bg-gray-50 border-b border-gray-200">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Buscar productos..."
+                      className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+                </div>
+                <div className="flex-1 overflow-y-auto">
+                  {filteredProducts.map((product) => (
+                    <button
+                      key={product.id}
+                      onClick={() => handleAddProduct(product)}
+                      className="w-full p-3 hover:bg-primary-50 transition-colors flex items-center justify-between border-b border-gray-100 last:border-0 text-left"
+                    >
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-900 text-sm">{product.name}</p>
+                        <p className="text-xs text-gray-500">{product.sku}</p>
+                      </div>
+                      <div className="text-right ml-2">
+                        <p className="text-primary-700 font-semibold text-sm">
+                          Bs {product.price.toFixed(2)}
+                        </p>
+                        <p className="text-xs text-gray-500">/{product.unit}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Columna derecha: Productos seleccionados */}
+              <div className="flex flex-col border border-gray-200 rounded-lg overflow-hidden bg-gray-50">
+                <div className="p-3 bg-primary-600 text-white border-b border-primary-700">
+                  <h4 className="font-semibold text-sm">
+                    Pedido ({selectedItems.length} {selectedItems.length === 1 ? 'producto' : 'productos'})
+                  </h4>
+                </div>
+                <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                  {selectedItems.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                      <Package className="w-12 h-12 mb-2" />
+                      <p className="text-sm">No hay productos seleccionados</p>
+                      <p className="text-xs">Selecciona productos de la lista</p>
+                    </div>
+                  ) : (
+                    selectedItems.map((item) => (
+                      <div key={item.product.id} className="bg-white rounded-lg p-3 shadow-sm border border-gray-200">
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1 pr-2">
+                            <p className="font-medium text-gray-900 text-sm">{item.product.name}</p>
+                            <p className="text-xs text-gray-500">{item.product.sku}</p>
+                          </div>
+                          <button
+                            onClick={() => handleRemoveProduct(item.product.id)}
+                            className="text-red-600 hover:text-red-700 flex-shrink-0"
+                          >
+                            <XCircle className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={getInputValue(item.product.id, item.qty, item.product.saleType)}
+                            onChange={(e) => handleQtyInputChange(item.product.id, e.target.value)}
+                            onBlur={() => handleQtyInputBlur(item.product.id, item.product.saleType)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.currentTarget.blur();
+                              }
+                            }}
+                            className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          />
+                          <span className="text-xs text-gray-500">{item.product.unit}</span>
+                          <span className="ml-auto font-semibold text-gray-900 text-sm">
+                            Bs {Math.round(item.qty * item.product.price)}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <div className="p-3 bg-white border-t border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-gray-900">Total:</span>
+                    <span className="text-xl font-bold text-primary-700">
+                      Bs {Math.round(totalAmount)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-3">
+              <Button onClick={onClose} variant="outline" className="flex-1">
+                Cancelar
+              </Button>
+              <Button
+                onClick={() => setStep('details')}
+                variant="primary"
+                className="flex-1"
+                disabled={selectedItems.length === 0}
+              >
+                Siguiente
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Paso: Detalles */}
+        {step === 'details' && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nombre del Cliente <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Teléfono <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="tel"
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Fecha de Entrega <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  value={deliveryDate}
+                  onChange={(e) => setDeliveryDate(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Hora de Entrega <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="time"
+                  value={deliveryTime}
+                  onChange={(e) => setDeliveryTime(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Notas del Pedido
+              </label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={3}
+                placeholder="Ej: Cortes finos, sin grasa, etc."
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+              />
+            </div>
+
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h4 className="font-semibold text-gray-900 mb-2">Resumen del Pedido</h4>
+              <div className="space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Cliente:</span>
+                  <span className="font-medium">{customerName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Teléfono:</span>
+                  <span className="font-medium">{customerPhone}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Productos:</span>
+                  <span className="font-medium">{selectedItems.length}</span>
+                </div>
+                <div className="flex justify-between text-lg font-bold pt-2 border-t border-gray-200">
+                  <span>Total:</span>
+                  <span className="text-primary-700">Bs {Math.round(totalAmount)}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <Button onClick={() => setStep('products')} variant="outline" className="flex-1">
+                Atrás
+              </Button>
+              <Button onClick={handleSubmit} variant="primary" className="flex-1">
+                Guardar Cambios
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </Modal>
   );
 };

@@ -422,11 +422,6 @@ export const useSalesStore = create<SalesState>((set, get) => ({
       orderState.updateOrderStatus(orderId, 'DELIVERED', undefined, newSale.id);
     }
     
-    set((state) => ({
-      sales: [...state.sales, newSale],
-      saleCounter: saleCounter + 1,
-    }));
-    
     // Limpiar carrito
     cartState.clearCart();
     
@@ -606,7 +601,11 @@ export const useOrderStore = create<OrderState>((set, get) => ({
 
   getTodaysDeliveries: () => {
     const today = new Date().toISOString().split('T')[0];
-    return get().orders.filter((o) => o.deliveryDate === today);
+    return get().orders.filter(
+      (o) => o.deliveryDate === today && 
+             o.status !== 'DELIVERED' && 
+             o.status !== 'CANCELLED'
+    );
   },
 
   addCustomer: (customer) => {
