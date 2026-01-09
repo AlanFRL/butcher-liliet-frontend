@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useAuthStore } from './store';
 import { useColorScheme } from './hooks/useColorScheme';
 import { Navbar } from './components/layout/Navbar';
@@ -28,10 +28,11 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 // Layout with Navbar
 const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { logout } = useAuthStore();
+  const navigate = useNavigate();
   
   const handleLogout = () => {
     logout();
-    window.location.href = '/login';
+    navigate('/login', { replace: true });
   };
   
   return (
