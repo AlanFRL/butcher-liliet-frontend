@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Search, ShoppingCart, Trash2, Plus, Minus, Star } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Search, ShoppingCart, Trash2, Plus, Minus, Star, Package } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button, Modal } from '../components/ui';
 import { useProductStore, useCartStore, useCashStore, useSalesStore } from '../store';
 import type { Product } from '../types';
@@ -17,10 +17,14 @@ export const POSPage: React.FC = () => {
   const [qtyInputs, setQtyInputs] = useState<{ [key: string]: string }>({});
   
   const navigate = useNavigate();
+  const location = useLocation();
   const { currentSession } = useCashStore();
   const { products, categories, getFavoriteProducts, toggleProductFavorite } = useProductStore();
   const { cartItems, addToCart, updateCartItem, removeFromCart, clearCart, getCartTotal } = useCartStore();
   const { completeSale } = useSalesStore();
+  
+  // Obtener orderId si viene desde pedidos
+  const orderId = location.state?.orderId as string | undefined;
   
   // Verificar si hay caja abierta
   if (!currentSession || currentSession.status !== 'OPEN') {
@@ -126,7 +130,8 @@ export const POSPage: React.FC = () => {
   const handleCompleteSale = () => {
     const sale = completeSale(
       paymentMethod,
-      paymentMethod === 'CASH' ? parseFloat(cashPaid) : undefined
+      paymentMethod === 'CASH' ? parseFloat(cashPaid) : undefined,
+      orderId // Vincular con pedido si existe
     );
     
     if (sale) {
@@ -134,12 +139,25 @@ export const POSPage: React.FC = () => {
       setShowPaymentModal(false);
       setShowSuccessModal(true);
       setCashPaid('');
+      
+      // Si venía de un pedido, redirigir a pedidos después
+      if (orderId) {
+        setTimeout(() => {
+          setShowSuccessModal(false);
+          navigate('/orders', { replace: true });
+        }, 2000);
+      }
     }
   };
   
   const handleNewSale = () => {
     setShowSuccessModal(false);
     setLastSale(null);
+    
+    // Si venía de un pedido, volver a pedidos
+    if (orderId) {
+      navigate('/orders', { replace: true });
+    }
   };
   
   const cartTotal = Math.round(getCartTotal());
@@ -152,6 +170,25 @@ export const POSPage: React.FC = () => {
     <div className="h-[calc(100vh-4rem)] flex">
       {/* Panel Izquierdo: Productos */}
       <div className="flex-1 flex flex-col bg-gray-50">
+        {/* Indicador si viene de pedido */}
+        {orderId && (
+          <div className="bg-blue-50 border-b border-blue-200 px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center text-blue-800">
+                <Package className="w-5 h-5 mr-2" />
+                <span className="font-medium">Cobrando pedido - Items pre-cargados</span>
+              </div>
+              <Button
+                onClick={() => navigate('/orders')}
+                variant="outline"
+                size="sm"
+              >
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        )}
+        
         {/* Barra de búsqueda */}
         <div className="bg-white p-4 border-b border-gray-200">
           <div className="relative">

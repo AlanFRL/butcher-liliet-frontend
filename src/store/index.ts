@@ -53,6 +53,7 @@ interface CartState {
   updateCartItem: (itemId: string, qty: number) => void;
   removeFromCart: (itemId: string) => void;
   clearCart: () => void;
+  loadOrderToCart: (order: Order) => void; // Pre-cargar items de un pedido
   getCartTotal: () => number;
   getCartSubtotal: () => number;
 }
@@ -60,7 +61,7 @@ interface CartState {
 interface SalesState {
   sales: Sale[];
   saleCounter: number;
-  completeSale: (paymentMethod: 'CASH' | 'QR' | 'CARD', cashPaid?: number) => Sale | null;
+  completeSale: (paymentMethod: 'CASH' | 'QR' | 'CARD', cashPaid?: number, orderId?: string) => Sale | null;
   getSalesByDateRange: (from: string, to: string) => Sale[];
   getTodaysSales: () => Sale[];
 }
@@ -301,6 +302,43 @@ export const useCartStore = create<CartState>((set, get) => ({
     set({ cartItems: [] });
   },
   
+  loadOrderToCart: (order) => {
+    // Obtener productos para construir CartItems completos
+    const productState = useProductStore.getState();
+    
+    const cartItems: CartItem[] = order.items.map((orderItem) => {
+      const product = productState.products.find(p => p.id === orderItem.productId);
+      
+      // Si el producto ya no existe, crear uno temporal con los datos guardados
+      const productData: Product = product || {
+        id: orderItem.productId,
+        categoryId: null,
+        sku: orderItem.productSku,
+        name: orderItem.productName,
+        saleType: orderItem.saleType,
+        unit: orderItem.unit,
+        price: orderItem.unitPrice,
+        taxRate: 0,
+        isActive: false, // Marcado como inactivo si ya no existe
+        isFavorite: false,
+      };
+      
+      return {
+        id: uuidv4(), // Nuevo ID para el carrito
+        productId: orderItem.productId,
+        productName: orderItem.productName,
+        saleType: orderItem.saleType,
+        qty: orderItem.qty,
+        unitPrice: orderItem.unitPrice,
+        discount: 0,
+        total: Math.round(orderItem.qty * orderItem.unitPrice),
+        product: productData,
+      };
+    });
+    
+    set({ cartItems });
+  },
+  
   getCartSubtotal: () => {
     return get().cartItems.reduce((sum, item) => sum + item.total, 0);
   },
@@ -316,7 +354,7 @@ export const useSalesStore = create<SalesState>((set, get) => ({
   sales: [],
   saleCounter: 1,
   
-  completeSale: (_paymentMethod, _cashPaid) => {
+  completeSale: (_paymentMethod, _cashPaid, orderId) => {
     const cashState = useCashStore.getState();
     const cartState = useCartStore.getState();
     const authState = useAuthStore.getState();
@@ -356,6 +394,7 @@ export const useSalesStore = create<SalesState>((set, get) => ({
       taxTotal: 0,
       total,
       notes: null,
+      orderId, // Vincular con pedido si existe
       createdAt: new Date().toISOString(),
       completedAt: new Date().toISOString(),
     };
@@ -371,6 +410,17 @@ export const useSalesStore = create<SalesState>((set, get) => ({
     //   status: 'CONFIRMED',
     //   createdAt: new Date().toISOString(),
     // };
+    
+    set((state) => ({
+      sales: [...state.sales, newSale],
+      saleCounter: saleCounter + 1,
+    }));
+    
+    // Si viene de un pedido, marcarlo como entregado
+    if (orderId) {
+      const orderState = useOrderStore.getState();
+      orderState.updateOrderStatus(orderId, 'DELIVERED', undefined, newSale.id);
+    }
     
     set((state) => ({
       sales: [...state.sales, newSale],
@@ -429,7 +479,7 @@ interface OrderState {
     items: Omit<OrderItem, 'id' | 'orderId'>[],
     notes?: string
   ) => Order;
-  updateOrderStatus: (orderId: string, status: OrderStatus, reason?: string) => void;
+  updateOrderStatus: (orderId: string, status: OrderStatus, reason?: string, saleId?: string) => void;
   updateOrder: (orderId: string, updates: Partial<Order>) => void;
   cancelOrder: (orderId: string, reason: string) => void;
   getOrderById: (id: string) => Order | undefined;
@@ -490,7 +540,9 @@ export const useOrderStore = create<OrderState>((set, get) => ({
     return order;
   },
 
-  updateOrderStatus: (orderId, status, reason) => {
+  updateOrderStatus: (orderId, status, reason, saleId) => {
+    const authState = useAuthStore.getState();
+    
     set((state) => ({
       orders: state.orders.map((order) => {
         if (order.id !== orderId) return order;
@@ -502,6 +554,8 @@ export const useOrderStore = create<OrderState>((set, get) => ({
 
         if (status === 'DELIVERED') {
           updates.completedAt = new Date().toISOString();
+          updates.saleId = saleId; // Vincular venta
+          updates.deliveredBy = authState.currentUser?.id; // Usuario que entregó
         } else if (status === 'CANCELLED') {
           updates.cancelledAt = new Date().toISOString();
           updates.cancellationReason = reason;

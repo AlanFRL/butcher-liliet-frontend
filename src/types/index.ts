@@ -100,6 +100,7 @@ export interface Sale {
   taxTotal: number;
   total: number;
   notes: string | null;
+  orderId?: string; // Link al pedido si la venta proviene de un pedido
   createdAt: string;
   completedAt: string | null;
 }
@@ -194,6 +195,8 @@ export interface Order {
   total: number;
   notes?: string; // Notas del pedido
   createdBy: string; // Usuario que creó el pedido
+  saleId?: string; // Link a la venta cuando se cobra el pedido
+  deliveredBy?: string; // Usuario que entregó/cobró el pedido
   createdAt: string;
   updatedAt: string;
   completedAt?: string;

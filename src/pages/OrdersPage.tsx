@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Search, Calendar, Clock, Phone, User, Package, AlertCircle, CheckCircle, XCircle, Eye } from 'lucide-react';
+import { Plus, Search, Calendar, Clock, Phone, User, Package, AlertCircle, CheckCircle, XCircle, Eye, CreditCard } from 'lucide-react';
 import { Button, Modal } from '../components/ui';
-import { useOrderStore, useProductStore } from '../store';
+import { useOrderStore, useProductStore, useCartStore } from '../store';
 import type { Order, OrderStatus, Product } from '../types';
+import { useNavigate } from 'react-router-dom';
 
 export const OrdersPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -11,9 +12,19 @@ export const OrdersPage: React.FC = () => {
   const [showOrderDetailModal, setShowOrderDetailModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
+  const navigate = useNavigate();
   const { orders, getOverdueOrders, getTodaysDeliveries } = useOrderStore();
+  const { loadOrderToCart } = useCartStore();
   const overdueOrders = getOverdueOrders();
   const todaysDeliveries = getTodaysDeliveries();
+  
+  // Función para cobrar pedido en POS
+  const handleChargeOrder = (order: Order) => {
+    // Pre-cargar items del pedido al carrito
+    loadOrderToCart(order);
+    // Navegar al POS con el orderId en el state
+    navigate('/pos', { state: { orderId: order.id } });
+  };
 
   // Filtrar pedidos
   const filteredOrders = useMemo(() => {
@@ -287,6 +298,17 @@ export const OrdersPage: React.FC = () => {
                       Creado {new Date(order.createdAt).toLocaleDateString('es-BO')} {new Date(order.createdAt).toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' })}
                     </div>
                     <div className="flex gap-2">
+                      {/* Botón Cobrar en POS para pedidos READY */}
+                      {order.status === 'READY' && (
+                        <Button
+                          onClick={() => handleChargeOrder(order)}
+                          variant="primary"
+                          size="sm"
+                        >
+                          <CreditCard className="w-4 h-4 mr-1" />
+                          Cobrar en POS
+                        </Button>
+                      )}
                       <Button
                         onClick={() => handleViewOrder(order)}
                         variant="outline"
