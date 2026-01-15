@@ -8,7 +8,7 @@ export type CashSessionStatus = 'OPEN' | 'CLOSED';
 
 export type SaleStatus = 'DRAFT' | 'COMPLETED' | 'CANCELLED';
 
-export type PaymentMethod = 'CASH' | 'QR' | 'CARD' | 'MIXED';
+export type PaymentMethod = 'CASH' | 'CARD' | 'TRANSFER' | 'MIXED';
 
 export type MovementType = 
   | 'PURCHASE_IN' 
@@ -18,9 +18,24 @@ export type MovementType =
   | 'SALE_OUT' 
   | 'RETURN_IN';
 
-export type CashMovementType = 'IN' | 'OUT';
+export type CashMovementType = 'DEPOSIT' | 'WITHDRAWAL' | 'ADJUSTMENT';
 
 export type OrderStatus = 'PENDING' | 'READY' | 'DELIVERED' | 'CANCELLED';
+
+export type InventoryType = 
+  | 'UNIT'            // Productos por unidad con control de stock (latas, carbón, etc.)
+  | 'WEIGHT'          // Carnes de corte - peso manual sin control de stock
+  | 'VACUUM_PACKED'   // Carnes al vacío - unidades con precio variable (requiere lotes)
+  | 'UNIT_STOCK'      // Legacy: Productos por unidad con control de stock
+  | 'UNIT_VARIABLE'   // Legacy: Carnes al vacío - unidades con precio variable en código de barras
+  | 'WEIGHT_MANUAL'   // Legacy: Carnes de corte - peso manual sin control de stock
+  | 'NO_STOCK';       // Legacy: Productos sin control de inventario
+
+export type BarcodeType =
+  | 'STANDARD'        // Código de barras estándar (EAN-13, UPC, etc.)
+  | 'PRICE_EMBEDDED'  // Código con precio embebido (balanzas)
+  | 'WEIGHT_EMBEDDED' // Código con peso embebido
+  | 'INTERNAL';       // Código interno del negocio
 
 // ============= INTERFACES =============
 
@@ -30,6 +45,14 @@ export interface User {
   username: string;
   fullName: string;
   pin: string;
+  isActive: boolean;
+}
+
+export interface UserResponse {
+  id: string;
+  username: string;
+  fullName: string;
+  role: UserRole;
   isActive: boolean;
 }
 
@@ -49,6 +72,18 @@ export interface Product {
   taxRate: number;
   isActive: boolean;
   isFavorite?: boolean; // Para el prototipo
+  
+  // Sistema de inventario híbrido (TODO: migrar datos existentes)
+  inventoryType?: InventoryType;
+  barcodeType?: BarcodeType;
+  barcodePrefix?: string; // Prefijo para identificar en scanner (ej: "20" para precios embebidos)
+  
+  // Control de stock (solo para UNIT_STOCK y UNIT_VARIABLE)
+  stockUnits?: number;     // Stock disponible en unidades
+  minStockAlert?: number;  // Alerta de stock mínimo
+  
+  // Para WEIGHT_MANUAL (referencia, no se controla stock)
+  estimatedStockKg?: number; // Solo informativo
 }
 
 export interface CashSession {
@@ -58,12 +93,12 @@ export interface CashSession {
   status: CashSessionStatus;
   openedAt: string;
   openingAmount: number;
-  openingNote: string | null;
+  openingNotes: string | null;
   closedAt: string | null;
-  closingNote: string | null;
-  expectedCash: number | null;
-  countedCash: number | null;
-  cashDifference: number | null;
+  closingNotes: string | null;
+  expectedAmount: number | null;
+  closingAmount: number | null;
+  differenceAmount: number | null;
 }
 
 export interface CashMovement {
@@ -90,29 +125,20 @@ export interface SaleItem {
 export interface Sale {
   id: string;
   cashSessionId: string;
-  terminalId: string;
-  userId: string;
+  cashierId: string; // userId en backend se llama cashierId
   status: SaleStatus;
-  saleNumber: number;
   items: SaleItem[];
   subtotal: number;
-  discountTotal: number;
-  taxTotal: number;
+  discount: number; // discountTotal → discount
   total: number;
+  paymentMethod: PaymentMethod;
+  cashAmount: number | null;
+  cardAmount: number | null;
+  transferAmount: number | null;
+  changeAmount: number | null; // vuelto
   notes: string | null;
-  orderId?: string; // Link al pedido si la venta proviene de un pedido
-  createdAt: string;
-  completedAt: string | null;
-}
-
-export interface Payment {
-  id: string;
-  saleId: string;
-  method: PaymentMethod;
-  amount: number;
-  cashPaid?: number;
-  cashChange?: number;
-  status: 'PENDING' | 'CONFIRMED' | 'REJECTED';
+  customerName: string | null;
+  orderId?: string;
   createdAt: string;
 }
 
@@ -149,6 +175,27 @@ export interface Terminal {
 
 export interface CartItem extends SaleItem {
   product: Product;
+  batchId?: string; // ID del lote (para productos VACUUM_PACKED)
+  batchNumber?: string; // Número de lote para mostrar
+  actualWeight?: number; // Peso real del lote (para productos VACUUM_PACKED)
+}
+
+export interface ProductBatch {
+  id: string;
+  productId: string;
+  batchNumber: string;
+  actualWeight: number | string;
+  unitPrice: number | string;
+  unitCost: number | string;
+  isSold: boolean;
+  packedAt: string;
+  expiryDate: string | null;
+  notes?: string;
+  product?: {
+    id: string;
+    name: string;
+    sku: string;
+  };
 }
 
 export interface DailySummary {
@@ -156,7 +203,7 @@ export interface DailySummary {
   totalSales: number;
   totalAmount: number;
   cashAmount: number;
-  qrAmount: number;
+  transferAmount: number;
   cardAmount: number;
 }
 
@@ -208,6 +255,7 @@ export interface OrderItem {
   id: string;
   orderId: string;
   productId: string;
+  batchId?: string; // ID del lote específico (para productos VACUUM_PACKED)
   productName: string; // Snapshot
   productSku: string; // Snapshot
   saleType: SaleType;
@@ -216,4 +264,5 @@ export interface OrderItem {
   unitPrice: number;
   total: number;
   notes?: string; // Notas específicas del item (ej: "corte fino", "sin grasa")
+  batch?: ProductBatch; // Información del lote (si aplica)
 }

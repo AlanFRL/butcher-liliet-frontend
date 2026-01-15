@@ -1,10 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { BarChart3, TrendingUp, Package, DollarSign, Eye, Receipt } from 'lucide-react';
 import { Button, Modal } from '../components/ui';
-import { useSalesStore, useProductStore } from '../store';
+import { useSalesStore, useProductStore, useOrderStore } from '../store';
+import { salesApi } from '../services/api';
 import type { Sale } from '../types';
 
+interface SalesStatistics {
+  summary: {
+    totalSales: number;
+    totalRevenue: number;
+    totalDiscount: number;
+    averageTicket: number;
+    cancelledSales: number;
+  };
+  paymentMethods: {
+    cash: { count: number; total: number };
+    card: { count: number; total: number };
+    transfer: { count: number; total: number };
+    mixed: { count: number; total: number };
+  };
+  topProducts: Array<{
+    productId: string;
+    productName: string;
+    productSku: string;
+    quantity: number;
+    revenue: number;
+    salesCount: number;
+  }>;
+  dailySales: Array<{
+    date: string;
+    revenue: number;
+    salesCount: number;
+  }>;
+}
+
 export const ReportsPage: React.FC = () => {
+  const navigate = useNavigate();
   const [dateFrom, setDateFrom] = useState(
     new Date().toISOString().split('T')[0]
   );
@@ -14,15 +46,58 @@ export const ReportsPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'summary' | 'sales'>('summary');
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [showSaleDetailModal, setShowSaleDetailModal] = useState(false);
+  const [statistics, setStatistics] = useState<SalesStatistics | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [backendSales, setBackendSales] = useState<any[]>([]);
   
   const { sales } = useSalesStore();
-  const { } = useProductStore();
+  const { orders } = useOrderStore();
   
-  // Filtrar ventas por fecha
-  const filteredSales = sales.filter((s) => {
-    const saleDate = new Date(s.createdAt).toISOString().split('T')[0];
-    return saleDate >= dateFrom && saleDate <= dateTo && s.status === 'COMPLETED';
-  });
+  // Cargar estadísticas y ventas desde el backend
+  useEffect(() => {
+    loadStatistics();
+    loadSales();
+  }, [dateFrom, dateTo]);
+  
+  const loadStatistics = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const stats = await salesApi.getStatistics({
+        startDate: dateFrom,
+        endDate: dateTo,
+      });
+      console.log('📊 Statistics loaded:', JSON.stringify(stats, null, 2));
+      setStatistics(stats);
+    } catch (error) {
+      console.error('❌ Error loading statistics:', error);
+      setError('Error al cargar las estadísticas');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadSales = async () => {
+    try {
+      const salesData = await salesApi.getAll({
+        startDate: dateFrom,
+        endDate: dateTo,
+      });
+      console.log('📋 Sales loaded:', salesData.length);
+      setBackendSales(salesData);
+    } catch (error) {
+      console.error('❌ Error loading sales:', error);
+    }
+  };
+  
+  // Usar ventas del backend si están disponibles, sino usar localStorage
+  const filteredSales = backendSales.length > 0 
+    ? backendSales.filter((s) => s.status === 'COMPLETED')
+    : sales.filter((s) => {
+        const saleDate = new Date(s.createdAt).toISOString().split('T')[0];
+        return saleDate >= dateFrom && saleDate <= dateTo && s.status === 'COMPLETED';
+      });
   
   // Ordenar ventas por fecha (más reciente primero)
   const sortedSales = [...filteredSales].sort((a, b) => 
@@ -33,51 +108,6 @@ export const ReportsPage: React.FC = () => {
     setSelectedSale(sale);
     setShowSaleDetailModal(true);
   };
-  
-  // Calcular métricas
-  const totalSales = filteredSales.reduce((sum, s) => sum + s.total, 0);
-  const totalTickets = filteredSales.length;
-  const averageTicket = totalTickets > 0 ? totalSales / totalTickets : 0;
-  
-  // Top productos vendidos
-  const productSales: Record<string, { name: string; qty: number; total: number; count: number }> = {};
-  
-  filteredSales.forEach((sale) => {
-    sale.items.forEach((item) => {
-      if (!productSales[item.productId]) {
-        productSales[item.productId] = {
-          name: item.productName,
-          qty: 0,
-          total: 0,
-          count: 0,
-        };
-      }
-      productSales[item.productId].qty += item.qty;
-      productSales[item.productId].total += item.total;
-      productSales[item.productId].count += 1;
-    });
-  });
-  
-  const topProducts = Object.entries(productSales)
-    .map(([id, data]) => ({ id, ...data }))
-    .sort((a, b) => b.total - a.total)
-    .slice(0, 10);
-  
-  // Ventas por día
-  const salesByDate: Record<string, { total: number; count: number }> = {};
-  
-  filteredSales.forEach((sale) => {
-    const date = new Date(sale.createdAt).toISOString().split('T')[0];
-    if (!salesByDate[date]) {
-      salesByDate[date] = { total: 0, count: 0 };
-    }
-    salesByDate[date].total += sale.total;
-    salesByDate[date].count += 1;
-  });
-  
-  const dailySales = Object.entries(salesByDate)
-    .map(([date, data]) => ({ date, ...data }))
-    .sort((a, b) => a.date.localeCompare(b.date));
   
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
@@ -149,6 +179,16 @@ export const ReportsPage: React.FC = () => {
       {/* Métricas Principales */}
       {viewMode === 'summary' && (
         <>
+        {isLoading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="text-gray-500">Cargando estadísticas...</div>
+          </div>
+        ) : error ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="text-red-500">{error}</div>
+          </div>
+        ) : statistics ? (
+          <>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white rounded-xl shadow-md p-6 border border-gray-200">
           <div className="flex items-center justify-between mb-3">
@@ -158,10 +198,10 @@ export const ReportsPage: React.FC = () => {
             </div>
           </div>
           <p className="text-3xl font-bold text-gray-900">
-            Bs {totalSales.toFixed(2)}
+            Bs {statistics.summary.totalRevenue.toFixed(2)}
           </p>
           <p className="text-sm text-gray-500 mt-1">
-            {totalTickets} tickets
+            {statistics.summary.totalSales} tickets
           </p>
         </div>
         
@@ -173,7 +213,7 @@ export const ReportsPage: React.FC = () => {
             </div>
           </div>
           <p className="text-3xl font-bold text-gray-900">
-            Bs {averageTicket.toFixed(2)}
+            Bs {statistics.summary.averageTicket.toFixed(2)}
           </p>
         </div>
         
@@ -184,7 +224,7 @@ export const ReportsPage: React.FC = () => {
               <BarChart3 className="w-5 h-5 text-purple-600" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{totalTickets}</p>
+          <p className="text-3xl font-bold text-gray-900">{statistics.summary.totalSales}</p>
         </div>
       </div>
       
@@ -198,15 +238,15 @@ export const ReportsPage: React.FC = () => {
             </h2>
           </div>
           <div className="p-6">
-            {topProducts.length === 0 ? (
+            {statistics.topProducts.length === 0 ? (
               <p className="text-gray-500 text-center py-8">
                 No hay datos de ventas en el período seleccionado
               </p>
             ) : (
               <div className="space-y-3">
-                {topProducts.map((product, index) => (
+                {statistics.topProducts.map((product, index) => (
                   <div
-                    key={product.id}
+                    key={product.productId}
                     className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
                   >
                     <div className="flex items-center flex-1">
@@ -217,16 +257,16 @@ export const ReportsPage: React.FC = () => {
                       </div>
                       <div className="flex-1">
                         <p className="font-semibold text-gray-900">
-                          {product.name}
+                          {product.productName}
                         </p>
                         <p className="text-xs text-gray-500">
-                          {product.qty.toFixed(2)} unidades · {product.count} ventas
+                          {product.quantity.toFixed(2)} unidades · {product.salesCount} ventas
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-primary-700">
-                        Bs {product.total.toFixed(2)}
+                        Bs {product.revenue.toFixed(2)}
                       </p>
                     </div>
                   </div>
@@ -245,15 +285,15 @@ export const ReportsPage: React.FC = () => {
             </h2>
           </div>
           <div className="p-6">
-            {dailySales.length === 0 ? (
+            {statistics.dailySales.length === 0 ? (
               <p className="text-gray-500 text-center py-8">
                 No hay datos de ventas en el período seleccionado
               </p>
             ) : (
               <div className="space-y-3">
-                {dailySales.map((day) => {
-                  const maxTotal = Math.max(...dailySales.map((d) => d.total));
-                  const percentage = (day.total / maxTotal) * 100;
+                {statistics.dailySales.map((day) => {
+                  const maxTotal = Math.max(...statistics.dailySales.map((d) => d.revenue));
+                  const percentage = (day.revenue / maxTotal) * 100;
                   
                   return (
                     <div key={day.date} className="space-y-1">
@@ -267,10 +307,10 @@ export const ReportsPage: React.FC = () => {
                         </span>
                         <div className="text-right">
                           <span className="font-bold text-gray-900">
-                            Bs {day.total.toFixed(2)}
+                            Bs {day.revenue.toFixed(2)}
                           </span>
                           <span className="text-xs text-gray-500 ml-2">
-                            ({day.count} tickets)
+                            ({day.salesCount} tickets)
                           </span>
                         </div>
                       </div>
@@ -288,6 +328,12 @@ export const ReportsPage: React.FC = () => {
           </div>
         </div>
       </div>
+      </>
+        ) : (
+          <div className="flex justify-center items-center h-64">
+            <div className="text-gray-500">No hay estadísticas disponibles</div>
+          </div>
+        )}
       </>
       )}
       
@@ -331,11 +377,17 @@ export const ReportsPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {sortedSales.map((sale) => (
-                    <tr key={sale.id} className="hover:bg-gray-50">
+                  {sortedSales.map((sale) => {
+                    // Manejar tanto ventas del backend como del localStorage
+                    const saleId = sale.id;
+                    const total = typeof sale.total === 'string' ? parseFloat(sale.total) : sale.total;
+                    const itemCount = sale.items?.length || 0;
+                    
+                    return (
+                    <tr key={saleId} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="font-mono font-semibold text-gray-900">
-                          #{sale.saleNumber.toString().padStart(6, '0')}
+                          #{saleId.slice(-8).toUpperCase()}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
@@ -351,11 +403,11 @@ export const ReportsPage: React.FC = () => {
                         })}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {sale.items.length} item{sale.items.length !== 1 ? 's' : ''}
+                        {itemCount} item{itemCount !== 1 ? 's' : ''}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
                         <span className="text-lg font-bold text-primary-700">
-                          Bs {Math.round(sale.total)}
+                          Bs {total.toFixed(2)}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -369,7 +421,8 @@ export const ReportsPage: React.FC = () => {
                         </Button>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             )}
@@ -381,6 +434,8 @@ export const ReportsPage: React.FC = () => {
       {selectedSale && (
         <SaleDetailModal
           sale={selectedSale}
+          orders={orders}
+          navigate={navigate}
           isOpen={showSaleDetailModal}
           onClose={() => {
             setShowSaleDetailModal(false);
@@ -394,20 +449,58 @@ export const ReportsPage: React.FC = () => {
 
 // Modal de Detalle de Venta
 const SaleDetailModal: React.FC<{
-  sale: Sale;
+  sale: any; // Acepta tanto Sale del store como SaleResponse del backend
+  orders: any[];
+  navigate: any;
   isOpen: boolean;
   onClose: () => void;
-}> = ({ sale, isOpen, onClose }) => {
+}> = ({ sale, orders, navigate, isOpen, onClose }) => {
+  // Convertir valores string del backend a números
+  const subtotal = typeof sale.subtotal === 'string' ? parseFloat(sale.subtotal) : sale.subtotal;
+  const discount = typeof sale.discount === 'string' ? parseFloat(sale.discount) : sale.discount;
+  const total = typeof sale.total === 'string' ? parseFloat(sale.total) : sale.total;
+  const changeAmount = sale.changeAmount ? (typeof sale.changeAmount === 'string' ? parseFloat(sale.changeAmount) : sale.changeAmount) : 0;
+  
+  // Buscar el pedido asociado
+  const relatedOrder = sale.orderId ? orders.find(o => o.id === sale.orderId) : null;
+  
+  const handleViewOrder = () => {
+    if (relatedOrder) {
+      // Navegar a pedidos y abrir el detalle (pasando el orderId como state)
+      navigate('/orders', { state: { openOrderId: relatedOrder.id } });
+      onClose();
+    }
+  };
+  
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Detalle de Venta" size="lg">
       <div className="space-y-6">
+        {/* Link al pedido si existe */}
+        {relatedOrder && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-blue-900">Esta venta proviene de un pedido</p>
+                <p className="text-xs text-blue-700">Pedido #{relatedOrder.orderNumber}</p>
+              </div>
+              <Button
+                onClick={handleViewOrder}
+                variant="outline"
+                size="sm"
+              >
+                Ver Pedido
+              </Button>
+            </div>
+          </div>
+        )}
+        
         {/* Info de la Venta */}
         <div className="bg-gray-50 rounded-lg p-4">
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <p className="text-gray-600">Número de Venta</p>
+              <p className="text-gray-600">ID de Venta</p>
               <p className="font-bold text-lg text-gray-900">
-                #{sale.saleNumber.toString().padStart(6, '0')}
+                #{sale.id.slice(-8).toUpperCase()}
               </p>
             </div>
             <div>
@@ -451,25 +544,35 @@ const SaleDetailModal: React.FC<{
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {sale.items.map((item) => (
+                {sale.items?.map((item: any) => {
+                  const qty = typeof item.quantity === 'string' ? parseFloat(item.quantity) : (item.qty || item.quantity);
+                  const unitPrice = typeof item.unitPrice === 'string' ? parseFloat(item.unitPrice) : item.unitPrice;
+                  const itemTotal = typeof item.subtotal === 'string' ? parseFloat(item.subtotal) : (item.total || item.subtotal);
+                  const actualWeight = item.actualWeight ? (typeof item.actualWeight === 'string' ? parseFloat(item.actualWeight) : item.actualWeight) : null;
+                  
+                  return (
                   <tr key={item.id}>
                     <td className="px-4 py-3">
                       <p className="font-medium text-gray-900">{item.productName}</p>
-                      {item.saleType === 'WEIGHT' && (
-                        <p className="text-xs text-gray-500">Por peso</p>
+                      {item.batchNumber && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Lote: {item.batchNumber}
+                          {actualWeight && ` (${actualWeight.toFixed(3)}kg)`}
+                        </p>
                       )}
                     </td>
                     <td className="px-4 py-3 text-center text-gray-900">
-                      {item.saleType === 'WEIGHT' ? item.qty.toFixed(3) : item.qty}
+                      {qty.toFixed(2)}
                     </td>
                     <td className="px-4 py-3 text-right text-gray-600">
-                      Bs {item.unitPrice.toFixed(2)}
+                      Bs {unitPrice.toFixed(2)}
                     </td>
                     <td className="px-4 py-3 text-right font-semibold text-gray-900">
-                      Bs {Math.round(item.total)}
+                      Bs {itemTotal.toFixed(2)}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -480,24 +583,31 @@ const SaleDetailModal: React.FC<{
           <div className="space-y-2">
             <div className="flex justify-between text-gray-600">
               <span>Subtotal:</span>
-              <span className="font-semibold">Bs {Math.round(sale.subtotal)}</span>
+              <span className="font-semibold">Bs {subtotal.toFixed(2)}</span>
             </div>
-            {sale.discountTotal > 0 && (
+            {discount > 0 && (
               <div className="flex justify-between text-gray-600">
                 <span>Descuento:</span>
                 <span className="font-semibold text-red-600">
-                  -Bs {Math.round(sale.discountTotal)}
+                  -Bs {discount.toFixed(2)}
                 </span>
               </div>
             )}
             <div className="flex justify-between text-xl font-bold text-primary-700 pt-2 border-t border-gray-200">
               <span>TOTAL:</span>
-              <span>Bs {Math.round(sale.total)}</span>
+              <span>Bs {total.toFixed(2)}</span>
             </div>
+            {changeAmount > 0 && (
+              <div className="flex justify-between text-gray-600">
+                <span>Cambio:</span>
+                <span className="font-semibold">Bs {changeAmount.toFixed(2)}</span>
+              </div>
+            )}
           </div>
         </div>
 
-        {sale.notes && (
+        {/* Mostrar notas solo si existen y no son el orderId automático */}
+        {sale.notes && !sale.notes.includes('Pedido #') && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
             <p className="text-sm font-medium text-yellow-900">Notas:</p>
             <p className="text-sm text-yellow-800">{sale.notes}</p>

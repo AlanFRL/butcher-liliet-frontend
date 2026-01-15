@@ -9,7 +9,10 @@ import {
   Settings,
   LogOut,
   User,
-  ClipboardList
+  ClipboardList,
+  Boxes,
+  Users,
+  Monitor
 } from 'lucide-react';
 import { useAuthStore } from '../../store';
 
@@ -26,6 +29,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onLogout }) => {
     { name: 'POS', path: '/pos', icon: ShoppingCart, roles: ['ADMIN', 'MANAGER', 'CASHIER'] },
     { name: 'Pedidos', path: '/orders', icon: ClipboardList, roles: ['ADMIN', 'MANAGER', 'CASHIER'] },
     { name: 'Productos', path: '/products', icon: Package, roles: ['ADMIN', 'MANAGER', 'CASHIER'] },
+    { name: 'Inventario', path: '/inventory', icon: Boxes, roles: ['ADMIN', 'MANAGER'] },
     { name: 'Caja', path: '/cash', icon: DollarSign, roles: ['ADMIN', 'MANAGER', 'CASHIER'] },
     { name: 'Reportes', path: '/reports', icon: BarChart3, roles: ['ADMIN', 'MANAGER'] },
     { name: 'Configuración', path: '/settings', icon: Settings, roles: ['ADMIN', 'MANAGER', 'CASHIER'] },
@@ -43,11 +47,24 @@ export const Navbar: React.FC<NavbarProps> = ({ onLogout }) => {
         <div className="flex items-center justify-between h-16 gap-4">
           {/* Logo */}
           <div className="flex items-center space-x-2 flex-shrink-0">
-            <div className="w-10 h-10 bg-accent-500 rounded-lg flex items-center justify-center font-bold text-primary-900">
-              C
+            {/* Logo - Reemplaza la imagen con tu logo */}
+            <img 
+              src="/logo.png" 
+              alt="Butcher Lilieth" 
+              className="w-10 h-10 rounded-lg object-cover"
+              onError={(e) => {
+                // Fallback si no hay imagen
+                e.currentTarget.style.display = 'none';
+                const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                if (fallback) fallback.style.display = 'flex';
+              }}
+            />
+            <div className="w-10 h-10 bg-accent-500 rounded-lg hidden items-center justify-center font-bold text-primary-900">
+              BL
             </div>
             <div className="hidden lg:block">
-              <h1 className="text-lg font-bold leading-tight">Carnicería Premium</h1>
+              <h1 className="text-lg font-bold leading-tight">Butcher Lilieth</h1>
+              <p className="text-xs text-gray-300">Carnes Premium</p>
               <p className="text-xs text-primary-200">Sistema POS</p>
             </div>
           </div>

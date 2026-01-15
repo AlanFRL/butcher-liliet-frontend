@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { Package, Plus, Edit2, Star, Search } from 'lucide-react';
-import { Button, Modal, Input } from '../components/ui';
+import React, { useState, useEffect } from 'react';
+import { Package, Plus, Edit2, Star, Search, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Button, Modal, Input, useToast } from '../components/ui';
 import { useProductStore, useAuthStore } from '../store';
 import type { Product, SaleType } from '../types';
 
@@ -9,9 +9,18 @@ export const ProductsPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const { showToast, ToastComponent } = useToast();
   
-  const { products, categories, addProduct, updateProduct, toggleProductActive, toggleProductFavorite } = useProductStore();
+  const { products, categories, addProduct, updateProduct, toggleProductActive, toggleProductFavorite, loadProducts, loadCategories, isLoading } = useProductStore();
   const { currentUser } = useAuthStore();
+  
+  // Cargar productos y categorías si están vacíos
+  useEffect(() => {
+    if (products.length === 0 && !isLoading) {
+      loadCategories();
+      loadProducts();
+    }
+  }, []);
   
   // Verificar si el usuario puede editar
   const canEdit = currentUser?.role === 'ADMIN' || currentUser?.role === 'MANAGER';
@@ -20,69 +29,147 @@ export const ProductsPage: React.FC = () => {
   const [formData, setFormData] = useState({
     name: '',
     sku: '',
+    description: '',
     categoryId: '',
     saleType: 'WEIGHT' as SaleType,
-    unit: 'kg',
+    inventoryType: 'WEIGHT' as 'UNIT' | 'WEIGHT' | 'VACUUM_PACKED',
     price: '',
+    stockQuantity: '',
+    minStock: '',
   });
   
   const handleOpenModal = (product?: Product) => {
     if (product) {
       setEditingProduct(product);
+      const invType = (product.inventoryType as any) || (product.saleType === 'WEIGHT' ? 'WEIGHT' : 'UNIT');
       setFormData({
         name: product.name,
         sku: product.sku,
+        description: (product as any).description || '',
         categoryId: product.categoryId || '',
         saleType: product.saleType,
-        unit: product.unit,
+        inventoryType: invType,
         price: product.price.toString(),
+        stockQuantity: product.stockUnits?.toString() || '',
+        minStock: product.minStockAlert?.toString() || '',
       });
     } else {
       setEditingProduct(null);
       setFormData({
         name: '',
         sku: '',
+        description: '',
         categoryId: '',
         saleType: 'WEIGHT',
-        unit: 'kg',
+        inventoryType: 'WEIGHT',
         price: '',
+        stockQuantity: '',
+        minStock: '',
       });
     }
     setShowModal(true);
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const price = parseFloat(formData.price);
-    if (isNaN(price) || price < 0) {
-      alert('El precio debe ser un número válido');
+    const price = formData.inventoryType === 'VACUUM_PACKED' ? 0 : parseFloat(formData.price);
+    if (formData.inventoryType !== 'VACUUM_PACKED' && (isNaN(price) || price < 0)) {
+      showToast('warning', 'El precio debe ser un número válido');
       return;
     }
     
-    if (editingProduct) {
-      updateProduct(editingProduct.id, {
-        name: formData.name,
-        sku: formData.sku,
-        categoryId: formData.categoryId || null,
-        saleType: formData.saleType,
-        unit: formData.unit,
-        price,
-      });
-    } else {
-      addProduct({
-        name: formData.name,
-        sku: formData.sku,
-        categoryId: formData.categoryId || null,
-        saleType: formData.saleType,
-        unit: formData.unit,
-        price,
-        taxRate: 0,
-        isActive: true,
-      });
-    }
+    // Stock solo aplica para productos normales, no al vacío
+    const stockQuantity = formData.inventoryType !== 'VACUUM_PACKED' && formData.stockQuantity ? parseFloat(formData.stockQuantity) : undefined;
+    const minStock = formData.inventoryType !== 'VACUUM_PACKED' && formData.minStock ? parseFloat(formData.minStock) : undefined;
     
-    setShowModal(false);
+    // Determinar unidad automáticamente
+    const unit = formData.saleType === 'WEIGHT' ? 'kg' : (formData.inventoryType === 'VACUUM_PACKED' ? 'paquete' : 'unidad');
+    
+    try {
+      if (editingProduct) {
+        await updateProduct(editingProduct.id, {
+          name: formData.name,
+          sku: formData.sku,
+          description: formData.description || undefined,
+          categoryId: formData.categoryId || null,
+          saleType: formData.saleType,
+          inventoryType: formData.inventoryType,
+          unit,
+          price,
+          stockQuantity,
+          minStock,
+        });
+      } else {
+        await addProduct({
+          name: formData.name,
+          sku: formData.sku,
+          description: formData.description || undefined,
+          categoryId: formData.categoryId || null,
+          saleType: formData.saleType,
+          inventoryType: formData.inventoryType,
+          unit,
+          price,
+          taxRate: 0,
+          isActive: true,
+          stockQuantity,
+          minStock,
+        });
+      }
+      
+      showToast('success', editingProduct ? 'Producto actualizado exitosamente' : 'Producto creado exitosamente');
+      setShowModal(false);
+    } catch (error) {
+      console.error('Error saving product:', error);
+      showToast('error', 'Error al guardar el producto');
+    }
+  };
+
+  const handleDelete = async (product: Product) => {
+    if (!confirm(`¿Estás seguro de eliminar "${product.name}"? Esta acción no se puede deshacer.`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:3000/api/products/${product.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('butcher_auth_token')}`
+        }
+      });
+
+      if (response.ok) {
+        showToast('success', 'Producto eliminado exitosamente');
+        await loadProducts();
+      } else {
+        const error = await response.json();
+        showToast('error', error.message || 'No se puede eliminar el producto porque está en uso.');
+      }
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      showToast('error', 'Error al eliminar el producto');
+    }
+  };
+
+  const handleToggleActive = async (product: Product) => {
+    try {
+      const response = await fetch(`http://localhost:3000/products/${product.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('butcher_auth_token')}`
+        },
+        body: JSON.stringify({
+          isActive: !product.isActive
+        })
+      });
+
+      if (response.ok) {
+        await loadProducts();
+      }
+    } catch (error) {
+      console.error('Error toggling product status:', error);
+    }
   };
   
   // Filtrar productos
@@ -99,6 +186,7 @@ export const ProductsPage: React.FC = () => {
   
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
+      {ToastComponent}
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -219,14 +307,24 @@ export const ProductsPage: React.FC = () => {
                   <td className="px-6 py-4 text-center">
                     {canEdit ? (
                       <button
-                        onClick={() => toggleProductActive(product.id)}
-                        className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        onClick={() => handleToggleActive(product)}
+                        className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 mx-auto ${
                           product.isActive
                             ? 'bg-green-100 text-green-800'
                             : 'bg-gray-100 text-gray-800'
                         }`}
                       >
-                        {product.isActive ? 'Activo' : 'Inactivo'}
+                        {product.isActive ? (
+                          <>
+                            <ToggleRight className="w-4 h-4" />
+                            Activo
+                          </>
+                        ) : (
+                          <>
+                            <ToggleLeft className="w-4 h-4" />
+                            Inactivo
+                          </>
+                        )}
                       </button>
                     ) : (
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -252,13 +350,22 @@ export const ProductsPage: React.FC = () => {
                         <Star className={`w-4 h-4 ${product.isFavorite ? 'fill-current' : ''}`} />
                       </button>
                       {canEdit && (
-                        <button
-                          onClick={() => handleOpenModal(product)}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                          title="Editar"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
+                        <>
+                          <button
+                            onClick={() => handleOpenModal(product)}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                            title="Editar"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(product)}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                            title="Eliminar"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </>
                       )}
                     </div>
                   </td>
@@ -283,8 +390,8 @@ export const ProductsPage: React.FC = () => {
         title={editingProduct ? 'Editar Producto' : 'Nuevo Producto'}
         size="lg"
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
             <Input
               label="Nombre del Producto"
               value={formData.name}
@@ -299,66 +406,121 @@ export const ProductsPage: React.FC = () => {
               required
             />
           </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Categoría
-            </label>
-            <select
-              value={formData.categoryId}
-              onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-            >
-              <option value="">Sin categoría</option>
-              {categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4">
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Categoría
+              </label>
+              <select
+                value={formData.categoryId}
+                onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="">Sin categoría</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Tipo de Venta
               </label>
               <select
                 value={formData.saleType}
-                onChange={(e) =>
+                onChange={(e) => {
+                  const saleType = e.target.value as SaleType;
                   setFormData({
                     ...formData,
-                    saleType: e.target.value as SaleType,
-                    unit: e.target.value === 'WEIGHT' ? 'kg' : 'unidad',
-                  })
-                }
+                    saleType,
+                    inventoryType: saleType === 'WEIGHT' ? 'WEIGHT' : 'UNIT',
+                  });
+                }}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
-                <option value="WEIGHT">Por Peso</option>
+                <option value="WEIGHT">Por Peso (kg)</option>
                 <option value="UNIT">Por Unidad</option>
               </select>
             </div>
-            
-            <Input
-              label="Unidad"
-              value={formData.unit}
-              onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-              placeholder="kg, g, unidad, etc."
-              required
+          </div>
+
+          {/* Tipo de Inventario - Solo para productos por unidad */}
+          {formData.saleType === 'UNIT' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Tipo de Inventario
+              </label>
+              <select
+                value={formData.inventoryType}
+                onChange={(e) => setFormData({ ...formData, inventoryType: e.target.value as any })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="UNIT">Producto Normal</option>
+                <option value="VACUUM_PACKED">Producto al Vacío (paquetes artesanales)</option>
+              </select>
+            </div>
+          )}
+
+          {/* Precio y Stock - Solo para productos normales */}
+          {formData.inventoryType !== 'VACUUM_PACKED' && (
+            <div className="grid grid-cols-3 gap-3">
+              <Input
+                label="Precio (Bs)"
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.price}
+                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                required
+              />
+              <Input
+                label="Stock Actual"
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.stockQuantity}
+                onChange={(e) => setFormData({ ...formData, stockQuantity: e.target.value })}
+                placeholder="0"
+              />
+              <Input
+                label="Stock Mínimo"
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.minStock}
+                onChange={(e) => setFormData({ ...formData, minStock: e.target.value })}
+                placeholder="0"
+              />
+            </div>
+          )}
+
+          {/* Nota para productos al vacío */}
+          {formData.inventoryType === 'VACUUM_PACKED' && (
+            <div className="bg-blue-50 px-3 py-2 rounded-lg">
+              <p className="text-xs text-blue-800">
+                Los paquetes se agregan individualmente en Inventario → Lotes
+              </p>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Descripción (opcional)
+            </label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              rows={2}
+              placeholder="Información adicional..."
             />
           </div>
           
-          <Input
-            label="Precio"
-            type="number"
-            step="0.01"
-            min="0"
-            value={formData.price}
-            onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-            required
-          />
-          
-          <div className="flex space-x-3 pt-4">
+          <div className="flex space-x-3 pt-2">
             <Button
               type="button"
               onClick={() => setShowModal(false)}
@@ -369,7 +531,7 @@ export const ProductsPage: React.FC = () => {
               Cancelar
             </Button>
             <Button type="submit" variant="primary" size="lg" className="flex-1">
-              {editingProduct ? 'Guardar Cambios' : 'Crear Producto'}
+              {editingProduct ? 'Guardar' : 'Crear'}
             </Button>
           </div>
         </form>

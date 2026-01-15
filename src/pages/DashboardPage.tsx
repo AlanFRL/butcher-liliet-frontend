@@ -200,7 +200,7 @@ export const DashboardPage: React.FC = () => {
                   <tr key={sale.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="font-medium text-gray-900">
-                        #{sale.saleNumber.toString().padStart(4, '0')}
+                        #{sale.id.slice(-8).toUpperCase()}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">

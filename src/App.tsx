@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import { useAuthStore } from './store';
+import { useAuthStore, useCashStore } from './store';
 import { useColorScheme } from './hooks/useColorScheme';
 import { Navbar } from './components/layout/Navbar';
 import { LoginPage } from './pages/LoginPage';
+import { TerminalSelectPage } from './pages/TerminalSelectPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { POSPage } from './pages/POSPage';
 import { ProductsPage } from './pages/ProductsPage';
+import { InventoryPage } from './pages/InventoryPage';
 import { CashPage } from './pages/CashPage';
 import { CashOpenPage } from './pages/CashOpenPage';
 import { CashClosePage } from './pages/CashClosePage';
@@ -16,7 +18,19 @@ import { OrdersPage } from './pages/OrdersPage';
 
 // Protected Route Component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, isLoading } = useAuthStore();
+  
+  // Mostrar loading mientras se verifica el token
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando...</p>
+        </div>
+      </div>
+    );
+  }
   
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -47,11 +61,39 @@ function App() {
   // Cargar el esquema de colores guardado al iniciar la aplicación
   useColorScheme();
   
+  const { loadUserFromToken, isAuthenticated } = useAuthStore();
+  const { loadCurrentSession } = useCashStore();
+  
+  // Intentar cargar usuario desde token al iniciar
+  useEffect(() => {
+    const initApp = async () => {
+      await loadUserFromToken();
+    };
+    initApp();
+  }, [loadUserFromToken]);
+  
+  // Cargar sesión actual cuando el usuario está autenticado
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadCurrentSession();
+    }
+  }, [isAuthenticated, loadCurrentSession]);
+  
   return (
     <BrowserRouter>
       <Routes>
         {/* Public Routes */}
         <Route path="/login" element={<LoginPage />} />
+        
+        {/* Terminal Selection (protected but no navbar) */}
+        <Route
+          path="/select-terminal"
+          element={
+            <ProtectedRoute>
+              <TerminalSelectPage />
+            </ProtectedRoute>
+          }
+        />
         
         {/* Protected Routes */}
         <Route
@@ -82,6 +124,17 @@ function App() {
             <ProtectedRoute>
               <MainLayout>
                 <ProductsPage />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        
+        <Route
+          path="/inventory"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <InventoryPage />
               </MainLayout>
             </ProtectedRoute>
           }

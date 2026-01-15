@@ -18,37 +18,65 @@ export const LoginPage: React.FC = () => {
     setError('');
     setIsLoading(true);
     
-    // Simular delay de red
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    
-    const success = login(username, pin);
-    
-    if (success) {
-      navigate('/dashboard');
-    } else {
-      setError('Usuario o PIN incorrecto');
+    try {
+      const success = await login(username, pin);
+      
+      if (success) {
+        // Redirigir a selección de terminal en lugar de dashboard
+        navigate('/select-terminal');
+      } else {
+        setError('Usuario o PIN incorrecto');
+      }
+    } catch (err) {
+      setError('Error al conectar con el servidor');
+      console.error('Login error:', err);
+    } finally {
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
   };
   
   // Usuarios de demo para mostrar
   const demoUsers = [
     { username: 'admin', pin: '1234', role: 'Administrador' },
-    { username: 'cajero1', pin: '1111', role: 'Cajero' },
-    { username: 'encargado1', pin: '2222', role: 'Encargado' },
+    { username: 'cajero1', pin: '5678', role: 'Cajero' },
   ];
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-900 via-primary-800 to-primary-700 flex items-center justify-center p-4">
-      <div className="max-w-md w-full">
+    <div className="min-h-screen bg-gradient-to-br from-primary-900 via-primary-800 to-primary-700 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Imagen de fondo - Opcional */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center opacity-20"
+        style={{ 
+          backgroundImage: 'url(/login-background.jpg)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center'
+        }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-br from-primary-900/80 via-primary-800/80 to-primary-700/80" />
+      
+      <div className="max-w-md w-full relative z-10">
         {/* Logo y Título */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-accent-500 rounded-2xl mb-4 shadow-xl">
-            <span className="text-4xl font-bold text-primary-900">C</span>
+          {/* Logo principal - Reemplaza con tu logo */}
+          <div className="inline-flex items-center justify-center mb-4">
+            <img 
+              src="/logo.png" 
+              alt="Butcher Lilieth" 
+              className="w-24 h-24 rounded-2xl shadow-2xl object-cover"
+              onError={(e) => {
+                // Fallback si no hay imagen
+                e.currentTarget.style.display = 'none';
+                const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                if (fallback) fallback.style.display = 'flex';
+              }}
+            />
+            <div className="w-24 h-24 bg-accent-500 rounded-2xl hidden items-center justify-center shadow-2xl">
+              <span className="text-5xl font-bold text-primary-900">BL</span>
+            </div>
           </div>
-          <h1 className="text-4xl font-bold text-white mb-2">Carnicería Premium</h1>
-          <p className="text-primary-200 text-lg">Sistema Punto de Venta</p>
+          <h1 className="text-4xl font-bold text-white mb-2 drop-shadow-lg">Butcher Lilieth</h1>
+          <p className="text-xl text-white font-medium drop-shadow-md">Carnes Premium</p>
+          <p className="text-primary-200 text-lg drop-shadow-md">Sistema Punto de Venta</p>
         </div>
         
         {/* Formulario de Login */}
@@ -129,7 +157,7 @@ export const LoginPage: React.FC = () => {
         </div>
         
         <p className="text-center text-primary-200 text-sm mt-6">
-          © 2025 Carnicería Premium - Prototipo Demo
+          © 2025 Butcher Lilieth - Prototipo Demo
         </p>
       </div>
     </div>

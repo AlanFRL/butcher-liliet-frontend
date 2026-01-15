@@ -69,7 +69,7 @@ export const mockCategories: ProductCategory[] = [
 // ============= PRODUCTOS MOCK (Carnicería Premium) =============
 
 export const mockProducts: Product[] = [
-  // RES
+  // RES - Carnes de corte (sin control de stock)
   {
     id: uuidv4(),
     categoryId: mockCategories[0].id,
@@ -81,6 +81,8 @@ export const mockProducts: Product[] = [
     taxRate: 0,
     isActive: true,
     isFavorite: true,
+    inventoryType: 'WEIGHT_MANUAL', // Corte manual, sin stock
+    barcodeType: 'STANDARD',
   },
   {
     id: uuidv4(),
@@ -93,6 +95,8 @@ export const mockProducts: Product[] = [
     taxRate: 0,
     isActive: true,
     isFavorite: true,
+    inventoryType: 'WEIGHT_MANUAL',
+    barcodeType: 'STANDARD',
   },
   {
     id: uuidv4(),

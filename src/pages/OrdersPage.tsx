@@ -1,8 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Plus, Search, Calendar, Clock, Phone, User, Package, AlertCircle, CheckCircle, XCircle, Eye, CreditCard } from 'lucide-react';
-import { Button, Modal } from '../components/ui';
+import { Button, Modal, useToast } from '../components/ui';
 import { useOrderStore, useProductStore, useCartStore } from '../store';
-import type { Order, OrderStatus, Product } from '../types';
+import type { Order, OrderStatus, Product, ProductBatch } from '../types';
 import { useNavigate } from 'react-router-dom';
 
 export const OrdersPage: React.FC = () => {
@@ -12,12 +12,34 @@ export const OrdersPage: React.FC = () => {
   const [showOrderDetailModal, setShowOrderDetailModal] = useState(false);
   const [showEditOrderModal, setShowEditOrderModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const { showToast, ToastComponent } = useToast();
 
   const navigate = useNavigate();
-  const { orders, getOverdueOrders, getTodaysDeliveries } = useOrderStore();
+  const { orders, isLoading, error, loadOrders, getOverdueOrders } = useOrderStore();
   const { loadOrderToCart } = useCartStore();
   const overdueOrders = getOverdueOrders();
-  const todaysDeliveries = getTodaysDeliveries();
+
+  // Cargar pedidos al montar el componente
+  useEffect(() => {
+    loadOrders();
+  }, [loadOrders]);
+
+  // Mostrar error si ocurre
+  useEffect(() => {
+    if (error) {
+      showToast('error', `Error al cargar pedidos: ${error}`);
+    }
+  }, [error, showToast]);
+  
+  // Contar entregas completadas hoy
+  const todaysDelivered = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    return orders.filter(
+      (o) => o.status === 'DELIVERED' && 
+             o.completedAt && 
+             o.completedAt.split('T')[0] === today
+    ).length;
+  }, [orders]);
   
   // Función para cobrar pedido en POS
   const handleChargeOrder = (order: Order) => {
@@ -83,6 +105,7 @@ export const OrdersPage: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
+      {ToastComponent}
       {/* Header */}
       <div className="flex justify-between items-center mb-8">
         <div>
@@ -124,7 +147,7 @@ export const OrdersPage: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Entregas Hoy</p>
-              <p className="text-2xl font-bold text-gray-900">{todaysDeliveries.length}</p>
+              <p className="text-2xl font-bold text-gray-900">{todaysDelivered}</p>
             </div>
             <Calendar className="w-8 h-8 text-primary-600" />
           </div>
@@ -346,6 +369,7 @@ export const OrdersPage: React.FC = () => {
       {showNewOrderModal && (
         <NewOrderModal
           onClose={() => setShowNewOrderModal(false)}
+          showToast={showToast}
         />
       )}
 
@@ -361,6 +385,7 @@ export const OrdersPage: React.FC = () => {
             setShowOrderDetailModal(false);
             setShowEditOrderModal(true);
           }}
+          showToast={showToast}
         />
       )}
 
@@ -372,6 +397,7 @@ export const OrdersPage: React.FC = () => {
             setShowEditOrderModal(false);
             setSelectedOrder(null);
           }}
+          showToast={showToast}
         />
       )}
     </div>
@@ -379,7 +405,10 @@ export const OrdersPage: React.FC = () => {
 };
 
 // Modal para crear nuevo pedido
-const NewOrderModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+const NewOrderModal: React.FC<{ 
+  onClose: () => void;
+  showToast: (type: 'success' | 'error' | 'warning' | 'info', message: string) => void;
+}> = ({ onClose, showToast }) => {
   const [step, setStep] = useState<'customer' | 'products' | 'details'>('customer');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
@@ -390,10 +419,19 @@ const NewOrderModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     product: Product;
     qty: number;
     notes: string;
+    batchId?: string;
+    batchNumber?: string;
+    actualWeight?: number;
+    batchPrice?: number;
   }>>([]);
   const [searchQuery, setSearchQuery] = useState('');
   // Estado local para los inputs de cantidad (permite edición libre)
   const [qtyInputs, setQtyInputs] = useState<{ [key: string]: string }>({});
+  // Estados para modal de lotes
+  const [showBatchModal, setShowBatchModal] = useState(false);
+  const [selectedProductForBatch, setSelectedProductForBatch] = useState<Product | null>(null);
+  const [availableBatches, setAvailableBatches] = useState<ProductBatch[]>([]);
+  const [loadingBatches, setLoadingBatches] = useState(false);
 
   const { products } = useProductStore();
   const { createOrder } = useOrderStore();
@@ -404,13 +442,22 @@ const NewOrderModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     p.sku.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleAddProduct = (product: Product) => {
-    const existing = selectedItems.find((item) => item.product.id === product.id);
+  const handleAddProduct = async (product: Product) => {
+    // Si es producto al vacío, mostrar modal de selección de lotes
+    if (product.inventoryType === 'VACUUM_PACKED') {
+      setSelectedProductForBatch(product);
+      setShowBatchModal(true);
+      await loadBatches(product.id);
+      return;
+    }
+
+    // Para productos normales, agregar directamente
+    const existing = selectedItems.find((item) => item.product.id === product.id && !item.batchId);
     if (existing) {
       setSelectedItems(
         selectedItems.map((item) =>
-          item.product.id === product.id
-            ? { ...item, qty: item.qty + (product.saleType === 'WEIGHT' ? 0.5 : 1) }
+          item.product.id === product.id && !item.batchId
+            ? { ...item, qty: item.qty + (product.saleType === 'WEIGHT' ? 1 : 1) }
             : item
         )
       );
@@ -419,15 +466,73 @@ const NewOrderModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         ...selectedItems,
         {
           product,
-          qty: product.saleType === 'WEIGHT' ? 0.5 : 1,
+          qty: product.saleType === 'WEIGHT' ? 1 : 1,
           notes: '',
         },
       ]);
     }
   };
 
-  const handleRemoveProduct = (productId: string) => {
-    setSelectedItems(selectedItems.filter((item) => item.product.id !== productId));
+  const loadBatches = async (productId: string) => {
+    setLoadingBatches(true);
+    try {
+      const response = await fetch('http://localhost:3000/api/product-batches?includeReservationStatus=true', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('butcher_auth_token')}`
+        }
+      });
+      
+      if (response.ok) {
+        const allBatches: ProductBatch[] = await response.json();
+        // Obtener IDs de lotes ya seleccionados
+        const batchIdsInOrder = selectedItems
+          .filter(item => item.batchId)
+          .map(item => item.batchId);
+        
+        // Filtrar solo lotes del producto seleccionado, no vendidos, no reservados y no ya en el pedido
+        const filtered = allBatches.filter(
+          b => b.productId === productId && 
+               !b.isSold && 
+               !(b as any).isReserved &&
+               !batchIdsInOrder.includes(b.id)
+        );
+        setAvailableBatches(filtered);
+      } else {
+        console.error('Error loading batches');
+        setAvailableBatches([]);
+      }
+    } catch (error) {
+      console.error('Error loading batches:', error);
+      setAvailableBatches([]);
+    } finally {
+      setLoadingBatches(false);
+    }
+  };
+
+  const handleSelectBatch = (batch: ProductBatch) => {
+    if (!selectedProductForBatch) return;
+    
+    // Agregar el lote como un item nuevo
+    setSelectedItems([
+      ...selectedItems,
+      {
+        product: selectedProductForBatch,
+        qty: 1, // Los lotes siempre son 1 unidad
+        notes: '',
+        batchId: batch.id,
+        batchNumber: batch.batchNumber,
+        actualWeight: Number(batch.actualWeight),
+        batchPrice: Number(batch.unitPrice),
+      },
+    ]);
+    
+    setShowBatchModal(false);
+    setSelectedProductForBatch(null);
+    setAvailableBatches([]);
+  };
+
+  const handleRemoveProduct = (index: number) => {
+    setSelectedItems(selectedItems.filter((_, i) => i !== index));
   };
 
   const handleUpdateQty = (productId: string, qty: number) => {
@@ -488,48 +593,48 @@ const NewOrderModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     });
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!customerName || !customerPhone || !deliveryDate || !deliveryTime || selectedItems.length === 0) {
-      alert('Por favor completa todos los campos requeridos');
+      showToast('warning', 'Por favor completa todos los campos requeridos');
       return;
     }
     
     // Validar que no haya items con cantidad 0
     const hasInvalidItems = selectedItems.some(item => item.qty <= 0);
     if (hasInvalidItems) {
-      alert('Por favor, ingrese cantidades válidas para todos los productos');
+      showToast('warning', 'Por favor, ingrese cantidades válidas para todos los productos');
       return;
     }
 
     const orderItems = selectedItems.map((item) => ({
       productId: item.product.id,
-      productName: item.product.name,
-      productSku: item.product.sku,
-      saleType: item.product.saleType,
       qty: item.qty,
-      unit: item.product.unit,
-      unitPrice: item.product.price,
-      // Redondear el total al entero más cercano
-      total: Math.round(item.qty * item.product.price),
       notes: item.notes || undefined,
+      batchId: item.batchId, // Incluir batchId si existe
     }));
 
-    createOrder(
-      '', // customerId (por ahora vacío)
+    const result = await createOrder({
       customerName,
       customerPhone,
+      items: orderItems,
       deliveryDate,
       deliveryTime,
-      orderItems,
-      notes || undefined
-    );
+      notes: notes || undefined,
+    });
 
-    alert('Pedido creado exitosamente');
-    onClose();
+    if (result) {
+      showToast('success', 'Pedido creado exitosamente');
+      onClose();
+    } else {
+      showToast('error', 'Error al crear el pedido. Por favor intenta nuevamente.');
+    }
   };
 
   const totalAmount = selectedItems.reduce(
-    (sum, item) => sum + item.qty * item.product.price,
+    (sum, item) => {
+      const price = item.batchPrice || item.product.price;
+      return sum + item.qty * price;
+    },
     0
   );
 
@@ -638,10 +743,19 @@ const NewOrderModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                         <p className="text-xs text-gray-500">{product.sku}</p>
                       </div>
                       <div className="text-right ml-2">
-                        <p className="text-primary-700 font-semibold text-sm">
-                          Bs {product.price.toFixed(2)}
-                        </p>
-                        <p className="text-xs text-gray-500">/{product.unit}</p>
+                        {product.inventoryType === 'VACUUM_PACKED' ? (
+                          <>
+                            <p className="text-blue-600 font-semibold text-sm">📦 Ver lotes</p>
+                            <p className="text-xs text-gray-500">Paquetes</p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-primary-700 font-semibold text-sm">
+                              Bs {product.price.toFixed(2)}
+                            </p>
+                            <p className="text-xs text-gray-500">/{product.unit}</p>
+                          </>
+                        )}
                       </div>
                     </button>
                   ))}
@@ -663,38 +777,53 @@ const NewOrderModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                       <p className="text-xs">Selecciona productos de la lista</p>
                     </div>
                   ) : (
-                    selectedItems.map((item) => (
-                      <div key={item.product.id} className="bg-white rounded-lg p-3 shadow-sm border border-gray-200">
+                    selectedItems.map((item, index) => (
+                      <div key={`${item.product.id}-${item.batchId || index}`} className="bg-white rounded-lg p-3 shadow-sm border border-gray-200">
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex-1 pr-2">
                             <p className="font-medium text-gray-900 text-sm">{item.product.name}</p>
                             <p className="text-xs text-gray-500">{item.product.sku}</p>
+                            {item.batchId && (
+                              <p className="text-xs text-blue-600 mt-1">
+                                📦 {item.batchNumber} ({item.actualWeight} kg)
+                              </p>
+                            )}
                           </div>
                           <button
-                            onClick={() => handleRemoveProduct(item.product.id)}
+                            onClick={() => handleRemoveProduct(index)}
                             className="text-red-600 hover:text-red-700 flex-shrink-0"
                           >
                             <XCircle className="w-4 h-4" />
                           </button>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={getInputValue(item.product.id, item.qty, item.product.saleType)}
-                            onChange={(e) => handleQtyInputChange(item.product.id, e.target.value)}
-                            onBlur={() => handleQtyInputBlur(item.product.id, item.product.saleType)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.currentTarget.blur();
-                              }
-                            }}
-                            className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary-500"
-                          />
-                          <span className="text-xs text-gray-500">{item.product.unit}</span>
-                          <span className="ml-auto font-semibold text-gray-900 text-sm">
-                            Bs {Math.round(item.qty * item.product.price)}
-                          </span>
-                        </div>
+                        {/* Si es lote, mostrar solo info (no editable) */}
+                        {item.batchId ? (
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-600">1 paquete</span>
+                            <span className="font-semibold text-gray-900 text-sm">
+                              Bs {Math.round(item.batchPrice || 0)}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={getInputValue(item.product.id, item.qty, item.product.saleType)}
+                              onChange={(e) => handleQtyInputChange(item.product.id, e.target.value)}
+                              onBlur={() => handleQtyInputBlur(item.product.id, item.product.saleType)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.currentTarget.blur();
+                                }
+                              }}
+                              className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            />
+                            <span className="text-xs text-gray-500">{item.product.unit}</span>
+                            <span className="ml-auto font-semibold text-gray-900 text-sm">
+                              Bs {Math.round(item.qty * item.product.price)}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     ))
                   )}
@@ -824,6 +953,84 @@ const NewOrderModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           </div>
         )}
       </div>
+
+      {/* Modal de Selección de Lotes */}
+      {showBatchModal && (
+        <Modal
+          isOpen={true}
+          onClose={() => {
+            setShowBatchModal(false);
+            setSelectedProductForBatch(null);
+            setAvailableBatches([]);
+          }}
+          title={`Seleccionar Lote - ${selectedProductForBatch?.name || ''}`}
+          size="lg"
+        >
+          <div className="space-y-4">
+            {loadingBatches ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
+                <p className="mt-4 text-gray-600">Cargando lotes disponibles...</p>
+              </div>
+            ) : availableBatches.length === 0 ? (
+              <div className="text-center py-8">
+                <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600 font-medium">No hay lotes disponibles</p>
+                <p className="text-sm text-gray-500 mt-2">
+                  Todos los lotes de este producto están vendidos o ya están en el pedido.
+                </p>
+                <Button
+                  onClick={() => {
+                    setShowBatchModal(false);
+                    setSelectedProductForBatch(null);
+                    setAvailableBatches([]);
+                  }}
+                  variant="outline"
+                  className="mt-4"
+                >
+                  Cerrar
+                </Button>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm text-gray-600">
+                  Selecciona el paquete específico que deseas agregar al pedido
+                </p>
+                <div className="grid gap-3 max-h-96 overflow-y-auto">
+                  {availableBatches.map((batch) => (
+                    <button
+                      key={batch.id}
+                      onClick={() => handleSelectBatch(batch)}
+                      className="p-4 border-2 border-gray-200 rounded-lg hover:border-primary-500 hover:bg-primary-50 transition-all text-left"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-bold text-lg text-gray-900">{batch.batchNumber}</span>
+                        <span className="text-2xl font-bold text-primary-700">
+                          Bs {Number(batch.unitPrice).toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <span className="text-gray-500">Peso:</span>
+                          <span className="ml-2 font-semibold text-gray-900">
+                            {Number(batch.actualWeight).toFixed(3)} kg
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Empacado:</span>
+                          <span className="ml-2 font-medium text-gray-700">
+                            {new Date(batch.packedAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </Modal>
+      )}
     </Modal>
   );
 };
@@ -833,7 +1040,8 @@ const OrderDetailModal: React.FC<{
   order: Order;
   onClose: () => void;
   onEdit?: (order: Order) => void;
-}> = ({ order: initialOrder, onClose, onEdit }) => {
+  showToast: (type: 'success' | 'error' | 'warning' | 'info', message: string) => void;
+}> = ({ order: initialOrder, onClose, onEdit, showToast }) => {
   const navigate = useNavigate();
   const { updateOrderStatus, cancelOrder, getOrderById } = useOrderStore();
   const { loadOrderToCart } = useCartStore();
@@ -870,18 +1078,18 @@ const OrderDetailModal: React.FC<{
 
   const handleDeliverWithoutCharge = () => {
     updateOrderStatus(currentOrder.id, 'DELIVERED');
-    alert('Pedido marcado como entregado sin registro de venta');
+    showToast('success', 'Pedido marcado como entregado sin registro de venta');
     setShowDeliverModal(false);
     onClose();
   };
 
   const handleCancel = () => {
     if (!cancellationReason.trim()) {
-      alert('Debes especificar un motivo de cancelación');
+      showToast('warning', 'Debes especificar un motivo de cancelación');
       return;
     }
     cancelOrder(currentOrder.id, cancellationReason);
-    alert('Pedido cancelado');
+    showToast('success', 'Pedido cancelado');
     setShowCancelModal(false);
     onClose();
   };
@@ -892,9 +1100,22 @@ const OrderDetailModal: React.FC<{
         <div className="space-y-6">
           {/* Estado */}
           <div className="flex items-center justify-between">
-            <span className={`px-4 py-2 rounded-full text-sm font-medium ${statusBadge.color}`}>
-              {statusBadge.text}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className={`px-4 py-2 rounded-full text-sm font-medium ${statusBadge.color}`}>
+                {statusBadge.text}
+              </span>
+              {/* Badge de pago */}
+              {currentOrder.saleId && (
+                <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 flex items-center gap-1">
+                  💵 Pagado
+                </span>
+              )}
+              {currentOrder.status === 'DELIVERED' && !currentOrder.saleId && (
+                <span className="px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 flex items-center gap-1">
+                  ⚠️ Sin cobro
+                </span>
+              )}
+            </div>
             {currentOrder.status !== 'DELIVERED' && currentOrder.status !== 'CANCELLED' && (
               <div className="flex gap-2">
                 {(currentOrder.status === 'PENDING' || currentOrder.status === 'READY') && onEdit && (
@@ -943,6 +1164,21 @@ const OrderDetailModal: React.FC<{
                   Cancelar Pedido
                 </Button>
               </div>
+            )}
+            {/* Botón para ver venta si existe */}
+            {currentOrder.saleId && (
+              <Button
+                onClick={() => {
+                  showToast('info', `Venta asociada - Funcionalidad próximamente`);
+                  // TODO: Navegar a página de detalles de venta cuando exista
+                  // navigate('/sales/' + currentOrder.saleId);
+                }}
+                variant="outline"
+                size="sm"
+                className="text-blue-600 border-blue-600 hover:bg-blue-50"
+              >
+                📄 Ver Venta
+              </Button>
             )}
           </div>
 
@@ -1002,12 +1238,17 @@ const OrderDetailModal: React.FC<{
                       <td className="px-4 py-3">
                         <p className="font-medium text-gray-900">{item.productName}</p>
                         <p className="text-xs text-gray-500">{item.productSku}</p>
+                        {item.batchId && item.batch && (
+                          <p className="text-xs text-blue-600 mt-1">
+                            📦 Lote: {item.batch.batchNumber} ({typeof item.batch.actualWeight === 'string' ? parseFloat(item.batch.actualWeight).toFixed(3) : item.batch.actualWeight.toFixed(3)} kg)
+                          </p>
+                        )}
                         {item.notes && (
                           <p className="text-xs text-gray-600 italic mt-1">Nota: {item.notes}</p>
                         )}
                       </td>
                       <td className="px-4 py-3 text-center text-gray-900">
-                        {item.qty} {item.unit}
+                        {item.batchId ? `1 paquete` : `${item.qty} ${item.unit}`}
                       </td>
                       <td className="px-4 py-3 text-right text-gray-900">
                         Bs {item.unitPrice.toFixed(2)}
@@ -1149,19 +1390,31 @@ const OrderDetailModal: React.FC<{
 const EditOrderModal: React.FC<{
   order: Order;
   onClose: () => void;
-}> = ({ order, onClose }) => {
+  showToast: (type: 'success' | 'error' | 'warning' | 'info', message: string) => void;
+}> = ({ order, onClose, showToast }) => {
   const [customerName, setCustomerName] = useState(order.customerName);
   const [customerPhone, setCustomerPhone] = useState(order.customerPhone);
   const [deliveryDate, setDeliveryDate] = useState(order.deliveryDate);
-  const [deliveryTime, setDeliveryTime] = useState(order.deliveryTime);
+  // PostgreSQL returns time as HH:mm:ss, but input[type="time"] and backend expect HH:mm
+  const [deliveryTime, setDeliveryTime] = useState(
+    order.deliveryTime?.substring(0, 5) || '' // Extract HH:mm from HH:mm:ss
+  );
   const [notes, setNotes] = useState(order.notes || '');
   const [selectedItems, setSelectedItems] = useState<Array<{
     product: Product;
     qty: number;
     notes: string;
+    batchId?: string;
+    batchNumber?: string;
+    actualWeight?: number;
+    batchPrice?: number;
   }>>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [qtyInputs, setQtyInputs] = useState<{ [key: string]: string }>({});
+  const [showBatchModal, setShowBatchModal] = useState(false);
+  const [selectedProductForBatch, setSelectedProductForBatch] = useState<Product | null>(null);
+  const [availableBatches, setAvailableBatches] = useState<ProductBatch[]>([]);
+  const [loadingBatches, setLoadingBatches] = useState(false);
   const [step, setStep] = useState<'products' | 'details'>('products');
 
   const { products } = useProductStore();
@@ -1184,13 +1437,36 @@ const EditOrderModal: React.FC<{
         price: item.unitPrice,
         taxRate: 0,
         isActive: false,
+        inventoryType: item.batchId ? 'BATCH' as const : undefined,
       };
 
-      return {
+      const selectedItem: {
+        product: Product;
+        qty: number;
+        notes: string;
+        batchId?: string;
+        batchNumber?: string;
+        actualWeight?: number;
+        batchPrice?: number;
+      } = {
         product: productData,
         qty: item.qty,
         notes: item.notes || '',
       };
+
+      // Si tiene batch, agregar info del batch
+      if (item.batchId && item.batch) {
+        selectedItem.batchId = item.batchId;
+        selectedItem.batchNumber = item.batch.batchNumber;
+        selectedItem.actualWeight = typeof item.batch.actualWeight === 'string' 
+          ? parseFloat(item.batch.actualWeight)
+          : item.batch.actualWeight;
+        selectedItem.batchPrice = typeof item.batch.unitPrice === 'string'
+          ? parseFloat(item.batch.unitPrice)
+          : item.batch.unitPrice;
+      }
+
+      return selectedItem;
     });
 
     setSelectedItems(items);
@@ -1209,13 +1485,22 @@ const EditOrderModal: React.FC<{
     p.sku.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleAddProduct = (product: Product) => {
-    const existing = selectedItems.find(item => item.product.id === product.id);
+  const handleAddProduct = async (product: Product) => {
+    // Si es producto al vacío, mostrar modal de lotes
+    if (product.inventoryType === 'VACUUM_PACKED') {
+      setSelectedProductForBatch(product);
+      setShowBatchModal(true);
+      await loadBatches(product.id);
+      return;
+    }
+
+    // Producto normal
+    const existing = selectedItems.find(item => item.product.id === product.id && !item.batchId);
     if (existing) {
       setSelectedItems(
         selectedItems.map(item =>
-          item.product.id === product.id
-            ? { ...item, qty: item.qty + (product.saleType === 'WEIGHT' ? 0.5 : 1) }
+          item.product.id === product.id && !item.batchId
+            ? { ...item, qty: item.qty + (product.saleType === 'WEIGHT' ? 1 : 1) }
             : item
         )
       );
@@ -1224,15 +1509,67 @@ const EditOrderModal: React.FC<{
         ...selectedItems,
         {
           product,
-          qty: product.saleType === 'WEIGHT' ? 0.5 : 1,
+          qty: product.saleType === 'WEIGHT' ? 1 : 1,
           notes: '',
         },
       ]);
     }
   };
 
-  const handleRemoveProduct = (productId: string) => {
-    setSelectedItems(selectedItems.filter(item => item.product.id !== productId));
+  const loadBatches = async (productId: string) => {
+    setLoadingBatches(true);
+    try {
+      const response = await fetch('http://localhost:3000/api/product-batches?includeReservationStatus=true', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('butcher_auth_token')}`,
+        },
+      });
+      if (!response.ok) throw new Error('Error al cargar lotes');
+      
+      const allBatches: ProductBatch[] = await response.json();
+      
+      // Filtrar lotes del producto, no vendidos, no reservados, y no ya seleccionados en este pedido
+      const batchIdsInOrder = selectedItems
+        .filter(item => item.batchId)
+        .map(item => item.batchId);
+      
+      const filtered = allBatches.filter(
+        b => b.productId === productId && !b.isSold && !(b as any).isReserved && !batchIdsInOrder.includes(b.id)
+      );
+      
+      setAvailableBatches(filtered);
+    } catch (error) {
+      console.error('Error loading batches:', error);
+      showToast('error', 'Error al cargar lotes disponibles');
+      setAvailableBatches([]);
+    } finally {
+      setLoadingBatches(false);
+    }
+  };
+
+  const handleSelectBatch = (batch: ProductBatch) => {
+    if (!selectedProductForBatch) return;
+
+    setSelectedItems([
+      ...selectedItems,
+      {
+        product: selectedProductForBatch,
+        qty: 1,
+        notes: '',
+        batchId: batch.id,
+        batchNumber: batch.batchNumber,
+        actualWeight: Number(batch.actualWeight),
+        batchPrice: Number(batch.unitPrice),
+      },
+    ]);
+
+    setShowBatchModal(false);
+    setSelectedProductForBatch(null);
+    setAvailableBatches([]);
+  };
+
+  const handleRemoveProduct = (index: number) => {
+    setSelectedItems(selectedItems.filter((_, i) => i !== index));
   };
 
   const handleUpdateQty = (productId: string, qty: number) => {
@@ -1282,62 +1619,60 @@ const EditOrderModal: React.FC<{
     });
   };
 
-  const totalAmount = selectedItems.reduce(
-    (sum, item) => sum + item.product.price * item.qty,
-    0
-  );
+  const totalAmount = selectedItems.reduce((sum, item) => {
+    const price = item.batchPrice || item.product.price;
+    return sum + item.qty * price;
+  }, 0);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!customerName.trim()) {
-      alert('Ingresa el nombre del cliente');
+      showToast('warning', 'Ingresa el nombre del cliente');
       return;
     }
 
     if (!customerPhone.trim()) {
-      alert('Ingresa el teléfono del cliente');
+      showToast('warning', 'Ingresa el teléfono del cliente');
       return;
     }
 
     if (!deliveryDate) {
-      alert('Selecciona una fecha de entrega');
+      showToast('warning', 'Selecciona una fecha de entrega');
       return;
     }
 
     if (!deliveryTime) {
-      alert('Selecciona una hora de entrega');
+      showToast('warning', 'Selecciona una hora de entrega');
       return;
     }
 
     if (selectedItems.length === 0) {
-      alert('Agrega al menos un producto');
+      showToast('warning', 'Agrega al menos un producto');
       return;
     }
 
-    // Actualizar pedido
-    updateOrder(order.id, {
+    // Actualizar pedido con nueva firma (async)
+    const orderItems = selectedItems.map((item) => ({
+      productId: item.product.id,
+      qty: item.qty,
+      notes: item.notes || undefined,
+      batchId: item.batchId,
+    }));
+
+    const result = await updateOrder(order.id, {
       customerName: customerName.trim(),
       customerPhone: customerPhone.trim(),
       deliveryDate,
       deliveryTime,
-      notes: notes.trim(),
-      items: selectedItems.map((item, idx) => ({
-        id: `item-${Date.now()}-${idx}`,
-        orderId: order.id,
-        productId: item.product.id,
-        productName: item.product.name,
-        productSku: item.product.sku,
-        saleType: item.product.saleType,
-        qty: item.qty,
-        unit: item.product.saleType === 'WEIGHT' ? 'kg' : 'unidad',
-        unitPrice: item.product.price,
-        total: Math.round(item.product.price * item.qty),
-        notes: item.notes,
-      })),
-      total: Math.round(totalAmount),
+      notes: notes.trim() || undefined,
+      items: orderItems,
     });
 
-    alert('Pedido actualizado correctamente');
-    onClose();
+    if (result) {
+      showToast('success', 'Pedido actualizado correctamente');
+      onClose();
+    } else {
+      showToast('error', 'Error al actualizar el pedido. Por favor intenta nuevamente.');
+    }
   };
 
   return (
@@ -1391,10 +1726,19 @@ const EditOrderModal: React.FC<{
                         <p className="text-xs text-gray-500">{product.sku}</p>
                       </div>
                       <div className="text-right ml-2">
-                        <p className="text-primary-700 font-semibold text-sm">
-                          Bs {product.price.toFixed(2)}
-                        </p>
-                        <p className="text-xs text-gray-500">/{product.unit}</p>
+                        {product.inventoryType === 'VACUUM_PACKED' ? (
+                          <>
+                            <p className="text-blue-600 font-semibold text-sm">📦 Ver lotes</p>
+                            <p className="text-xs text-gray-500">Paquetes</p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-primary-700 font-semibold text-sm">
+                              Bs {product.price.toFixed(2)}
+                            </p>
+                            <p className="text-xs text-gray-500">/{product.unit}</p>
+                          </>
+                        )}
                       </div>
                     </button>
                   ))}
@@ -1416,38 +1760,53 @@ const EditOrderModal: React.FC<{
                       <p className="text-xs">Selecciona productos de la lista</p>
                     </div>
                   ) : (
-                    selectedItems.map((item) => (
-                      <div key={item.product.id} className="bg-white rounded-lg p-3 shadow-sm border border-gray-200">
+                    selectedItems.map((item, index) => (
+                      <div key={`${item.product.id}-${item.batchId || index}`} className="bg-white rounded-lg p-3 shadow-sm border border-gray-200">
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex-1 pr-2">
                             <p className="font-medium text-gray-900 text-sm">{item.product.name}</p>
                             <p className="text-xs text-gray-500">{item.product.sku}</p>
+                            {item.batchId && (
+                              <p className="text-xs text-blue-600 mt-1">
+                                📦 {item.batchNumber} ({item.actualWeight?.toFixed(3)} kg)
+                              </p>
+                            )}
                           </div>
                           <button
-                            onClick={() => handleRemoveProduct(item.product.id)}
+                            onClick={() => handleRemoveProduct(index)}
                             className="text-red-600 hover:text-red-700 flex-shrink-0"
                           >
                             <XCircle className="w-4 h-4" />
                           </button>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={getInputValue(item.product.id, item.qty, item.product.saleType)}
-                            onChange={(e) => handleQtyInputChange(item.product.id, e.target.value)}
-                            onBlur={() => handleQtyInputBlur(item.product.id, item.product.saleType)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.currentTarget.blur();
-                              }
-                            }}
-                            className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary-500"
-                          />
-                          <span className="text-xs text-gray-500">{item.product.unit}</span>
-                          <span className="ml-auto font-semibold text-gray-900 text-sm">
-                            Bs {Math.round(item.qty * item.product.price)}
-                          </span>
-                        </div>
+                        {/* Si es producto al vacío (BATCH) o tiene lote, mostrar solo info (no editable) */}
+                        {item.product.inventoryType === 'BATCH' || item.batchId ? (
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-600">1 paquete</span>
+                            <span className="font-semibold text-gray-900 text-sm">
+                              Bs {Math.round(item.batchPrice || item.product.price)}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={getInputValue(item.product.id, item.qty, item.product.saleType)}
+                              onChange={(e) => handleQtyInputChange(item.product.id, e.target.value)}
+                              onBlur={() => handleQtyInputBlur(item.product.id, item.product.saleType)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.currentTarget.blur();
+                                }
+                              }}
+                              className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            />
+                            <span className="text-xs text-gray-500">{item.product.unit}</span>
+                            <span className="ml-auto font-semibold text-gray-900 text-sm">
+                              Bs {Math.round(item.qty * item.product.price)}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     ))
                   )}
@@ -1582,6 +1941,69 @@ const EditOrderModal: React.FC<{
           </div>
         )}
       </div>
+
+      {/* Modal de selección de lotes */}
+      {showBatchModal && (
+        <Modal
+          isOpen={true}
+          onClose={() => {
+            setShowBatchModal(false);
+            setSelectedProductForBatch(null);
+            setAvailableBatches([]);
+          }}
+          title={`Seleccionar Lote - ${selectedProductForBatch?.name || ''}`}
+          size="lg"
+        >
+          <div className="space-y-4">
+            {loadingBatches ? (
+              <div className="flex flex-col items-center justify-center py-8 text-gray-500">
+                <div className="animate-spin w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full mb-3"></div>
+                <p>Cargando lotes disponibles...</p>
+              </div>
+            ) : availableBatches.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-gray-400">
+                <Package className="w-16 h-16 mb-3" />
+                <p className="text-lg font-medium">No hay lotes disponibles</p>
+                <p className="text-sm">Este producto no tiene lotes disponibles para venta</p>
+              </div>
+            ) : (
+              <div className="grid gap-3">
+                {availableBatches.map((batch) => (
+                  <button
+                    key={batch.id}
+                    onClick={() => handleSelectBatch(batch)}
+                    className="w-full p-4 border-2 border-gray-200 rounded-lg hover:border-primary-500 hover:bg-primary-50 transition-all text-left group"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-semibold text-gray-900 group-hover:text-primary-700">
+                        {batch.batchNumber}
+                      </span>
+                      <span className="text-lg font-bold text-primary-700">
+                        Bs {Number(batch.unitPrice).toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
+                      <div>
+                        <span className="font-medium">Peso:</span> {Number(batch.actualWeight).toFixed(3)} kg
+                      </div>
+                      <div>
+                        <span className="font-medium">Empacado:</span> {new Date(batch.packedAt).toLocaleDateString('es-BO')}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+            <Button onClick={() => {
+              setShowBatchModal(false);
+              setSelectedProductForBatch(null);
+              setAvailableBatches([]);
+            }} variant="outline" className="w-full">
+              Cancelar
+            </Button>
+          </div>
+        </Modal>
+      )}
     </Modal>
   );
 };

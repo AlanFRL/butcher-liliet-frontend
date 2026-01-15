@@ -7,49 +7,75 @@ import type {
   CashSession,
   CashMovement,
   Sale,
-  // SaleItem,
-  // Payment,
+  SaleStatus,
+  SaleType,
+  PaymentMethod,
   Terminal,
   CartItem,
   Order,
-  OrderItem,
   Customer,
   OrderStatus,
 } from '../types';
-import { mockUsers, mockProducts, mockCategories, mockTerminals } from '../data/mockData';
+import { mockProducts, mockCategories, mockTerminals } from '../data/mockData';
+import * as storage from '../utils/localStorage';
+// API imports
+import {
+  authApi,
+  tokenManager,
+  cashSessionsApi,
+  terminalsApi,
+  productsApi,
+  categoriesApi,
+  salesApi,
+  ordersApi,
+  parseDecimal,
+  ApiError,
+} from '../services/api';
 
 // ============= INTERFACES DEL STORE =============
 
 interface AuthState {
   currentUser: User | null;
   isAuthenticated: boolean;
-  login: (username: string, pin: string) => boolean;
+  isLoading: boolean;
+  error: string | null;
+  login: (username: string, pin: string) => Promise<boolean>;
   logout: () => void;
+  loadUserFromToken: () => Promise<void>;
 }
 
 interface CashState {
   currentSession: CashSession | null;
   cashMovements: CashMovement[];
-  openCashSession: (userId: string, terminalId: string, openingAmount: number, note?: string) => void;
-  closeCashSession: (countedCash: number, note?: string) => void;
-  addCashMovement: (type: 'IN' | 'OUT', amount: number, reason: string) => void;
+  isLoading: boolean;
+  error: string | null;
+  openCashSession: (terminalId: string, openingAmount: number, note?: string) => Promise<boolean>;
+  closeCashSession: (countedCash: number, note?: string) => Promise<boolean>;
+  addCashMovement: (type: 'DEPOSIT' | 'WITHDRAWAL' | 'ADJUSTMENT', amount: number, reason: string) => Promise<boolean>;
+  loadCurrentSession: () => Promise<void>;
+  clearSession: () => void;
 }
 
 interface ProductState {
   products: Product[];
   categories: ProductCategory[];
-  addProduct: (product: Omit<Product, 'id'>) => void;
-  updateProduct: (id: string, product: Partial<Product>) => void;
+  isLoading: boolean;
+  error: string | null;
+  addProduct: (product: Omit<Product, 'id'>) => Promise<void>;
+  updateProduct: (id: string, product: Partial<Product>) => Promise<void>;
   toggleProductActive: (id: string) => void;
   toggleProductFavorite: (id: string) => void;
   getProductById: (id: string) => Product | undefined;
   getProductsByCategory: (categoryId: string) => Product[];
   getFavoriteProducts: () => Product[];
+  loadProducts: () => Promise<void>;
+  loadCategories: () => Promise<void>;
 }
 
 interface CartState {
   cartItems: CartItem[];
   addToCart: (product: Product, qty: number) => void;
+  addBatchToCart: (product: Product, batch: { id: string; batchNumber: string; actualWeight: number; unitPrice: number }) => void;
   updateCartItem: (itemId: string, qty: number) => void;
   removeFromCart: (itemId: string) => void;
   clearCart: () => void;
@@ -61,7 +87,7 @@ interface CartState {
 interface SalesState {
   sales: Sale[];
   saleCounter: number;
-  completeSale: (paymentMethod: 'CASH' | 'QR' | 'CARD', cashPaid?: number, orderId?: string) => Sale | null;
+  completeSale: (paymentMethod: 'CASH' | 'CARD' | 'TRANSFER' | 'MIXED', cashPaid?: number, orderId?: string) => Promise<Sale | null>;
   getSalesByDateRange: (from: string, to: string) => Sale[];
   getTodaysSales: () => Sale[];
 }
@@ -70,6 +96,7 @@ interface AppState {
   terminals: Terminal[];
   currentTerminal: Terminal | null;
   setCurrentTerminal: (terminal: Terminal) => void;
+  loadTerminals: () => Promise<void>;
 }
 
 // ============= STORE DE AUTENTICACIÓN =============
@@ -77,21 +104,126 @@ interface AppState {
 export const useAuthStore = create<AuthState>((set) => ({
   currentUser: null,
   isAuthenticated: false,
+  isLoading: true, // Iniciar en true para verificar token al cargar
+  error: null,
   
-  login: (username: string, pin: string) => {
-    const user = mockUsers.find(
-      (u) => u.username === username && u.pin === pin && u.isActive
-    );
+  login: async (username: string, pin: string): Promise<boolean> => {
+    set({ isLoading: true, error: null });
     
-    if (user) {
-      set({ currentUser: user, isAuthenticated: true });
+    try {
+      console.log('🔐 Login attempt for user:', username);
+      
+      // 1. Llamar al endpoint de login
+      const response = await authApi.login(username, pin);
+      console.log('✅ Login response received');
+      
+      // 2. Guardar el token
+      tokenManager.setToken(response.access_token);
+      console.log('✅ Token saved to localStorage');
+      
+      // 3. Obtener información del usuario
+      const userResponse = await authApi.me();
+      console.log('✅ User info loaded:', userResponse.username);
+      
+      // 4. Convertir UserResponse a User (adaptación de tipos)
+      const user: User = {
+        id: userResponse.id,
+        username: userResponse.username,
+        fullName: userResponse.fullName,
+        role: userResponse.role,
+        pin: '', // No guardamos el PIN en el frontend
+        isActive: userResponse.isActive,
+      };
+      
+      set({ 
+        currentUser: user, 
+        isAuthenticated: true,
+        isLoading: false,
+        error: null 
+      });
+      
+      // 5. Cargar datos desde el backend
+      await useAppStore.getState().loadTerminals();
+      await useProductStore.getState().loadCategories();
+      await useProductStore.getState().loadProducts();
+      
+      console.log('✅ Login completed successfully');
       return true;
+    } catch (error) {
+      console.error('Login error:', error);
+      
+      const errorMessage = error instanceof ApiError 
+        ? error.message 
+        : 'Error de conexión';
+      
+      set({ 
+        currentUser: null, 
+        isAuthenticated: false,
+        isLoading: false,
+        error: errorMessage 
+      });
+      
+      return false;
     }
-    return false;
   },
   
   logout: () => {
-    set({ currentUser: null, isAuthenticated: false });
+    tokenManager.removeToken();
+    set({ 
+      currentUser: null, 
+      isAuthenticated: false,
+      error: null 
+    });
+  },
+  
+  loadUserFromToken: async () => {
+    // Intentar cargar usuario si hay token guardado
+    const hasToken = tokenManager.hasToken();
+    console.log('🔐 loadUserFromToken - Has token:', hasToken);
+    
+    if (!hasToken) {
+      console.log('🔐 No token found, skipping auto-login');
+      set({ isLoading: false });
+      return;
+    }
+    
+    set({ isLoading: true });
+    
+    try {
+      console.log('🔐 Attempting to load user from token...');
+      const userResponse = await authApi.me();
+      
+      const user: User = {
+        id: userResponse.id,
+        username: userResponse.username,
+        fullName: userResponse.fullName,
+        role: userResponse.role,
+        pin: '',
+        isActive: userResponse.isActive,
+      };
+      
+      console.log('✅ User loaded successfully:', user.username);
+      
+      set({ 
+        currentUser: user, 
+        isAuthenticated: true,
+        isLoading: false 
+      });
+      
+      // Cargar datos desde el backend
+      await useAppStore.getState().loadTerminals();
+      await useProductStore.getState().loadCategories();
+      await useProductStore.getState().loadProducts();
+    } catch (error) {
+      // Token inválido o expirado
+      console.error('❌ Failed to load user from token:', error);
+      tokenManager.removeToken();
+      set({ 
+        currentUser: null, 
+        isAuthenticated: false,
+        isLoading: false 
+      });
+    }
   },
 }));
 
@@ -100,104 +232,296 @@ export const useAuthStore = create<AuthState>((set) => ({
 export const useCashStore = create<CashState>((set, get) => ({
   currentSession: null,
   cashMovements: [],
+  isLoading: false,
+  error: null,
   
-  openCashSession: (userId: string, terminalId: string, openingAmount: number, note = '') => {
-    const newSession: CashSession = {
-      id: uuidv4(),
-      terminalId,
-      userId,
-      status: 'OPEN',
-      openedAt: new Date().toISOString(),
-      openingAmount,
-      openingNote: note,
-      closedAt: null,
-      closingNote: null,
-      expectedCash: null,
-      countedCash: null,
-      cashDifference: null,
-    };
+  openCashSession: async (terminalId: string, openingAmount: number, note = ''): Promise<boolean> => {
+    set({ isLoading: true, error: null });
     
-    set({ currentSession: newSession, cashMovements: [] });
+    try {
+      // Llamar al backend para abrir sesión
+      const response = await cashSessionsApi.open({
+        terminalId,
+        openingAmount,
+        openingNotes: note || undefined,
+      });
+      
+      // Convertir respuesta del backend a CashSession local
+      const session: CashSession = {
+        id: response.id,
+        terminalId: response.terminalId,
+        userId: response.userId,
+        status: response.status,
+        openedAt: response.openedAt,
+        openingAmount: parseDecimal(response.openingAmount),
+        openingNotes: response.openingNotes,
+        closedAt: response.closedAt,
+        closingNotes: response.closingNotes,
+        expectedAmount: response.expectedAmount ? parseDecimal(response.expectedAmount) : null,
+        closingAmount: response.closingAmount ? parseDecimal(response.closingAmount) : null,
+        differenceAmount: response.differenceAmount ? parseDecimal(response.differenceAmount) : null,
+      };
+      
+      set({ 
+        currentSession: session, 
+        cashMovements: [],
+        isLoading: false,
+        error: null 
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Error opening cash session:', error);
+      
+      const errorMessage = error instanceof ApiError 
+        ? error.message 
+        : 'Error al abrir sesión de caja';
+      
+      set({ 
+        isLoading: false,
+        error: errorMessage 
+      });
+      
+      return false;
+    }
   },
   
-  closeCashSession: (countedCash: number, note = '') => {
-    const { currentSession, cashMovements } = get();
-    if (!currentSession) return;
+  closeCashSession: async (countedCash: number, note = ''): Promise<boolean> => {
+    const { currentSession } = get();
+    if (!currentSession) {
+      set({ error: 'No hay sesión abierta' });
+      return false;
+    }
     
-    // Calcular efectivo esperado
-    const salesState = useSalesStore.getState();
-    const sessionSales = salesState.sales.filter(
-      (s) => s.cashSessionId === currentSession.id && s.status === 'COMPLETED'
-    );
+    set({ isLoading: true, error: null });
     
-    const cashSales = sessionSales.reduce((sum, sale) => {
-      const cashPayments = sale.items.reduce((total, item) => total + item.total, 0);
-      return sum + cashPayments;
-    }, 0);
-    
-    const cashIn = cashMovements
-      .filter((m) => m.type === 'IN')
-      .reduce((sum, m) => sum + m.amount, 0);
-    
-    const cashOut = cashMovements
-      .filter((m) => m.type === 'OUT')
-      .reduce((sum, m) => sum + m.amount, 0);
-    
-    const expectedCash = currentSession.openingAmount + cashSales + cashIn - cashOut;
-    const cashDifference = countedCash - expectedCash;
-    
-    const updatedSession: CashSession = {
-      ...currentSession,
-      status: 'CLOSED',
-      closedAt: new Date().toISOString(),
-      closingNote: note,
-      expectedCash,
-      countedCash,
-      cashDifference,
-    };
-    
-    set({ currentSession: updatedSession });
+    try {
+      // Llamar al backend para cerrar sesión
+      const response = await cashSessionsApi.close(currentSession.id, {
+        closingAmount: countedCash,
+        closingNotes: note || undefined,
+      });
+      
+      // Convertir respuesta a CashSession local
+      const closedSession: CashSession = {
+        id: response.id,
+        terminalId: response.terminalId,
+        userId: response.userId,
+        status: response.status,
+        openedAt: response.openedAt,
+        openingAmount: parseDecimal(response.openingAmount),
+        openingNotes: response.openingNotes,
+        closedAt: response.closedAt,
+        closingNotes: response.closingNotes,
+        expectedAmount: response.expectedAmount ? parseDecimal(response.expectedAmount) : null,
+        closingAmount: response.closingAmount ? parseDecimal(response.closingAmount) : null,
+        differenceAmount: response.differenceAmount ? parseDecimal(response.differenceAmount) : null,
+      };
+      
+      set({ 
+        currentSession: closedSession,
+        isLoading: false,
+        error: null 
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Error closing cash session:', error);
+      
+      const errorMessage = error instanceof ApiError 
+        ? error.message 
+        : 'Error al cerrar sesión de caja';
+      
+      set({ 
+        isLoading: false,
+        error: errorMessage 
+      });
+      
+      return false;
+    }
   },
   
-  addCashMovement: (type: 'IN' | 'OUT', amount: number, reason: string) => {
+  addCashMovement: async (type: 'DEPOSIT' | 'WITHDRAWAL' | 'ADJUSTMENT', amount: number, reason: string): Promise<boolean> => {
     const { currentSession, cashMovements } = get();
-    if (!currentSession) return;
+    if (!currentSession) {
+      set({ error: 'No hay sesión abierta' });
+      return false;
+    }
     
-    const authState = useAuthStore.getState();
-    if (!authState.currentUser) return;
+    set({ isLoading: true, error: null });
     
-    const newMovement: CashMovement = {
-      id: uuidv4(),
-      cashSessionId: currentSession.id,
-      type,
-      amount,
-      reason,
-      createdBy: authState.currentUser.id,
-      createdAt: new Date().toISOString(),
-    };
+    try {
+      // Llamar al backend para agregar movimiento
+      const response = await cashSessionsApi.addMovement(currentSession.id, {
+        type,
+        amount,
+        reason,
+      });
+      
+      // Agregar movimiento a la lista local
+      const newMovement: CashMovement = {
+        id: response.id,
+        cashSessionId: response.sessionId,
+        type: response.type,
+        amount: parseDecimal(response.amount),
+        reason: response.reason,
+        createdBy: response.createdBy,
+        createdAt: response.createdAt,
+      };
+      
+      set({ 
+        cashMovements: [...cashMovements, newMovement],
+        isLoading: false,
+        error: null 
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Error adding cash movement:', error);
+      
+      const errorMessage = error instanceof ApiError 
+        ? error.message 
+        : 'Error al agregar movimiento de caja';
+      
+      set({ 
+        isLoading: false,
+        error: errorMessage 
+      });
+      
+      return false;
+    }
+  },
+  
+  loadCurrentSession: async () => {
+    set({ isLoading: true, error: null });
     
-    set({ cashMovements: [...cashMovements, newMovement] });
+    try {
+      // Obtener sesión actual del usuario autenticado
+      const response = await cashSessionsApi.getMySession();
+      
+      if (response) {
+        const session: CashSession = {
+          id: response.id,
+          terminalId: response.terminalId,
+          userId: response.userId,
+          status: response.status,
+          openedAt: response.openedAt,
+          openingAmount: parseDecimal(response.openingAmount),
+          openingNotes: response.openingNotes,
+          closedAt: response.closedAt,
+          closingNotes: response.closingNotes,
+          expectedAmount: response.expectedAmount ? parseDecimal(response.expectedAmount) : null,
+          closingAmount: response.closingAmount ? parseDecimal(response.closingAmount) : null,
+          differenceAmount: response.differenceAmount ? parseDecimal(response.differenceAmount) : null,
+        };
+        
+        set({ 
+          currentSession: session,
+          isLoading: false 
+        });
+      } else {
+        set({ 
+          currentSession: null,
+          isLoading: false 
+        });
+      }
+    } catch (error) {
+      console.error('Error loading current session:', error);
+      set({ 
+        currentSession: null,
+        isLoading: false 
+      });
+    }
+  },
+  
+  clearSession: () => {
+    set({ 
+      currentSession: null, 
+      cashMovements: [],
+      error: null 
+    });
   },
 }));
 
 // ============= STORE DE PRODUCTOS =============
 
 export const useProductStore = create<ProductState>((set, get) => ({
-  products: mockProducts,
-  categories: mockCategories,
+  products: [],
+  categories: [],
+  isLoading: false,
+  error: null,
   
-  addProduct: (product) => {
-    const newProduct: Product = {
-      ...product,
-      id: uuidv4(),
-    };
-    set((state) => ({ products: [...state.products, newProduct] }));
+  addProduct: async (product) => {
+    set({ isLoading: true, error: null });
+    
+    try {
+      // Crear producto en el backend
+      const productData = {
+        sku: product.sku,
+        name: product.name,
+        description: (product as any).description,
+        categoryId: product.categoryId || '',
+        saleType: product.saleType,
+        inventoryType: (product as any).inventoryType || (product.saleType === 'WEIGHT' ? 'WEIGHT' : 'UNIT'),
+        price: product.price,
+        costPrice: 0,
+        unit: product.unit,
+        trackInventory: (product as any).inventoryType !== 'VACUUM_PACKED',
+        stockQuantity: (product as any).stockQuantity || 0,
+        minStock: (product as any).minStock || 0,
+      };
+      
+      await productsApi.create(productData);
+      console.log('✅ Product created in backend');
+      
+      // Recargar lista de productos
+      await get().loadProducts();
+      
+      set({ isLoading: false });
+    } catch (error) {
+      console.error('❌ Error creating product:', error);
+      set({ 
+        isLoading: false,
+        error: 'Error al crear producto'
+      });
+      throw error;
+    }
   },
   
-  updateProduct: (id, updates) => {
-    set((state) => ({
-      products: state.products.map((p) => (p.id === id ? { ...p, ...updates } : p)),
-    }));
+  updateProduct: async (id, updates) => {
+    set({ isLoading: true, error: null });
+    
+    try {
+      // Preparar datos para el backend
+      const updateData: any = {};
+      
+      if (updates.name !== undefined) updateData.name = updates.name;
+      if (updates.sku !== undefined) updateData.sku = updates.sku;
+      if ((updates as any).description !== undefined) updateData.description = (updates as any).description;
+      if (updates.categoryId !== undefined) updateData.categoryId = updates.categoryId;
+      if (updates.saleType !== undefined) updateData.saleType = updates.saleType;
+      if ((updates as any).inventoryType !== undefined) updateData.inventoryType = (updates as any).inventoryType;
+      if (updates.price !== undefined) updateData.price = updates.price;
+      if (updates.unit !== undefined) updateData.unit = updates.unit;
+      if (updates.isActive !== undefined) updateData.isActive = updates.isActive;
+      if ((updates as any).stockQuantity !== undefined) updateData.stockQuantity = (updates as any).stockQuantity;
+      if ((updates as any).minStock !== undefined) updateData.minStock = (updates as any).minStock;
+      
+      await productsApi.update(id, updateData);
+      console.log('✅ Product updated in backend');
+      
+      // Recargar lista de productos
+      await get().loadProducts();
+      
+      set({ isLoading: false });
+    } catch (error) {
+      console.error('❌ Error updating product:', error);
+      set({ 
+        isLoading: false,
+        error: 'Error al actualizar producto'
+      });
+      throw error;
+    }
   },
   
   toggleProductActive: (id) => {
@@ -230,6 +554,65 @@ export const useProductStore = create<ProductState>((set, get) => ({
   
   getFavoriteProducts: () => {
     return get().products.filter((p) => p.isFavorite && p.isActive);
+  },
+  
+  // Cargar productos desde el backend
+  loadProducts: async () => {
+    set({ isLoading: true, error: null });
+    
+    try {
+      const productsResponse = await productsApi.getAll();
+      
+      // Convertir ProductResponse[] a Product[]
+      const products: Product[] = productsResponse.map((p) => ({
+        id: p.id,
+        sku: p.sku,
+        name: p.name,
+        categoryId: p.categoryId || null,
+        saleType: p.saleType,
+        inventoryType: p.inventoryType, // CRITICAL: Include inventoryType from backend
+        unit: p.unit || 'kg',
+        price: parseDecimal(p.price),
+        taxRate: 0, // No está en backend todavía
+        isActive: p.isActive,
+        isFavorite: false, // Se puede agregar al backend más adelante
+        stockUnits: parseDecimal(p.stockQuantity),
+        minStockAlert: parseDecimal(p.minStock),
+      }));
+      
+      console.log('✅ Products loaded from backend:', products.length);
+      set({ products, isLoading: false });
+    } catch (error) {
+      console.error('❌ Error loading products:', error);
+      // Fallback a mock data si falla
+      set({ 
+        products: mockProducts,
+        isLoading: false,
+        error: 'Error al cargar productos, usando datos de demostración'
+      });
+    }
+  },
+  
+  // Cargar categorías desde el backend
+  loadCategories: async () => {
+    try {
+      const categoriesResponse = await categoriesApi.getAll();
+      
+      // Convertir a ProductCategory[]
+      const categories: ProductCategory[] = categoriesResponse.map((c) => ({
+        id: c.id,
+        name: c.name,
+        description: c.description || '',
+        isActive: c.isActive,
+      }));
+      
+      console.log('✅ Categories loaded from backend:', categories.length);
+      set({ categories });
+    } catch (error) {
+      console.error('❌ Error loading categories:', error);
+      // Fallback a mock data si falla
+      set({ categories: mockCategories });
+    }
   },
 }));
 
@@ -271,6 +654,28 @@ export const useCartStore = create<CartState>((set, get) => ({
       set({ cartItems: [...cartItems, newItem] });
     }
   },
+
+  addBatchToCart: (product, batch) => {
+    const { cartItems } = get();
+    
+    // Para lotes, siempre agregamos un item nuevo (no acumulamos)
+    const newItem: CartItem = {
+      id: uuidv4(),
+      productId: product.id,
+      productName: product.name,
+      saleType: 'UNIT', // Los lotes siempre se venden como unidades
+      qty: 1, // Siempre 1 unidad (1 paquete)
+      unitPrice: batch.unitPrice,
+      discount: 0,
+      total: batch.unitPrice,
+      product,
+      batchId: batch.id,
+      batchNumber: batch.batchNumber,
+      actualWeight: batch.actualWeight,
+    };
+    
+    set({ cartItems: [...cartItems, newItem] });
+  },
   
   updateCartItem: (itemId, qty) => {
     // Permitir 0 temporalmente (mientras escribe), pero no negativos
@@ -310,12 +715,17 @@ export const useCartStore = create<CartState>((set, get) => ({
       const product = productState.products.find(p => p.id === orderItem.productId);
       
       // Si el producto ya no existe, crear uno temporal con los datos guardados
-      const productData: Product = product || {
+      const productData: Product = product ? {
+        ...product,
+        // Asegurar que el inventoryType sea correcto (del producto real)
+        inventoryType: product.inventoryType,
+      } : {
         id: orderItem.productId,
         categoryId: null,
         sku: orderItem.productSku,
         name: orderItem.productName,
         saleType: orderItem.saleType,
+        inventoryType: orderItem.batchId ? 'VACUUM_PACKED' : 'REGULAR', // Inferir tipo de inventario
         unit: orderItem.unit,
         price: orderItem.unitPrice,
         taxRate: 0,
@@ -323,7 +733,7 @@ export const useCartStore = create<CartState>((set, get) => ({
         isFavorite: false,
       };
       
-      return {
+      const cartItem: CartItem = {
         id: uuidv4(), // Nuevo ID para el carrito
         productId: orderItem.productId,
         productName: orderItem.productName,
@@ -334,6 +744,17 @@ export const useCartStore = create<CartState>((set, get) => ({
         total: Math.round(orderItem.qty * orderItem.unitPrice),
         product: productData,
       };
+
+      // Si el pedido tiene un batch asociado, incluir información del lote
+      if (orderItem.batchId && orderItem.batch) {
+        cartItem.batchId = orderItem.batchId;
+        cartItem.batchNumber = orderItem.batch.batchNumber;
+        cartItem.actualWeight = typeof orderItem.batch.actualWeight === 'string' 
+          ? parseDecimal(orderItem.batch.actualWeight)
+          : orderItem.batch.actualWeight;
+      }
+
+      return cartItem;
     });
     
     set({ cartItems });
@@ -351,81 +772,134 @@ export const useCartStore = create<CartState>((set, get) => ({
 // ============= STORE DE VENTAS =============
 
 export const useSalesStore = create<SalesState>((set, get) => ({
-  sales: [],
-  saleCounter: 1,
+  sales: storage.getSales(),
+  saleCounter: storage.getSaleCounter(),
   
-  completeSale: (_paymentMethod, _cashPaid, orderId) => {
+  completeSale: async (paymentMethod, cashPaid, orderId) => {
     const cashState = useCashStore.getState();
     const cartState = useCartStore.getState();
     const authState = useAuthStore.getState();
-    const appState = useAppStore.getState();
     
-    if (!cashState.currentSession || !authState.currentUser || !appState.currentTerminal) {
+    if (!cashState.currentSession || !authState.currentUser) {
+      console.error('❌ No hay sesión de caja o usuario autenticado');
       return null;
     }
     
     if (cartState.cartItems.length === 0) {
+      console.error('❌ El carrito está vacío');
       return null;
     }
     
-    const { saleCounter } = get();
-    const subtotal = cartState.getCartSubtotal();
-    const total = cartState.getCartTotal();
-    
-    const newSale: Sale = {
-      id: uuidv4(),
-      cashSessionId: cashState.currentSession.id,
-      terminalId: appState.currentTerminal.id,
-      userId: authState.currentUser.id,
-      status: 'COMPLETED',
-      saleNumber: saleCounter,
-      items: cartState.cartItems.map((item) => ({
-        id: item.id,
-        productId: item.productId,
-        productName: item.productName,
-        saleType: item.saleType,
-        qty: item.qty,
-        unitPrice: item.unitPrice,
-        discount: item.discount,
-        total: item.total,
-      })),
-      subtotal,
-      discountTotal: 0,
-      taxTotal: 0,
-      total,
-      notes: null,
-      orderId, // Vincular con pedido si existe
-      createdAt: new Date().toISOString(),
-      completedAt: new Date().toISOString(),
-    };
-    
-    // Crear pago
-    // const _payment: Payment = {
-    //   id: uuidv4(),
-    //   saleId: newSale.id,
-    //   method: paymentMethod,
-    //   amount: total,
-    //   cashPaid: paymentMethod === 'CASH' ? cashPaid : undefined,
-    //   cashChange: paymentMethod === 'CASH' && cashPaid ? cashPaid - total : undefined,
-    //   status: 'CONFIRMED',
-    //   createdAt: new Date().toISOString(),
-    // };
-    
-    set((state) => ({
-      sales: [...state.sales, newSale],
-      saleCounter: saleCounter + 1,
-    }));
-    
-    // Si viene de un pedido, marcarlo como entregado
-    if (orderId) {
-      const orderState = useOrderStore.getState();
-      orderState.updateOrderStatus(orderId, 'DELIVERED', undefined, newSale.id);
+    try {
+      // Llamar al backend para crear la venta
+      const saleData = {
+        sessionId: cashState.currentSession.id,
+        items: cartState.cartItems.map((item) => ({
+          productId: item.productId,
+          quantity: item.qty,
+          unitPrice: item.unitPrice, // Enviar precio específico (importante para batches)
+          discount: item.discount || 0,
+          // Incluir datos de batch si existen (para productos VACUUM_PACKED)
+          batchId: item.batchId,
+          batchNumber: item.batchNumber,
+          actualWeight: item.actualWeight,
+        })),
+        discount: 0,
+        paymentMethod,
+        cashAmount: paymentMethod === 'CASH' && cashPaid ? cashPaid : undefined,
+        cardAmount: paymentMethod === 'CARD' ? cartState.getCartTotal() : undefined,
+        transferAmount: paymentMethod === 'TRANSFER' ? cartState.getCartTotal() : undefined,
+        notes: undefined, // No agregar notas automáticamente
+        customerName: undefined,
+        orderId: orderId, // Vincular con pedido si existe
+      };
+
+      console.log('📤 Enviando venta al backend...', saleData);
+      const backendSale = await salesApi.create(saleData);
+      console.log('✅ Venta creada en backend:', backendSale);
+
+      // Marcar lotes como vendidos (si hay productos al vacío)
+      const batchUpdates = cartState.cartItems
+        .filter(item => item.batchId)
+        .map(item => item.batchId!);
+
+      if (batchUpdates.length > 0) {
+        console.log(`📦 Marcando ${batchUpdates.length} lote(s) como vendido(s)...`);
+        for (const batchId of batchUpdates) {
+          try {
+            await fetch(`http://localhost:3000/api/product-batches/${batchId}/mark-sold`, {
+              method: 'PATCH',
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('butcher_auth_token')}`
+              }
+            });
+          } catch (err) {
+            console.error(`❌ Error marcando lote ${batchId} como vendido:`, err);
+          }
+        }
+      }
+
+      // Convertir respuesta del backend a formato local
+      const localSale: Sale = {
+        id: backendSale.id,
+        cashSessionId: backendSale.sessionId,
+        cashierId: backendSale.cashierId,
+        status: backendSale.status as SaleStatus,
+        items: (backendSale.items || []).map((item: any) => ({
+          id: item.id,
+          productId: item.productId,
+          productName: item.productName,
+          saleType: cartState.cartItems.find(ci => ci.productId === item.productId)?.saleType || 'UNIT',
+          qty: parseDecimal(item.quantity),
+          unitPrice: parseDecimal(item.unitPrice),
+          discount: parseDecimal(item.discount),
+          total: parseDecimal(item.subtotal),
+        })),
+        subtotal: parseDecimal(backendSale.subtotal),
+        discount: parseDecimal(backendSale.discount),
+        total: parseDecimal(backendSale.total),
+        paymentMethod: backendSale.paymentMethod as PaymentMethod,
+        cashAmount: backendSale.cashAmount ? parseDecimal(backendSale.cashAmount) : null,
+        cardAmount: backendSale.cardAmount ? parseDecimal(backendSale.cardAmount) : null,
+        transferAmount: backendSale.transferAmount ? parseDecimal(backendSale.transferAmount) : null,
+        changeAmount: backendSale.changeAmount ? parseDecimal(backendSale.changeAmount) : null,
+        notes: backendSale.notes,
+        customerName: backendSale.customerName,
+        orderId,
+        createdAt: backendSale.createdAt,
+      };
+
+      // Agregar a estado local para mantener sincronizado
+      set((state) => ({
+        sales: [...state.sales, localSale],
+        saleCounter: state.saleCounter + 1,
+      }));
+
+      // Persistir en localStorage
+      const updatedState = get();
+      storage.saveSales(updatedState.sales);
+      storage.saveSaleCounter(updatedState.saleCounter);
+
+      // Si viene de un pedido, recargar pedidos para reflejar el cambio
+      // (el backend ya marcó el order como DELIVERED al crear la venta)
+      if (orderId) {
+        const orderState = useOrderStore.getState();
+        orderState.loadOrders();
+      }
+
+      // Recargar productos para actualizar stock
+      const productState = useProductStore.getState();
+      productState.loadProducts();
+
+      // Limpiar carrito
+      cartState.clearCart();
+
+      return localSale;
+    } catch (error) {
+      console.error('❌ Error al completar venta:', error);
+      alert('Error al procesar la venta. Por favor intente nuevamente.');
+      return null;
     }
-    
-    // Limpiar carrito
-    cartState.clearCart();
-    
-    return newSale;
   },
   
   getSalesByDateRange: (from, to) => {
@@ -450,12 +924,31 @@ export const useSalesStore = create<SalesState>((set, get) => ({
 
 // ============= STORE DE APP =============
 
-export const useAppStore = create<AppState>((set) => ({
-  terminals: mockTerminals,
-  currentTerminal: mockTerminals[0], // Terminal por defecto
+export const useAppStore = create<AppState>((set, get) => ({
+  terminals: [],
+  currentTerminal: null,
   
   setCurrentTerminal: (terminal) => {
     set({ currentTerminal: terminal });
+  },
+  
+  // Cargar terminales desde el backend
+  loadTerminals: async () => {
+    try {
+      const terminals = await terminalsApi.getActive();
+      set({ 
+        terminals,
+        // Si no hay terminal seleccionada, usar la primera
+        currentTerminal: get().currentTerminal || terminals[0] || null
+      });
+    } catch (error) {
+      console.error('Error loading terminals:', error);
+      // Si falla, usar mock como fallback
+      set({ 
+        terminals: mockTerminals,
+        currentTerminal: get().currentTerminal || mockTerminals[0]
+      });
+    }
   },
 }));
 
@@ -464,24 +957,32 @@ export const useAppStore = create<AppState>((set) => ({
 interface OrderState {
   orders: Order[];
   customers: Customer[];
-  orderCounter: number;
-  createOrder: (
-    customerId: string,
-    customerName: string,
-    customerPhone: string,
-    deliveryDate: string,
-    deliveryTime: string,
-    items: Omit<OrderItem, 'id' | 'orderId'>[],
-    notes?: string
-  ) => Order;
-  updateOrderStatus: (orderId: string, status: OrderStatus, reason?: string, saleId?: string) => void;
-  updateOrder: (orderId: string, updates: Partial<Order>) => void;
-  cancelOrder: (orderId: string, reason: string) => void;
+  isLoading: boolean;
+  error: string | null;
+  loadOrders: () => Promise<void>;
+  createOrder: (data: {
+    customerName: string;
+    customerPhone?: string;
+    items: Array<{
+      productId: string;
+      batchId?: string;
+      qty: number;
+      notes?: string;
+    }>;
+    deliveryDate: string;
+    deliveryTime: string;
+    notes?: string;
+  }) => Promise<Order | null>;
+  updateOrderStatus: (orderId: string, status: OrderStatus, reason?: string, saleId?: string) => Promise<boolean>;
+  updateOrder: (orderId: string, updates: Partial<Order>) => Promise<boolean>;
+  cancelOrder: (orderId: string, reason: string) => Promise<boolean>;
+  markAsDelivered: (orderId: string) => Promise<boolean>;
   getOrderById: (id: string) => Order | undefined;
   getOrdersByStatus: (status: OrderStatus) => Order[];
   getPendingOrders: () => Order[];
   getOverdueOrders: () => Order[];
   getTodaysDeliveries: () => Order[];
+  // Customers management (local for now)
   addCustomer: (customer: Omit<Customer, 'id' | 'createdAt'>) => Customer;
   updateCustomer: (id: string, updates: Partial<Customer>) => void;
   getCustomerById: (id: string) => Customer | undefined;
@@ -490,89 +991,249 @@ interface OrderState {
 
 export const useOrderStore = create<OrderState>((set, get) => ({
   orders: [],
-  customers: [],
-  orderCounter: 1,
+  customers: storage.getCustomers(),
+  isLoading: false,
+  error: null,
 
-  createOrder: (customerId, customerName, customerPhone, deliveryDate, deliveryTime, items, notes) => {
-    const orderNumber = get().orderCounter;
-    const { currentUser } = useAuthStore.getState();
+  loadOrders: async () => {
+    set({ isLoading: true, error: null });
     
-    const orderItems: OrderItem[] = items.map((item) => ({
-      ...item,
-      id: uuidv4(),
-      orderId: '', // Se asignará después
-    }));
+    try {
+      const response = await ordersApi.getAll();
+      
+      // Convert backend response to frontend Order format
+      const orders: Order[] = response.map(order => ({
+        id: order.id,
+        orderNumber: parseInt(order.orderNumber.replace(/\D/g, '')),
+        customerId: '', // No longer used
+        customerName: order.customerName,
+        customerPhone: order.customerPhone || '',
+        status: order.status as OrderStatus,
+        deliveryDate: order.deliveryDate,
+        deliveryTime: order.deliveryTime || '',
+        items: order.items?.map(item => ({
+          id: item.id,
+          orderId: order.id,
+          productId: item.productId,
+          batchId: item.batchId,
+          productName: item.productName,
+          productSku: item.productSku,
+          saleType: 'UNIT' as SaleType,
+          qty: parseDecimal(item.quantity),
+          unit: item.unit,
+          unitPrice: parseDecimal(item.unitPrice),
+          total: parseDecimal(item.subtotal),
+          notes: item.notes,
+          batch: item.batch ? {
+            id: item.batch.id,
+            productId: item.productId,
+            batchNumber: item.batch.batchNumber,
+            actualWeight: parseDecimal(item.batch.actualWeight),
+            unitCost: 0,
+            unitPrice: parseDecimal(item.batch.unitPrice),
+            isSold: item.batch.isSold,
+            packedAt: new Date().toISOString(),
+            expiryDate: null,
+          } : undefined,
+        })) || [],
+        subtotal: parseDecimal(order.subtotal),
+        discount: parseDecimal(order.discount),
+        total: parseDecimal(order.total),
+        notes: order.notes,
+        createdBy: order.createdBy,
+        saleId: order.saleId,
+        createdAt: order.createdAt,
+        updatedAt: order.updatedAt,
+        completedAt: order.deliveredAt,
+        cancelledAt: order.cancelledAt,
+        cancellationReason: order.cancellationReason,
+      }));
 
-    const subtotal = orderItems.reduce((sum, item) => sum + item.total, 0);
-    
-    const order: Order = {
-      id: uuidv4(),
-      orderNumber,
-      customerId,
-      customerName,
-      customerPhone,
-      status: 'PENDING',
-      deliveryDate,
-      deliveryTime,
-      items: orderItems.map(item => ({ ...item, orderId: '' })),
-      subtotal,
-      discount: 0,
-      total: subtotal,
-      notes,
-      createdBy: currentUser?.id || '',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    // Asignar orderId a los items
-    order.items = order.items.map(item => ({ ...item, orderId: order.id }));
-
-    set((state) => ({
-      orders: [...state.orders, order],
-      orderCounter: orderNumber + 1,
-    }));
-
-    return order;
+      set({ orders, isLoading: false });
+      console.log('✅ Orders loaded from backend:', orders.length);
+    } catch (error) {
+      console.error('❌ Error loading orders:', error);
+      set({ error: 'Failed to load orders', isLoading: false });
+    }
   },
 
-  updateOrderStatus: (orderId, status, reason, saleId) => {
-    const authState = useAuthStore.getState();
+  createOrder: async (data) => {
+    set({ isLoading: true, error: null });
     
-    set((state) => ({
-      orders: state.orders.map((order) => {
-        if (order.id !== orderId) return order;
+    try {
+      const { currentUser } = useAuthStore.getState();
+      if (!currentUser) {
+        throw new Error('User not authenticated');
+      }
 
-        const updates: Partial<Order> = {
-          status,
-          updatedAt: new Date().toISOString(),
-        };
+      // Map frontend items to backend format
+      const backendItems = data.items.map(item => ({
+        productId: item.productId,
+        batchId: item.batchId,
+        quantity: item.qty,
+        discount: 0,
+        notes: item.notes,
+      }));
 
-        if (status === 'DELIVERED') {
-          updates.completedAt = new Date().toISOString();
-          updates.saleId = saleId; // Vincular venta
-          updates.deliveredBy = authState.currentUser?.id; // Usuario que entregó
-        } else if (status === 'CANCELLED') {
-          updates.cancelledAt = new Date().toISOString();
-          updates.cancellationReason = reason;
-        }
+      const response = await ordersApi.create({
+        customerName: data.customerName,
+        customerPhone: data.customerPhone,
+        items: backendItems,
+        deliveryDate: data.deliveryDate,
+        deliveryTime: data.deliveryTime,
+        notes: data.notes,
+      });
 
-        return { ...order, ...updates };
-      }),
-    }));
+      // Convert to frontend format
+      const newOrder: Order = {
+        id: response.id,
+        orderNumber: parseInt(response.orderNumber.replace(/\D/g, '')),
+        customerId: '',
+        customerName: response.customerName,
+        customerPhone: response.customerPhone || '',
+        status: response.status as OrderStatus,
+        deliveryDate: response.deliveryDate,
+        deliveryTime: response.deliveryTime || '',
+        items: response.items?.map(item => ({
+          id: item.id,
+          orderId: response.id,
+          productId: item.productId,
+          batchId: item.batchId,
+          productName: item.productName,
+          productSku: item.productSku,
+          saleType: 'UNIT' as SaleType,
+          qty: parseDecimal(item.quantity),
+          unit: item.unit,
+          unitPrice: parseDecimal(item.unitPrice),
+          total: parseDecimal(item.subtotal),
+          notes: item.notes,
+          batch: item.batch ? {
+            id: item.batch.id,
+            productId: item.productId,
+            batchNumber: item.batch.batchNumber,
+            actualWeight: parseDecimal(item.batch.actualWeight),
+            unitCost: 0,
+            unitPrice: parseDecimal(item.batch.unitPrice),
+            isSold: item.batch.isSold,
+            packedAt: new Date().toISOString(),
+            expiryDate: null,
+          } : undefined,
+        })) || [],
+        subtotal: parseDecimal(response.subtotal),
+        discount: parseDecimal(response.discount),
+        total: parseDecimal(response.total),
+        notes: response.notes,
+        createdBy: response.createdBy,
+        createdAt: response.createdAt,
+        updatedAt: response.updatedAt,
+      };
+
+      set((state) => ({
+        orders: [...state.orders, newOrder],
+        isLoading: false,
+      }));
+
+      console.log('✅ Order created:', newOrder.id);
+      return newOrder;
+    } catch (error) {
+      console.error('❌ Error creating order:', error);
+      set({ error: 'Failed to create order', isLoading: false });
+      return null;
+    }
   },
 
-  updateOrder: (orderId, updates) => {
-    set((state) => ({
-      orders: state.orders.map((order) =>
-        order.id === orderId
-          ? { ...order, ...updates, updatedAt: new Date().toISOString() }
-          : order
-      ),
-    }));
+  updateOrderStatus: async (orderId, status, reason, saleId) => {
+    set({ isLoading: true, error: null });
+    
+    try {
+      let response;
+      
+      if (status === 'CANCELLED' && reason) {
+        response = await ordersApi.cancel(orderId, reason);
+      } else if (status === 'DELIVERED') {
+        response = await ordersApi.markAsDelivered(orderId);
+      } else if (status === 'READY') {
+        response = await ordersApi.markAsReady(orderId);
+      } else {
+        // General update not supported - use specific status endpoints
+        throw new Error('Use specific status methods: markAsReady, markAsDelivered, cancel');
+      }
+
+      // Update local state
+      set((state) => ({
+        orders: state.orders.map((order) => {
+          if (order.id !== orderId) return order;
+
+          return {
+            ...order,
+            status: response.status as OrderStatus,
+            updatedAt: response.updatedAt,
+            completedAt: response.deliveredAt,
+            cancelledAt: response.cancelledAt,
+            cancellationReason: response.cancellationReason,
+            saleId: saleId || order.saleId,
+          };
+        }),
+        isLoading: false,
+      }));
+
+      console.log(`✅ Order ${orderId} status updated to ${status}`);
+      return true;
+    } catch (error) {
+      console.error('❌ Error updating order status:', error);
+      set({ error: 'Failed to update order status', isLoading: false });
+      return false;
+    }
   },
 
-  cancelOrder: (orderId, reason) => {
-    get().updateOrderStatus(orderId, 'CANCELLED', reason);
+  updateOrder: async (orderId, updates) => {
+    set({ isLoading: true, error: null });
+    
+    try {
+      const updateData: any = {
+        customerName: updates.customerName,
+        customerPhone: updates.customerPhone,
+        deliveryDate: updates.deliveryDate,
+        deliveryTime: updates.deliveryTime,
+        notes: updates.notes,
+      };
+
+      // Add items if provided
+      if (updates.items) {
+        updateData.items = updates.items.map(item => ({
+          productId: item.productId,
+          batchId: item.batchId,
+          quantity: item.qty,
+          discount: item.discount || 0,
+          notes: item.notes,
+        }));
+      }
+
+      const response = await ordersApi.update(orderId, updateData);
+
+      // Update local state with full order data
+      set((state) => ({
+        orders: state.orders.map((order) =>
+          order.id === orderId ? response : order
+        ),
+        isLoading: false,
+      }));
+
+      console.log(`✅ Order ${orderId} updated`);
+      return true;
+    } catch (error) {
+      console.error('❌ Error updating order:', error);
+      set({ error: 'Failed to update order', isLoading: false });
+      return false;
+    }
+  },
+
+  cancelOrder: async (orderId, reason) => {
+    return get().updateOrderStatus(orderId, 'CANCELLED', reason);
+  },
+
+  markAsDelivered: async (orderId) => {
+    return get().updateOrderStatus(orderId, 'DELIVERED');
   },
 
   getOrderById: (id) => {
@@ -618,6 +1279,9 @@ export const useOrderStore = create<OrderState>((set, get) => ({
     set((state) => ({
       customers: [...state.customers, newCustomer],
     }));
+    
+    // Persistir en localStorage
+    storage.saveCustomers(get().customers);
 
     return newCustomer;
   },
@@ -628,6 +1292,9 @@ export const useOrderStore = create<OrderState>((set, get) => ({
         c.id === id ? { ...c, ...updates } : c
       ),
     }));
+    
+    // Persistir en localStorage
+    storage.saveCustomers(get().customers);
   },
 
   getCustomerById: (id) => {
