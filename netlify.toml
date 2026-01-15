@@ -1,7 +1,7 @@
 # Netlify Configuration for Frontend PWA
 
 [build]
-  command = "npm run build"
+  command = "npm run build:prod"
   publish = "dist"
   
 [build.environment]
