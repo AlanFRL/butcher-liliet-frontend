@@ -18,7 +18,7 @@ export type MovementType =
   | 'SALE_OUT' 
   | 'RETURN_IN';
 
-export type CashMovementType = 'DEPOSIT' | 'WITHDRAWAL' | 'ADJUSTMENT';
+export type CashMovementType = 'IN' | 'OUT';
 
 export type OrderStatus = 'PENDING' | 'READY' | 'DELIVERED' | 'CANCELLED';
 
