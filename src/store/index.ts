@@ -18,6 +18,10 @@ import type {
 } from '../types';
 import { mockProducts, mockCategories, mockTerminals } from '../data/mockData';
 import * as storage from '../utils/localStorage';
+
+// API Base URL
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+
 // API imports
 import {
   authApi,
@@ -827,7 +831,7 @@ export const useSalesStore = create<SalesState>((set, get) => ({
         console.log(`📦 Marcando ${batchUpdates.length} lote(s) como vendido(s)...`);
         for (const batchId of batchUpdates) {
           try {
-            await fetch(`http://localhost:3000/api/product-batches/${batchId}/mark-sold`, {
+            await fetch(`${API_BASE_URL}/product-batches/${batchId}/mark-sold`, {
               method: 'PATCH',
               headers: {
                 'Authorization': `Bearer ${localStorage.getItem('butcher_auth_token')}`

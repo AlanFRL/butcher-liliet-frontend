@@ -1,9 +1,9 @@
 /**
  * Servicio API centralizado para comunicación con el backend
- * Base URL: http://localhost:3000/api
+ * Base URL: Se obtiene de variable de entorno o localhost en desarrollo
  */
 
-const API_BASE_URL = 'http://localhost:3000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
 
 // ============= MANEJO DE TOKENS =============
 
