@@ -775,8 +775,8 @@ export const POSPage: React.FC = () => {
                 discount: lastSale.discount || 0,
                 total: lastSale.total,
                 paymentMethod: lastSale.paymentMethod,
-                cashPaid: paymentMethod === 'CASH' ? cashPaidNum : undefined,
-                change: paymentMethod === 'CASH' && change > 0 ? change : undefined,
+                cashPaid: lastSale.cashAmount || undefined,
+                change: lastSale.changeAmount || undefined,
               }}
             />
           )}

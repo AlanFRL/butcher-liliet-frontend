@@ -133,13 +133,13 @@ export const ThermalReceiptSale: React.FC<ThermalReceiptSaleProps> = ({ data }) 
             <span>Método de pago:</span>
             <span className="font-semibold">{getPaymentMethodLabel(data.paymentMethod)}</span>
           </div>
-          {data.paymentMethod === 'CASH' && data.cashPaid && (
+          {data.paymentMethod === 'CASH' && data.cashPaid !== undefined && (
             <>
               <div className="flex justify-between text-xs mb-1">
                 <span>Pagado:</span>
                 <span>Bs {data.cashPaid.toFixed(2)}</span>
               </div>
-              {data.change !== undefined && data.change > 0 && (
+              {data.change !== undefined && (
                 <div className="flex justify-between text-xs font-bold">
                   <span>Cambio:</span>
                   <span>Bs {data.change.toFixed(2)}</span>
