@@ -11,6 +11,7 @@ export const CashClosePage: React.FC = () => {
   const [showConfirm, setShowConfirm] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
   const [localError, setLocalError] = useState('');
+  const [closedSessionSnapshot, setClosedSessionSnapshot] = useState<any>(null);
   
   const navigate = useNavigate();
   const { currentSession, cashMovements, closeCashSession, isLoading, error } = useCashStore();
@@ -29,8 +30,8 @@ export const CashClosePage: React.FC = () => {
     return 'Usuario';
   };
   
-  // Si no hay caja abierta
-  if (!currentSession || currentSession.status !== 'OPEN') {
+  // Si no hay caja abierta Y no hay reporte que mostrar
+  if ((!currentSession || currentSession.status !== 'OPEN') && !showReceipt) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-8">
         <div className="bg-yellow-50 border-l-4 border-yellow-500 p-6 rounded-lg">
@@ -49,13 +50,9 @@ export const CashClosePage: React.FC = () => {
   }
   
   // Calcular totales
-  const sessionSales = sales.filter(
+  const sessionSales = currentSession ? sales.filter(
     (s) => s.cashSessionId === currentSession.id && s.status === 'COMPLETED'
-  );
-  
-  // Obtener nombre del terminal
-  const terminal = terminals.find(t => t.id === currentSession.terminalId);
-  const terminalName = terminal?.name || 'Caja Principal';
+  ) : [];
   
   // Desglose por método de pago (solo efectivo y transferencia)
   const cashSales = sessionSales.filter(s => s.paymentMethod === 'CASH');
@@ -76,8 +73,9 @@ export const CashClosePage: React.FC = () => {
     .reduce((sum, m) => sum + m.amount, 0);
   
   // Efectivo esperado = inicial + ventas en efectivo + ingresos - retiros
-  const expectedCash =
-    currentSession.openingAmount + totalCashSales + cashIn - cashOut;
+  const expectedCash = currentSession
+    ? currentSession.openingAmount + totalCashSales + cashIn - cashOut
+    : 0;
   
   const countedCashNum = parseFloat(countedCash) || 0;
   const difference = countedCashNum - expectedCash;
@@ -90,12 +88,23 @@ export const CashClosePage: React.FC = () => {
       return;
     }
     
+    // Guardar snapshot ANTES de cerrar
+    const snapshot = {
+      session: currentSession!,
+      user: currentSession!.user,
+      sales: sessionSales,
+      terminal: terminals.find(t => t.id === currentSession!.terminalId),
+      totals: { totalSales, totalCashSales, totalTransferSales },
+      countedCash: countedCashNum,
+      difference,
+    };
+    
     // Llamar al backend para cerrar sesión
     const success = await closeCashSession(countedCashNum, note);
     
     if (success) {
+      setClosedSessionSnapshot(snapshot);
       setShowConfirm(false);
-      // Mostrar recibo de cierre
       setShowReceipt(true);
     } else {
       // El error ya está en el store, pero también lo mostramos localmente
@@ -121,6 +130,7 @@ export const CashClosePage: React.FC = () => {
         </p>
         
         {/* Resumen del Turno */}
+        {currentSession && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
           {/* Información de Apertura */}
           <div className="bg-gray-50 rounded-lg p-4">
@@ -132,13 +142,13 @@ export const CashClosePage: React.FC = () => {
               <div className="flex justify-between">
                 <span className="text-gray-600">Hora apertura:</span>
                 <span className="font-semibold">
-                  {new Date(currentSession.openedAt).toLocaleTimeString()}
+                  {currentSession && new Date(currentSession.openedAt).toLocaleTimeString()}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Monto inicial:</span>
                 <span className="font-semibold text-green-600">
-                  Bs {currentSession.openingAmount.toFixed(2)}
+                  {currentSession && `Bs ${currentSession.openingAmount.toFixed(2)}`}
                 </span>
               </div>
             </div>
@@ -218,7 +228,7 @@ export const CashClosePage: React.FC = () => {
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Efectivo inicial:</span>
-                    <span className="font-semibold">Bs {currentSession.openingAmount.toFixed(2)}</span>
+                    <span className="font-semibold">{currentSession && `Bs ${currentSession.openingAmount.toFixed(2)}`}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">+ Ventas en efectivo:</span>
@@ -253,8 +263,10 @@ export const CashClosePage: React.FC = () => {
             </div>
           </div>
         </div>
+        )}
         
         {/* Arqueo */}
+        {currentSession && (
         <div className="border-t border-gray-200 pt-5">
           <h2 className="text-lg font-bold text-gray-900 mb-4">
             Arqueo de Caja
@@ -358,6 +370,7 @@ export const CashClosePage: React.FC = () => {
             )}
           </div>
         </div>
+        )}
         
         {/* Botones */}
         <div className="flex space-x-3 pt-5 border-t border-gray-200 mt-5">
@@ -415,7 +428,7 @@ export const CashClosePage: React.FC = () => {
       )}
       
       {/* Modal Reporte Térmico */}
-      {showReceipt && (
+      {showReceipt && closedSessionSnapshot && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-gray-100 rounded-lg p-6 max-w-md w-full my-8">
             <div className="flex justify-between items-center mb-4">
@@ -423,7 +436,7 @@ export const CashClosePage: React.FC = () => {
                 Cierre de Caja Exitoso
               </h3>
               <button
-                onClick={() => setShowReceipt(false)}
+                onClick={() => { setShowReceipt(false); navigate('/dashboard'); }}
                 className="text-gray-500 hover:text-gray-700"
               >
                 ✕
@@ -442,10 +455,10 @@ export const CashClosePage: React.FC = () => {
                     day: 'numeric',
                   }),
                   cashier: getUserDisplayName(currentUser),
-                  openedBy: getUserDisplayName(currentSession!.user),
+                  openedBy: getUserDisplayName(closedSessionSnapshot.user),
                   closedBy: getUserDisplayName(currentUser),
-                  cashRegister: terminalName,
-                  openTime: new Date(currentSession!.openedAt).toLocaleTimeString('es-BO', {
+                  cashRegister: closedSessionSnapshot.terminal?.name || 'Caja Principal',
+                  openTime: new Date(closedSessionSnapshot.session.openedAt).toLocaleTimeString('es-BO', {
                     hour: '2-digit',
                     minute: '2-digit',
                   }),
@@ -453,8 +466,8 @@ export const CashClosePage: React.FC = () => {
                     hour: '2-digit',
                     minute: '2-digit',
                   }),
-                  initialAmount: currentSession!.openingAmount,
-                  sales: sessionSales.map((sale) => ({
+                  initialAmount: closedSessionSnapshot.session.openingAmount,
+                  sales: closedSessionSnapshot.sales.map((sale: any) => ({
                     id: sale.id,
                     time: new Date(sale.createdAt).toLocaleTimeString('es-BO', {
                       hour: '2-digit',
@@ -462,7 +475,7 @@ export const CashClosePage: React.FC = () => {
                     }),
                     total: sale.total,
                     paymentMethod: sale.paymentMethod,
-                    items: sale.items.map(item => ({
+                    items: sale.items.map((item: { productName: string; qty: number; saleType: string; unitPrice: number; total: number }) => ({
                       name: item.productName,
                       quantity: item.qty,
                       unit: item.saleType === 'WEIGHT' ? 'kg' : 'und',
@@ -470,19 +483,19 @@ export const CashClosePage: React.FC = () => {
                       subtotal: item.total,
                     })),
                   })),
-                  totalSales,
-                  totalCashSales,
-                  totalTransferSales,
-                  totalCash: countedCashNum,
-                  finalAmount: currentSession!.openingAmount + totalSales,
-                  difference,
+                  totalSales: closedSessionSnapshot.totals.totalSales,
+                  totalCashSales: closedSessionSnapshot.totals.totalCashSales,
+                  totalTransferSales: closedSessionSnapshot.totals.totalTransferSales,
+                  totalCash: closedSessionSnapshot.countedCash,
+                  finalAmount: closedSessionSnapshot.session.openingAmount + closedSessionSnapshot.totals.totalSales,
+                  difference: closedSessionSnapshot.difference,
                 }}
               />
             </div>
             
             <div className="mt-4 flex space-x-3">
               <Button
-                onClick={() => setShowReceipt(false)}
+                onClick={() => { setShowReceipt(false); navigate('/dashboard'); }}
                 variant="outline"
                 size="lg"
                 className="flex-1"
