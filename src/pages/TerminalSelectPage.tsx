@@ -70,9 +70,18 @@ export const TerminalSelectPage: React.FC = () => {
   const handleContinue = () => {
     if (!selectedTerminal) return;
     
-    const terminal = terminals.find(t => t.id === selectedTerminal);
-    if (terminal) {
-      setCurrentTerminal(terminal);
+    const terminal = terminalsWithSessions.find(t => t.id === selectedTerminal);
+    if (!terminal) return;
+
+    // 🔒 VALIDACIÓN: CASHIER no puede seleccionar terminal con sesión abierta
+    if (currentUser?.role === 'CASHIER' && terminal.hasOpenSession) {
+      alert(`⛔ La caja "${terminal.name}" ya está en uso por ${terminal.sessionUser}.\n\nPor favor selecciona otra caja disponible o espera a que se cierre.`);
+      return;
+    }
+    
+    const terminalData = terminals.find(t => t.id === selectedTerminal);
+    if (terminalData) {
+      setCurrentTerminal(terminalData);
       navigate('/dashboard');
     }
   };
@@ -119,71 +128,94 @@ export const TerminalSelectPage: React.FC = () => {
             </div>
           ) : (
             <div className="space-y-3">
-              {terminalsWithSessions.map((terminal) => (
-                <button
-                  key={terminal.id}
-                  onClick={() => setSelectedTerminal(terminal.id)}
-                  className={`w-full p-4 rounded-lg border-2 transition-all text-left flex items-center justify-between group ${
-                    selectedTerminal === terminal.id
-                      ? 'border-primary-600 bg-primary-50'
-                      : 'border-gray-200 hover:border-primary-300 hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="flex items-center gap-4 flex-1">
-                    <div
-                      className={`w-12 h-12 rounded-lg flex items-center justify-center transition-colors ${
-                        selectedTerminal === terminal.id
-                          ? 'bg-primary-600 text-white'
-                          : terminal.hasOpenSession
-                          ? 'bg-orange-100 text-orange-600'
-                          : 'bg-gray-100 text-gray-600 group-hover:bg-primary-100 group-hover:text-primary-600'
-                      }`}
-                    >
-                      {terminal.hasOpenSession ? (
-                        <Lock className="w-6 h-6" />
-                      ) : (
-                        <Monitor className="w-6 h-6" />
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-gray-900 text-lg">
-                          {terminal.name}
-                        </h3>
-                        {terminal.hasOpenSession && (
-                          <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">
-                            En uso
-                          </span>
+              {terminalsWithSessions.map((terminal) => {
+                const isCashier = currentUser?.role === 'CASHIER';
+                const isBlocked = isCashier && terminal.hasOpenSession;
+                
+                return (
+                  <button
+                    key={terminal.id}
+                    onClick={() => !isBlocked && setSelectedTerminal(terminal.id)}
+                    disabled={isBlocked}
+                    className={`w-full p-4 rounded-lg border-2 transition-all text-left flex items-center justify-between group ${
+                      isBlocked
+                        ? 'border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed'
+                        : selectedTerminal === terminal.id
+                        ? 'border-primary-600 bg-primary-50'
+                        : 'border-gray-200 hover:border-primary-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-4 flex-1">
+                      <div
+                        className={`w-12 h-12 rounded-lg flex items-center justify-center transition-colors ${
+                          isBlocked
+                            ? 'bg-gray-200 text-gray-500'
+                            : selectedTerminal === terminal.id
+                            ? 'bg-primary-600 text-white'
+                            : terminal.hasOpenSession
+                            ? 'bg-orange-100 text-orange-600'
+                            : 'bg-gray-100 text-gray-600 group-hover:bg-primary-100 group-hover:text-primary-600'
+                        }`}
+                      >
+                        {terminal.hasOpenSession ? (
+                          <Lock className="w-6 h-6" />
+                        ) : (
+                          <Monitor className="w-6 h-6" />
                         )}
                       </div>
-                      {terminal.location && (
-                        <div className="flex items-center gap-1 text-gray-500 text-sm mt-1">
-                          <MapPin className="w-4 h-4" />
-                          <span>{terminal.location}</span>
-                        </div>
-                      )}
-                      {terminal.hasOpenSession && terminal.sessionUser && (
-                        <div className="flex items-center gap-1 text-orange-600 text-sm mt-1">
-                          <User className="w-4 h-4" />
-                          <span>Abierta por {terminal.sessionUser}</span>
-                          {terminal.sessionOpenedAt && (
-                            <span className="text-gray-500 ml-1">
-                              · desde {formatTime(terminal.sessionOpenedAt)}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold text-gray-900 text-lg">
+                            {terminal.name}
+                          </h3>
+                          {terminal.hasOpenSession && (
+                            <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                              isBlocked 
+                                ? 'bg-red-100 text-red-700'
+                                : 'bg-orange-100 text-orange-700'
+                            }`}>
+                              {isBlocked ? 'No disponible' : 'En uso'}
                             </span>
                           )}
                         </div>
-                      )}
+                        {terminal.location && (
+                          <div className="flex items-center gap-1 text-gray-500 text-sm mt-1">
+                            <MapPin className="w-4 h-4" />
+                            <span>{terminal.location}</span>
+                          </div>
+                        )}
+                        {terminal.hasOpenSession && terminal.sessionUser && (
+                          <div className={`flex items-center gap-1 text-sm mt-1 ${
+                            isBlocked ? 'text-red-600' : 'text-orange-600'
+                          }`}>
+                            <User className="w-4 h-4" />
+                            <span>Abierta por {terminal.sessionUser}</span>
+                            {terminal.sessionOpenedAt && (
+                              <span className="text-gray-500 ml-1">
+                                · desde {formatTime(terminal.sessionOpenedAt)}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {isBlocked && (
+                          <p className="text-xs text-red-600 mt-1">
+                            ⛔ No puedes usar esta caja mientras esté ocupada
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  <ChevronRight
-                    className={`w-5 h-5 transition-colors ${
-                      selectedTerminal === terminal.id
-                        ? 'text-primary-600'
-                        : 'text-gray-400'
-                    }`}
-                  />
-                </button>
-              ))}
+                    <ChevronRight
+                      className={`w-5 h-5 transition-colors ${
+                        isBlocked
+                          ? 'text-gray-300'
+                          : selectedTerminal === terminal.id
+                          ? 'text-primary-600'
+                          : 'text-gray-400'
+                      }`}
+                    />
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>

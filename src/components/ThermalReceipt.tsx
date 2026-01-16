@@ -7,6 +7,8 @@ interface ThermalReceiptProps {
     phone: string;
     date: string;
     cashier: string;
+    openedBy?: string;
+    closedBy?: string;
     terminal: string;
     openTime: string;
     closeTime: string;
@@ -54,10 +56,30 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({ data }) => {
           <span>Fecha:</span>
           <span className="font-bold">{data.date}</span>
         </div>
-        <div className="flex justify-between">
-          <span>Cajero:</span>
-          <span className="font-bold">{data.cashier}</span>
-        </div>
+        {data.openedBy && (
+          <div className="flex justify-between">
+            <span>Aperturado por:</span>
+            <span className="font-bold">{data.openedBy}</span>
+          </div>
+        )}
+        {data.closedBy && data.closedBy !== data.openedBy && (
+          <div className="flex justify-between">
+            <span>Cerrado por:</span>
+            <span className="font-bold">{data.closedBy}</span>
+          </div>
+        )}
+        {data.closedBy && data.closedBy === data.openedBy && (
+          <div className="flex justify-between">
+            <span>Cajero:</span>
+            <span className="font-bold">{data.cashier}</span>
+          </div>
+        )}
+        {!data.openedBy && (
+          <div className="flex justify-between">
+            <span>Cajero:</span>
+            <span className="font-bold">{data.cashier}</span>
+          </div>
+        )}
         <div className="flex justify-between">
           <span>Terminal:</span>
           <span className="font-bold">{data.terminal}</span>

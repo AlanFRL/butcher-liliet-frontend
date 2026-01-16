@@ -18,7 +18,7 @@ export type MovementType =
   | 'SALE_OUT' 
   | 'RETURN_IN';
 
-export type CashMovementType = 'IN' | 'OUT';
+export type CashMovementType = 'DEPOSIT' | 'WITHDRAWAL' | 'ADJUSTMENT';
 
 export type OrderStatus = 'PENDING' | 'READY' | 'DELIVERED' | 'CANCELLED';
 
@@ -99,6 +99,16 @@ export interface CashSession {
   expectedAmount: number | null;
   closingAmount: number | null;
   differenceAmount: number | null;
+  user?: {
+    id: string;
+    fullName: string;
+    username?: string;
+  };
+  closedBy?: {
+    id: string;
+    fullName: string;
+    username?: string;
+  };
 }
 
 export interface CashMovement {

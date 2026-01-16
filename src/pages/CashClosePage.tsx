@@ -41,14 +41,12 @@ export const CashClosePage: React.FC = () => {
     (s) => s.cashSessionId === currentSession.id && s.status === 'COMPLETED'
   );
   
-  // Desglose por método de pago
+  // Desglose por método de pago (solo efectivo y transferencia)
   const cashSales = sessionSales.filter(s => s.paymentMethod === 'CASH');
   const transferSales = sessionSales.filter(s => s.paymentMethod === 'TRANSFER');
-  const cardSales = sessionSales.filter(s => s.paymentMethod === 'CARD');
 
   const totalCashSales = cashSales.reduce((sum, sale) => sum + sale.total, 0);
   const totalTransferSales = transferSales.reduce((sum, sale) => sum + sale.total, 0);
-  const totalCardSales = cardSales.reduce((sum, sale) => sum + sale.total, 0);
   
   const totalSales = sessionSales.reduce((sum, sale) => sum + sale.total, 0);
   const salesCount = sessionSales.length;
@@ -133,7 +131,7 @@ export const CashClosePage: React.FC = () => {
           {/* Resumen de Ventas */}
           <div className="bg-blue-50 rounded-lg p-4 md:col-span-2">
             <h3 className="font-bold text-gray-900 mb-3 text-sm">Resumen de Ventas del Turno</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5 text-sm">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">💵 Efectivo:</span>
@@ -147,24 +145,13 @@ export const CashClosePage: React.FC = () => {
               </div>
               <div className="space-y-1.5 text-sm">
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-600">� Transferencia:</span>
+                  <span className="text-gray-600">📱 Transferencia:</span>
                   <span className="font-bold text-purple-600">
                     Bs {totalTransferSales.toFixed(2)}
                   </span>
                 </div>
                 <div className="flex justify-between text-xs">
                   <span className="text-gray-500">{transferSales.length} tickets</span>
-                </div>
-              </div>
-              <div className="space-y-1.5 text-sm">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">💳 Tarjeta:</span>
-                  <span className="font-bold text-blue-600">
-                    Bs {totalCardSales.toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-gray-500">{cardSales.length} tickets</span>
                 </div>
               </div>
             </div>
@@ -244,7 +231,7 @@ export const CashClosePage: React.FC = () => {
                   Bs {expectedCash.toFixed(2)}
                 </p>
                 <p className="text-xs text-gray-500 mt-2 text-center">
-                  💡 No incluye pagos por transferencia ni tarjeta
+                  💡 No incluye pagos por transferencia
                 </p>
               </div>
             </div>
@@ -451,6 +438,8 @@ export const CashClosePage: React.FC = () => {
                     day: 'numeric',
                   }),
                   cashier: currentUser?.username || 'Usuario',
+                  openedBy: currentSession!.user?.fullName || currentSession!.user?.username || 'Usuario',
+                  closedBy: currentUser?.fullName || currentUser?.username || 'Usuario',
                   terminal: 'Terminal 1',
                   openTime: new Date(currentSession!.openedAt).toLocaleTimeString('es-BO', {
                     hour: '2-digit',

@@ -183,12 +183,17 @@ export interface CashSessionResponse {
   closingNotes: string | null;
   openedAt: string;
   closedAt: string | null;
+  closedByUserId?: string | null;
   updatedAt: string;
   terminal?: {
     id: string;
     name: string;
   };
   user?: {
+    id: string;
+    fullName: string;
+  };
+  closedBy?: {
     id: string;
     fullName: string;
   };

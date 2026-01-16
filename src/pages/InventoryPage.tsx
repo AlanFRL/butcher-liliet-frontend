@@ -71,7 +71,8 @@ export const InventoryPage: React.FC = () => {
   const loadBatches = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('http://localhost:3000/api/product-batches?includeReservationStatus=true', {
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+      const response = await fetch(`${API_BASE_URL}/product-batches?includeReservationStatus=true`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('butcher_auth_token')}`
         }
@@ -125,13 +126,15 @@ export const InventoryPage: React.FC = () => {
       );
       let nextSequence = existingBatchesForToday.length + 1;
       
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+      
       for (let i = 0; i < validRows.length; i++) {
         const row = validRows[i];
         // Auto-generate batch number: SKU-YYYYMMDD-NNN
         const batchNumber = `${product?.sku || 'VAC'}-${today}-${String(nextSequence).padStart(3, '0')}`;
         nextSequence++;
         
-        const response = await fetch('http://localhost:3000/api/product-batches', {
+        const response = await fetch(`${API_BASE_URL}/product-batches`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -185,7 +188,8 @@ export const InventoryPage: React.FC = () => {
         return;
       }
 
-      const response = await fetch(`http://localhost:3000/api/products/${stockFormData.productId}`, {
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+      const response = await fetch(`${API_BASE_URL}/products/${stockFormData.productId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -213,7 +217,8 @@ export const InventoryPage: React.FC = () => {
     if (!confirm('¿Marcar este lote como vendido?')) return;
 
     try {
-      const response = await fetch(`http://localhost:3000/api/product-batches/${batchId}/mark-sold`, {
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+      const response = await fetch(`${API_BASE_URL}/product-batches/${batchId}/mark-sold`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('butcher_auth_token')}`
@@ -232,7 +237,8 @@ export const InventoryPage: React.FC = () => {
     if (!confirm('¿Eliminar este lote? Solo se pueden eliminar lotes no vendidos.')) return;
 
     try {
-      const response = await fetch(`http://localhost:3000/api/product-batches/${batchId}`, {
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+      const response = await fetch(`${API_BASE_URL}/product-batches/${batchId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('butcher_auth_token')}`

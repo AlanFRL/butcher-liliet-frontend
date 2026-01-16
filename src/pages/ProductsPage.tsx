@@ -11,7 +11,7 @@ export const ProductsPage: React.FC = () => {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const { showToast, ToastComponent } = useToast();
   
-  const { products, categories, addProduct, updateProduct, toggleProductActive, toggleProductFavorite, loadProducts, loadCategories, isLoading } = useProductStore();
+  const { products, categories, addProduct, updateProduct, toggleProductFavorite, loadProducts, loadCategories, isLoading } = useProductStore();
   const { currentUser } = useAuthStore();
   
   // Cargar productos y categorías si están vacíos
@@ -29,7 +29,6 @@ export const ProductsPage: React.FC = () => {
   const [formData, setFormData] = useState({
     name: '',
     sku: '',
-    description: '',
     categoryId: '',
     saleType: 'WEIGHT' as SaleType,
     inventoryType: 'WEIGHT' as 'UNIT' | 'WEIGHT' | 'VACUUM_PACKED',
@@ -45,7 +44,6 @@ export const ProductsPage: React.FC = () => {
       setFormData({
         name: product.name,
         sku: product.sku,
-        description: (product as any).description || '',
         categoryId: product.categoryId || '',
         saleType: product.saleType,
         inventoryType: invType,
@@ -58,7 +56,6 @@ export const ProductsPage: React.FC = () => {
       setFormData({
         name: '',
         sku: '',
-        description: '',
         categoryId: '',
         saleType: 'WEIGHT',
         inventoryType: 'WEIGHT',
@@ -91,20 +88,18 @@ export const ProductsPage: React.FC = () => {
         await updateProduct(editingProduct.id, {
           name: formData.name,
           sku: formData.sku,
-          description: formData.description || undefined,
           categoryId: formData.categoryId || null,
           saleType: formData.saleType,
           inventoryType: formData.inventoryType,
           unit,
           price,
-          stockQuantity,
-          minStock,
+          stockUnits: stockQuantity,
+          minStockAlert: minStock,
         });
       } else {
         await addProduct({
           name: formData.name,
           sku: formData.sku,
-          description: formData.description || undefined,
           categoryId: formData.categoryId || null,
           saleType: formData.saleType,
           inventoryType: formData.inventoryType,
@@ -112,8 +107,8 @@ export const ProductsPage: React.FC = () => {
           price,
           taxRate: 0,
           isActive: true,
-          stockQuantity,
-          minStock,
+          stockUnits: stockQuantity,
+          minStockAlert: minStock,
         });
       }
       
@@ -131,7 +126,8 @@ export const ProductsPage: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:3000/api/products/${product.id}`, {
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+      const response = await fetch(`${API_BASE_URL}/products/${product.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('butcher_auth_token')}`
@@ -153,7 +149,8 @@ export const ProductsPage: React.FC = () => {
 
   const handleToggleActive = async (product: Product) => {
     try {
-      const response = await fetch(`http://localhost:3000/products/${product.id}`, {
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+      const response = await fetch(`${API_BASE_URL}/products/${product.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -506,19 +503,6 @@ export const ProductsPage: React.FC = () => {
               </p>
             </div>
           )}
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Descripción (opcional)
-            </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-              rows={2}
-              placeholder="Información adicional..."
-            />
-          </div>
           
           <div className="flex space-x-3 pt-2">
             <Button
