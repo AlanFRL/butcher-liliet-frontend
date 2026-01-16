@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DollarSign, Receipt, AlertCircle, Printer } from 'lucide-react';
 import { Button } from '../components/ui';
-import { useCashStore, useSalesStore, useAuthStore } from '../store';
+import { useCashStore, useSalesStore, useAuthStore, useAppStore } from '../store';
 import { ThermalReceipt } from '../components/ThermalReceipt';
 
 export const CashClosePage: React.FC = () => {
@@ -16,6 +16,7 @@ export const CashClosePage: React.FC = () => {
   const { currentSession, cashMovements, closeCashSession, isLoading, error } = useCashStore();
   const { sales } = useSalesStore();
   const { currentUser } = useAuthStore();
+  const { terminals } = useAppStore();
   
   // Si no hay caja abierta
   if (!currentSession || currentSession.status !== 'OPEN') {
@@ -40,6 +41,10 @@ export const CashClosePage: React.FC = () => {
   const sessionSales = sales.filter(
     (s) => s.cashSessionId === currentSession.id && s.status === 'COMPLETED'
   );
+  
+  // Obtener nombre del terminal
+  const terminal = terminals.find(t => t.id === currentSession.terminalId);
+  const terminalName = terminal?.name || 'Caja Principal';
   
   // Desglose por método de pago (solo efectivo y transferencia)
   const cashSales = sessionSales.filter(s => s.paymentMethod === 'CASH');
@@ -437,10 +442,10 @@ export const CashClosePage: React.FC = () => {
                     month: 'long',
                     day: 'numeric',
                   }),
-                  cashier: currentUser?.username || 'Usuario',
+                  cashier: currentUser?.fullName || currentUser?.username || 'Usuario',
                   openedBy: currentSession!.user?.fullName || currentSession!.user?.username || 'Usuario',
                   closedBy: currentUser?.fullName || currentUser?.username || 'Usuario',
-                  terminal: 'Terminal 1',
+                  cashRegister: terminalName,
                   openTime: new Date(currentSession!.openedAt).toLocaleTimeString('es-BO', {
                     hour: '2-digit',
                     minute: '2-digit',
@@ -457,9 +462,18 @@ export const CashClosePage: React.FC = () => {
                       minute: '2-digit',
                     }),
                     total: sale.total,
-                    items: sale.items.length,
+                    paymentMethod: sale.paymentMethod,
+                    items: sale.items.map(item => ({
+                      name: item.productName,
+                      quantity: item.qty,
+                      unit: item.saleType === 'WEIGHT' ? 'kg' : 'und',
+                      price: item.unitPrice,
+                      subtotal: item.total,
+                    })),
                   })),
                   totalSales,
+                  totalCashSales,
+                  totalTransferSales,
                   totalCash: countedCashNum,
                   finalAmount: currentSession!.openingAmount + totalSales,
                   difference,

@@ -9,7 +9,7 @@ interface ThermalReceiptProps {
     cashier: string;
     openedBy?: string;
     closedBy?: string;
-    terminal: string;
+    cashRegister: string;
     openTime: string;
     closeTime: string;
     initialAmount: number;
@@ -17,9 +17,18 @@ interface ThermalReceiptProps {
       id: string;
       time: string;
       total: number;
-      items: number;
+      items: Array<{
+        name: string;
+        quantity: number;
+        unit: string;
+        price: number;
+        subtotal: number;
+      }>;
+      paymentMethod: string;
     }>;
     totalSales: number;
+    totalCashSales: number;
+    totalTransferSales: number;
     totalCash: number;
     finalAmount: number;
     difference: number;
@@ -28,14 +37,37 @@ interface ThermalReceiptProps {
 
 export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({ data }) => {
   return (
-    <div 
-      className="bg-white p-6 mx-auto font-mono text-xs"
-      style={{ 
-        width: '80mm',
-        minHeight: '200mm',
-        fontFamily: 'Courier New, monospace'
-      }}
-    >
+    <>
+      <style>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          .thermal-receipt, .thermal-receipt * {
+            visibility: visible;
+          }
+          .thermal-receipt {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 80mm !important;
+            margin: 0 !important;
+            padding: 10mm !important;
+          }
+          @page {
+            size: 80mm auto;
+            margin: 0;
+          }
+        }
+      `}</style>
+      <div 
+        className="thermal-receipt bg-white p-6 mx-auto font-mono text-xs"
+        style={{ 
+          width: '80mm',
+          minHeight: '200mm',
+          fontFamily: 'Courier New, monospace'
+        }}
+      >
       {/* Header */}
       <div className="text-center mb-4 border-b-2 border-dashed border-gray-400 pb-4">
         <div className="text-base font-bold mb-1">{data.business}</div>
@@ -46,7 +78,7 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({ data }) => {
       {/* Título del reporte */}
       <div className="text-center mb-4">
         <div className="text-sm font-bold">═══════════════════════════════</div>
-        <div className="text-base font-bold my-2">REPORTE DE CIERRE Z</div>
+        <div className="text-base font-bold my-2">CIERRE DE CAJA</div>
         <div className="text-sm font-bold">═══════════════════════════════</div>
       </div>
 
@@ -81,8 +113,8 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({ data }) => {
           </div>
         )}
         <div className="flex justify-between">
-          <span>Terminal:</span>
-          <span className="font-bold">{data.terminal}</span>
+          <span>Caja:</span>
+          <span className="font-bold">{data.cashRegister}</span>
         </div>
         <div className="flex justify-between">
           <span>Apertura:</span>
@@ -115,13 +147,27 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({ data }) => {
         ) : (
           <>
             {data.sales.map((sale, index) => (
-              <div key={sale.id} className="mb-2">
-                <div className="flex justify-between">
-                  <span>Venta #{index + 1}</span>
+              <div key={sale.id} className="mb-3 pb-2 border-b border-gray-200">
+                <div className="flex justify-between mb-1">
+                  <span className="font-bold">Venta #{index + 1}</span>
                   <span>{sale.time}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="ml-2">Items: {sale.items}</span>
+                <div className="text-xs text-gray-600 mb-1">
+                  {sale.paymentMethod === 'CASH' ? 'Efectivo' : 'Transferencia'}
+                </div>
+                {sale.items.map((item, idx) => (
+                  <div key={idx} className="ml-2 text-xs mb-1">
+                    <div className="flex justify-between">
+                      <span>{item.name}</span>
+                    </div>
+                    <div className="flex justify-between ml-2 text-gray-600">
+                      <span>{item.quantity.toFixed(3)} {item.unit} × Bs {item.price.toFixed(2)}</span>
+                      <span>Bs {item.subtotal.toFixed(2)}</span>
+                    </div>
+                  </div>
+                ))}
+                <div className="flex justify-between mt-1">
+                  <span className="ml-2 font-bold">Total:</span>
                   <span className="font-bold">Bs {sale.total.toFixed(2)}</span>
                 </div>
               </div>
@@ -147,16 +193,28 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({ data }) => {
           <span>Monto Inicial:</span>
           <span>Bs {data.initialAmount.toFixed(2)}</span>
         </div>
-        <div className="flex justify-between">
+        
+        <div className="border-t border-gray-200 my-1"></div>
+        <div className="text-xs font-bold mb-1">VENTAS POR MÉTODO DE PAGO:</div>
+        
+        <div className="flex justify-between text-xs ml-2">
+          <span>Efectivo:</span>
+          <span>Bs {data.totalCashSales.toFixed(2)}</span>
+        </div>
+        <div className="flex justify-between text-xs ml-2">
+          <span>Transferencia:</span>
+          <span>Bs {data.totalTransferSales.toFixed(2)}</span>
+        </div>
+        <div className="flex justify-between font-bold">
           <span>Total Ventas:</span>
           <span>Bs {data.totalSales.toFixed(2)}</span>
         </div>
         
         <div className="border-t border-gray-300 my-2"></div>
         
-        <div className="flex justify-between font-bold">
-          <span>ESPERADO EN CAJA:</span>
-          <span>Bs {(data.initialAmount + data.totalSales).toFixed(2)}</span>
+        <div className="flex justify-between font-bold text-sm">
+          <span>EFECTIVO ESPERADO:</span>
+          <span>Bs {(data.initialAmount + data.totalCashSales).toFixed(2)}</span>
         </div>
         <div className="flex justify-between font-bold text-sm">
           <span>EFECTIVO CONTADO:</span>
@@ -190,5 +248,6 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({ data }) => {
         <div className="mt-2">FIN DEL REPORTE</div>
       </div>
     </div>
+    </>
   );
 };
