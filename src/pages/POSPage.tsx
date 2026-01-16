@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Search, ShoppingCart, Trash2, Plus, Minus, Star, Package, Weight } from 'lucide-react';
+import { Search, ShoppingCart, Trash2, Plus, Minus, Star, Package, Weight, Printer } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button, Modal } from '../components/ui';
-import { useProductStore, useCartStore, useCashStore, useSalesStore } from '../store';
+import { useProductStore, useCartStore, useCashStore, useSalesStore, useAuthStore } from '../store';
+import { ThermalReceiptSale } from '../components/ThermalReceiptSale';
 import type { Product, ProductBatch } from '../types';
 
 export const POSPage: React.FC = () => {
@@ -24,6 +25,7 @@ export const POSPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { currentSession } = useCashStore();
+  const { currentUser } = useAuthStore();
   const { products, categories, getFavoriteProducts, toggleProductFavorite } = useProductStore();
   const { cartItems, addToCart, addBatchToCart, updateCartItem, removeFromCart, clearCart, getCartTotal } = useCartStore();
   const { completeSale } = useSalesStore();
@@ -70,6 +72,17 @@ export const POSPage: React.FC = () => {
       setShowBatchModal(true);
       await loadBatches(product.id);
       return;
+    }
+    
+    // Verificar stock disponible para productos por unidad
+    if (product.saleType === 'UNIT' && product.inventoryType === 'UNIT') {
+      const currentInCart = cartItems.find(item => item.productId === product.id)?.qty || 0;
+      const availableStock = (product.stockUnits || 0) - currentInCart;
+      
+      if (availableStock <= 0) {
+        alert(`No hay stock disponible de ${product.name}`);
+        return;
+      }
     }
     
     // Para otros productos, agregar normalmente
@@ -154,6 +167,16 @@ export const POSPage: React.FC = () => {
       // Unidades: debe ser entero >= 1
       const parsed = parseInt(normalizedValue, 10);
       finalQty = isNaN(parsed) || parsed < 1 ? 1 : parsed;
+      
+      // Verificar stock disponible para productos por unidad
+      const cartItem = cartItems.find(item => item.id === itemId);
+      if (cartItem && cartItem.product.inventoryType === 'UNIT' && cartItem.product.stockUnits !== undefined) {
+        const maxStock = cartItem.product.stockUnits;
+        if (finalQty > maxStock) {
+          alert(`Stock insuficiente. Solo hay ${maxStock} unidades disponibles de ${cartItem.product.name}`);
+          finalQty = maxStock;
+        }
+      }
     } else {
       // Peso: debe ser >= 0.01 con máx 2 decimales
       const parsed = parseFloat(normalizedValue);
@@ -223,6 +246,15 @@ export const POSPage: React.FC = () => {
     if (orderId) {
       navigate('/orders', { replace: true });
     }
+  };
+  
+  const handlePrintReceipt = () => {
+    window.print();
+  };
+  
+  const getUserDisplayName = () => {
+    if (!currentUser) return 'N/A';
+    return currentUser.fullName || currentUser.username;
   };
   
   const cartTotal = Math.round(getCartTotal());
@@ -329,10 +361,18 @@ export const POSPage: React.FC = () => {
         {/* Grid de Productos */}
         <div className="flex-1 overflow-y-auto p-4">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {filteredProducts.map((product) => (
+            {filteredProducts.map((product) => {
+              // Calcular stock disponible para productos por unidad
+              const currentInCart = cartItems.find(item => item.productId === product.id)?.qty || 0;
+              const availableStock = product.saleType === 'UNIT' && product.inventoryType === 'UNIT' && product.stockUnits !== undefined
+                ? product.stockUnits - currentInCart
+                : null;
+              const isOutOfStock = availableStock !== null && availableStock <= 0;
+              
+              return (
               <div
                 key={product.id}
-                className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 hover:shadow-md hover:border-primary-300 transition-all relative group"
+                className={`bg-white rounded-lg p-4 shadow-sm border border-gray-200 hover:shadow-md hover:border-primary-300 transition-all relative group ${isOutOfStock ? 'opacity-60' : ''}`}
               >
                 <button
                   onClick={(e) => {
@@ -344,11 +384,26 @@ export const POSPage: React.FC = () => {
                 >
                   <Star className={`w-4 h-4 ${product.isFavorite ? 'text-accent-500 fill-current' : 'text-gray-300'}`} />
                 </button>
+                
+                {/* Indicador de stock */}
+                {availableStock !== null && (
+                  <div className="absolute top-2 left-2 z-10">
+                    <span className={`text-xs px-2 py-1 rounded-full font-semibold ${
+                      availableStock <= 0 ? 'bg-red-100 text-red-700' :
+                      availableStock <= 5 ? 'bg-yellow-100 text-yellow-700' :
+                      'bg-green-100 text-green-700'
+                    }`}>
+                      {availableStock <= 0 ? 'Sin stock' : `Stock: ${availableStock}`}
+                    </span>
+                  </div>
+                )}
+                
                 <button
                   onClick={() => handleAddToCart(product)}
                   className="w-full text-left"
+                  disabled={isOutOfStock}
                 >
-                <h3 className="font-bold text-gray-900 mb-1 line-clamp-2 pr-8">
+                <h3 className="font-bold text-gray-900 mb-1 line-clamp-2 pr-8 mt-6">
                   {product.name}
                 </h3>
                 <p className="text-xs text-gray-500 mb-2">{product.sku}</p>
@@ -359,13 +414,16 @@ export const POSPage: React.FC = () => {
                     </p>
                     <p className="text-xs text-gray-500">por {product.unit}</p>
                   </div>
-                  <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Plus className="w-5 h-5 text-white" />
-                  </div>
+                  {!isOutOfStock && (
+                    <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Plus className="w-5 h-5 text-white" />
+                    </div>
+                  )}
                 </div>
                 </button>
               </div>
-            ))}
+              );
+            })}
           </div>
           
           {filteredProducts.length === 0 && (
@@ -476,7 +534,17 @@ export const POSPage: React.FC = () => {
                     <button
                       onClick={() => {
                         const step = item.product.saleType === 'UNIT' ? 1 : 0.5;
-                        updateCartItem(item.id, item.qty + step);
+                        const newQty = item.qty + step;
+                        
+                        // Verificar stock para productos por unidad
+                        if (item.product.saleType === 'UNIT' && item.product.inventoryType === 'UNIT' && item.product.stockUnits !== undefined) {
+                          if (newQty > item.product.stockUnits) {
+                            alert(`Stock insuficiente. Solo hay ${item.product.stockUnits} unidades disponibles`);
+                            return;
+                          }
+                        }
+                        
+                        updateCartItem(item.id, newQty);
                       }}
                       className="w-7 h-7 bg-white border border-gray-300 rounded flex items-center justify-center hover:bg-gray-100"
                     >
@@ -536,7 +604,23 @@ export const POSPage: React.FC = () => {
         size="md"
       >
         <div className="space-y-6">
-          <div className="bg-gray-50 rounded-lg p-4">
+          {/* Resumen de items para la nota de venta */}
+          <div className="bg-gray-50 rounded-lg p-4 max-h-48 overflow-y-auto">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">Resumen de Venta</h3>
+            <div className="space-y-2">
+              {cartItems.map((item) => (
+                <div key={item.id} className="flex justify-between text-sm">
+                  <span className="text-gray-600">
+                    {item.product.name} x {item.qty.toFixed(item.product.saleType === 'WEIGHT' ? 3 : 0)} {item.product.unit}
+                    {item.batchNumber && <span className="text-xs text-gray-500 ml-1">(Lote: {item.batchNumber})</span>}
+                  </span>
+                  <span className="font-semibold">Bs {(item.qty * item.unitPrice).toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          <div className="bg-primary-50 rounded-lg p-4 border-2 border-primary-200">
             <p className="text-sm text-gray-600 mb-1">Total a Cobrar</p>
             <p className="text-4xl font-bold text-primary-700">
               Bs {cartTotal}
@@ -635,59 +719,83 @@ export const POSPage: React.FC = () => {
         isOpen={showSuccessModal}
         onClose={handleNewSale}
         title="¡Venta Exitosa!"
-        size="md"
+        size="lg"
       >
-        <div className="text-center space-y-6">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-            <svg
-              className="w-12 h-12 text-green-600"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
-          </div>
-          
-          <div>
+        <div className="space-y-6">
+          {/* Mensaje de éxito (no se imprime) */}
+          <div className="text-center no-print">
+            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg
+                className="w-12 h-12 text-green-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            </div>
             <h3 className="text-2xl font-bold text-gray-900 mb-2">
               Venta Completada
             </h3>
-            <p className="text-gray-600">
+            <p className="text-gray-600 mb-4">
               Venta registrada exitosamente
             </p>
           </div>
           
-          <div className="bg-gray-50 rounded-lg p-6">
-            <p className="text-sm text-gray-600 mb-1">Total</p>
-            <p className="text-4xl font-bold text-primary-700">
-              Bs {lastSale?.total.toFixed(2)}
-            </p>
-            
-            {paymentMethod === 'CASH' && change > 0 && (
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <p className="text-sm text-gray-600 mb-1">Cambio</p>
-                <p className="text-2xl font-bold text-green-600">
-                  Bs {change.toFixed(2)}
-                </p>
-              </div>
-            )}
-          </div>
+          {/* Vista previa de la nota de venta (se imprimirá) */}
+          {lastSale && (
+            <ThermalReceiptSale
+              data={{
+                saleId: lastSale.id,
+                date: new Date(lastSale.createdAt).toLocaleDateString('es-BO', {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                }),
+                time: new Date(lastSale.createdAt).toLocaleTimeString('es-BO', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                }),
+                cashier: getUserDisplayName(),
+                items: lastSale.items.map((item: any) => ({
+                  name: item.productName,
+                  quantity: item.qty,
+                  unit: item.unit,
+                  price: item.unitPrice,
+                  subtotal: item.total,
+                  batchNumber: item.batchNumber,
+                  actualWeight: item.actualWeight,
+                })),
+                subtotal: lastSale.subtotal,
+                discount: lastSale.discount || 0,
+                total: lastSale.total,
+                paymentMethod: lastSale.paymentMethod,
+                cashPaid: paymentMethod === 'CASH' ? cashPaidNum : undefined,
+                change: paymentMethod === 'CASH' && change > 0 ? change : undefined,
+              }}
+            />
+          )}
           
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-sm text-blue-700">
-              💡 En producción, aquí se imprimiría el ticket automáticamente
-            </p>
+          {/* Botones de acción (no se imprimen) */}
+          <div className="flex space-x-3 no-print">
+            <Button 
+              onClick={handlePrintReceipt} 
+              variant="outline" 
+              size="lg" 
+              className="flex-1"
+            >
+              <Printer className="w-5 h-5 mr-2" />
+              Imprimir
+            </Button>
+            <Button onClick={handleNewSale} variant="primary" size="lg" className="flex-1">
+              Nueva Venta
+            </Button>
           </div>
-          
-          <Button onClick={handleNewSale} variant="primary" size="lg" className="w-full">
-            Nueva Venta
-          </Button>
         </div>
       </Modal>
 
