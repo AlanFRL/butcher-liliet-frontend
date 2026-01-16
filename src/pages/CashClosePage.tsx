@@ -18,6 +18,17 @@ export const CashClosePage: React.FC = () => {
   const { currentUser } = useAuthStore();
   const { terminals } = useAppStore();
   
+  // Helper para obtener nombre de usuario formateado
+  const getUserDisplayName = (user: { fullName?: string; username?: string } | undefined | null): string => {
+    if (!user) return 'Usuario';
+    if (user.fullName) return user.fullName;
+    if (user.username) {
+      // Capitalizar username: "administrador" -> "Administrador"
+      return user.username.charAt(0).toUpperCase() + user.username.slice(1);
+    }
+    return 'Usuario';
+  };
+  
   // Si no hay caja abierta
   if (!currentSession || currentSession.status !== 'OPEN') {
     return (
@@ -349,36 +360,24 @@ export const CashClosePage: React.FC = () => {
         </div>
         
         {/* Botones */}
-        <div className="space-y-2 pt-5 border-t border-gray-200 mt-5">
+        <div className="flex space-x-3 pt-5 border-t border-gray-200 mt-5">
           <Button
-            onClick={() => setShowReceipt(true)}
+            onClick={() => navigate('/dashboard')}
             variant="outline"
             size="lg"
-            className="w-full flex items-center justify-center"
+            className="flex-1"
           >
-            <Printer className="w-5 h-5 mr-2" />
-            Vista Previa Reporte Z
+            Cancelar
           </Button>
-          
-          <div className="flex space-x-3">
-            <Button
-              onClick={() => navigate('/dashboard')}
-              variant="outline"
-              size="lg"
-              className="flex-1"
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={() => setShowConfirm(true)}
-              disabled={!countedCash || (Math.abs(difference) > 0.01 && !note)}
-              variant="danger"
-              size="lg"
-              className="flex-1"
-            >
-              Cerrar Caja
-            </Button>
-          </div>
+          <Button
+            onClick={() => setShowConfirm(true)}
+            disabled={!countedCash || (Math.abs(difference) > 0.01 && !note)}
+            variant="danger"
+            size="lg"
+            className="flex-1"
+          >
+            Cerrar Caja
+          </Button>
         </div>
       </div>
       
@@ -421,7 +420,7 @@ export const CashClosePage: React.FC = () => {
           <div className="bg-gray-100 rounded-lg p-6 max-w-md w-full my-8">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold text-gray-900">
-                Reporte de Cierre Z
+                Cierre de Caja Exitoso
               </h3>
               <button
                 onClick={() => setShowReceipt(false)}
@@ -442,9 +441,9 @@ export const CashClosePage: React.FC = () => {
                     month: 'long',
                     day: 'numeric',
                   }),
-                  cashier: currentUser?.fullName || currentUser?.username || 'Usuario',
-                  openedBy: currentSession!.user?.fullName || currentSession!.user?.username || 'Usuario',
-                  closedBy: currentUser?.fullName || currentUser?.username || 'Usuario',
+                  cashier: getUserDisplayName(currentUser),
+                  openedBy: getUserDisplayName(currentSession!.user),
+                  closedBy: getUserDisplayName(currentUser),
                   cashRegister: terminalName,
                   openTime: new Date(currentSession!.openedAt).toLocaleTimeString('es-BO', {
                     hour: '2-digit',
