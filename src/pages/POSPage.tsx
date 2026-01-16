@@ -716,8 +716,8 @@ export const POSPage: React.FC = () => {
       
       {/* Modal de Éxito - Reporte de Venta */}
       {showSuccessModal && lastSale && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-gray-100 rounded-lg p-6 max-w-md w-full my-8">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-100 rounded-lg p-6 max-w-md w-full max-h-[85vh] flex flex-col">
             <div className="flex justify-between items-center mb-4 no-print">
               <h3 className="text-xl font-bold text-gray-900">
                 ¡Venta Exitosa!
@@ -756,7 +756,7 @@ export const POSPage: React.FC = () => {
             </div>
             
             {/* Vista previa de la nota de venta (se imprimirá) */}
-            <div className="overflow-y-auto" style={{ maxHeight: '60vh' }}>
+            <div className="overflow-y-auto flex-1">
               <ThermalReceiptSale
                 data={{
                   saleId: lastSale.id,

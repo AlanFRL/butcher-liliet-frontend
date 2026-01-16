@@ -51,13 +51,13 @@ export const ThermalReceiptSale: React.FC<ThermalReceiptSaleProps> = ({ data }) 
             position: absolute;
             left: 0;
             top: 0;
-            width: 80mm !important;
+            width: 60mm !important;
             margin: 0 !important;
-            padding: 10mm !important;
+            padding: 8mm !important;
           }
           
           @page {
-            size: 80mm auto;
+            size: 60mm auto;
             margin: 0;
           }
           
@@ -68,7 +68,7 @@ export const ThermalReceiptSale: React.FC<ThermalReceiptSaleProps> = ({ data }) 
         
         @media screen {
           .thermal-receipt-sale {
-            max-width: 80mm;
+            max-width: 60mm;
             margin: 0 auto;
           }
         }
@@ -77,7 +77,7 @@ export const ThermalReceiptSale: React.FC<ThermalReceiptSaleProps> = ({ data }) 
       <div 
         className="thermal-receipt-sale bg-white" 
         style={{ 
-          width: '80mm',
+          width: '60mm',
           fontFamily: 'Courier New, monospace', 
           fontSize: '12px', 
           padding: '16px', 

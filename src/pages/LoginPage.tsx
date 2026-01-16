@@ -38,7 +38,7 @@ export const LoginPage: React.FC = () => {
   // Usuarios de demo para mostrar
   const demoUsers = [
     { username: 'admin', pin: '1234', role: 'Administrador' },
-    { username: 'cajero1', pin: '5678', role: 'Cajero' },
+    { username: 'cajero1', pin: '1111', role: 'Cajero' },
   ];
   
   return (
