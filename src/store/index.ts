@@ -1218,10 +1218,10 @@ export const useOrderStore = create<OrderState>((set, get) => ({
       // Update local state with full order data
       set((state) => ({
         orders: state.orders.map((order) =>
-          order.id === orderId ? response : order
+          order.id === orderId ? response as unknown as Order : order
         ),
         isLoading: false,
-      }));
+      }) as Partial<OrderState>);
 
       console.log(`✅ Order ${orderId} updated`);
       return true;

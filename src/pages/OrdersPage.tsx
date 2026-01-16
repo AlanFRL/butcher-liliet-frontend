@@ -1664,7 +1664,7 @@ const EditOrderModal: React.FC<{
       deliveryDate,
       deliveryTime,
       notes: notes.trim() || undefined,
-      items: orderItems,
+      items: orderItems as any,
     });
 
     if (result) {
