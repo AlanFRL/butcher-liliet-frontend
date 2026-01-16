@@ -39,18 +39,35 @@ export const ThermalReceiptSale: React.FC<ThermalReceiptSaleProps> = ({ data }) 
     <>
       <style>{`
         @media print {
+          @page {
+            size: 80mm auto;
+            margin: 0;
+          }
+          
+          html, body {
+            margin: 0;
+            padding: 0;
+            width: 80mm;
+          }
+          
           body * {
             visibility: hidden;
           }
+          
           .thermal-receipt-sale, .thermal-receipt-sale * {
             visibility: visible;
           }
+          
           .thermal-receipt-sale {
             position: absolute;
             left: 0;
             top: 0;
-            width: 100%;
+            width: 80mm;
+            margin: 0;
+            padding: 10mm;
+            box-sizing: border-box;
           }
+          
           .no-print {
             display: none !important;
           }
@@ -64,7 +81,7 @@ export const ThermalReceiptSale: React.FC<ThermalReceiptSaleProps> = ({ data }) 
         }
       `}</style>
       
-      <div className="thermal-receipt-sale bg-white p-4" style={{ fontFamily: 'monospace', fontSize: '12px' }}>
+      <div className="thermal-receipt-sale bg-white" style={{ fontFamily: 'monospace', fontSize: '12px', padding: '16px', boxSizing: 'border-box' }}>
         {/* Header */}
         <div className="text-center mb-4 pb-3 border-b-2 border-dashed border-gray-400">
           <h1 className="text-lg font-bold mb-1">CARNICERÍA LILIETH</h1>
