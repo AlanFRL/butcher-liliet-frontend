@@ -714,90 +714,99 @@ export const POSPage: React.FC = () => {
         </div>
       </Modal>
       
-      {/* Modal de Éxito */}
-      <Modal
-        isOpen={showSuccessModal}
-        onClose={handleNewSale}
-        title="¡Venta Exitosa!"
-        size="lg"
-      >
-        <div className="space-y-6">
-          {/* Mensaje de éxito (no se imprime) */}
-          <div className="text-center no-print">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg
-                className="w-12 h-12 text-green-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+      {/* Modal de Éxito - Reporte de Venta */}
+      {showSuccessModal && lastSale && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-gray-100 rounded-lg p-6 max-w-md w-full my-8">
+            <div className="flex justify-between items-center mb-4 no-print">
+              <h3 className="text-xl font-bold text-gray-900">
+                ¡Venta Exitosa!
+              </h3>
+              <button
+                onClick={handleNewSale}
+                className="text-gray-500 hover:text-gray-700"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
+                ✕
+              </button>
             </div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">
-              Venta Completada
-            </h3>
-            <p className="text-gray-600 mb-4">
-              Venta registrada exitosamente
-            </p>
-          </div>
-          
-          {/* Vista previa de la nota de venta (se imprimirá) */}
-          {lastSale && (
-            <ThermalReceiptSale
-              data={{
-                saleId: lastSale.id,
-                date: new Date(lastSale.createdAt).toLocaleDateString('es-BO', {
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit',
-                }),
-                time: new Date(lastSale.createdAt).toLocaleTimeString('es-BO', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                }),
-                cashier: getUserDisplayName(),
-                items: lastSale.items.map((item: any) => ({
-                  name: item.productName,
-                  quantity: item.qty,
-                  unit: item.unit,
-                  price: item.unitPrice,
-                  subtotal: item.total,
-                  batchNumber: item.batchNumber,
-                  actualWeight: item.actualWeight,
-                })),
-                subtotal: lastSale.subtotal,
-                discount: lastSale.discount || 0,
-                total: lastSale.total,
-                paymentMethod: lastSale.paymentMethod,
-                cashPaid: lastSale.cashAmount || undefined,
-                change: lastSale.changeAmount || undefined,
-              }}
-            />
-          )}
-          
-          {/* Botones de acción (no se imprimen) */}
-          <div className="flex space-x-3 no-print">
-            <Button 
-              onClick={handlePrintReceipt} 
-              variant="outline" 
-              size="lg" 
-              className="flex-1"
-            >
-              <Printer className="w-5 h-5 mr-2" />
-              Imprimir
-            </Button>
-            <Button onClick={handleNewSale} variant="primary" size="lg" className="flex-1">
-              Nueva Venta
-            </Button>
+            
+            {/* Mensaje de éxito (no se imprime) */}
+            <div className="text-center mb-4 no-print">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <svg
+                  className="w-10 h-10 text-green-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              </div>
+              <p className="text-lg font-bold text-gray-900 mb-1">
+                Venta Completada
+              </p>
+              <p className="text-sm text-gray-600">
+                Venta registrada exitosamente
+              </p>
+            </div>
+            
+            {/* Vista previa de la nota de venta (se imprimirá) */}
+            <div className="overflow-y-auto" style={{ maxHeight: '60vh' }}>
+              <ThermalReceiptSale
+                data={{
+                  saleId: lastSale.id,
+                  date: new Date(lastSale.createdAt).toLocaleDateString('es-BO', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                  }),
+                  time: new Date(lastSale.createdAt).toLocaleTimeString('es-BO', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  }),
+                  cashier: getUserDisplayName(),
+                  items: lastSale.items.map((item: any) => ({
+                    name: item.productName,
+                    quantity: item.qty,
+                    unit: item.unit,
+                    price: item.unitPrice,
+                    subtotal: item.total,
+                    batchNumber: item.batchNumber,
+                    actualWeight: item.actualWeight,
+                  })),
+                  subtotal: lastSale.subtotal,
+                  discount: lastSale.discount || 0,
+                  total: lastSale.total,
+                  paymentMethod: lastSale.paymentMethod,
+                  cashPaid: lastSale.cashAmount || undefined,
+                  change: lastSale.changeAmount || undefined,
+                }}
+              />
+            </div>
+            
+            {/* Botones de acción (no se imprimen) */}
+            <div className="flex space-x-3 mt-4 no-print">
+              <Button 
+                onClick={handlePrintReceipt} 
+                variant="primary" 
+                size="lg" 
+                className="flex-1 flex items-center justify-center"
+              >
+                <Printer className="w-5 h-5 mr-2" />
+                Imprimir
+              </Button>
+              <Button onClick={handleNewSale} variant="outline" size="lg" className="flex-1">
+                Nueva Venta
+              </Button>
+            </div>
           </div>
         </div>
-      </Modal>
+      )}
 
       {/* Modal de Selección de Lotes */}
       <Modal
