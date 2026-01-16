@@ -80,7 +80,8 @@ export const POSPage: React.FC = () => {
   const loadBatches = async (productId: string) => {
     setLoadingBatches(true);
     try {
-      const response = await fetch('http://localhost:3000/api/product-batches?includeReservationStatus=true', {
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+      const response = await fetch(`${API_BASE_URL}/product-batches?includeReservationStatus=true`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('butcher_auth_token')}`
         }
