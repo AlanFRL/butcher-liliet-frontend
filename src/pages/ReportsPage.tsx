@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart3, TrendingUp, Package, DollarSign, Eye, Receipt } from 'lucide-react';
 import { Button, Modal } from '../components/ui';
-import { useSalesStore, useProductStore, useOrderStore } from '../store';
+import { useSalesStore, useOrderStore } from '../store';
 import { salesApi } from '../services/api';
 import type { Sale } from '../types';
 

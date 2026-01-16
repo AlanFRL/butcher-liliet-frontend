@@ -15,7 +15,7 @@ export const OrdersPage: React.FC = () => {
   const { showToast, ToastComponent } = useToast();
 
   const navigate = useNavigate();
-  const { orders, isLoading, error, loadOrders, getOverdueOrders } = useOrderStore();
+  const { orders, error, loadOrders, getOverdueOrders } = useOrderStore();
   const { loadOrderToCart } = useCartStore();
   const overdueOrders = getOverdueOrders();
 

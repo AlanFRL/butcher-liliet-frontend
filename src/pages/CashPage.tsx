@@ -20,11 +20,11 @@ export const CashPage: React.FC = () => {
   const salesCount = sessionSales.length;
   
   const cashIn = cashMovements
-    .filter((m) => m.type === 'IN')
+    .filter((m) => m.type === 'DEPOSIT')
     .reduce((sum, m) => sum + m.amount, 0);
   
   const cashOut = cashMovements
-    .filter((m) => m.type === 'OUT')
+    .filter((m) => m.type === 'WITHDRAWAL')
     .reduce((sum, m) => sum + m.amount, 0);
   
   const expectedCash = currentSession
@@ -209,12 +209,12 @@ export const CashPage: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
                         className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          movement.type === 'IN'
+                          movement.type === 'DEPOSIT'
                             ? 'bg-green-100 text-green-800'
                             : 'bg-red-100 text-red-800'
                         }`}
                       >
-                        {movement.type === 'IN' ? 'Ingreso' : 'Retiro'}
+                        {movement.type === 'DEPOSIT' ? 'Ingreso' : 'Retiro'}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
@@ -223,10 +223,10 @@ export const CashPage: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-right font-semibold">
                       <span
                         className={
-                          movement.type === 'IN' ? 'text-green-600' : 'text-red-600'
+                          movement.type === 'DEPOSIT' ? 'text-green-600' : 'text-red-600'
                         }
                       >
-                        {movement.type === 'IN' ? '+' : '-'}Bs {movement.amount.toFixed(2)}
+                        {movement.type === 'DEPOSIT' ? '+' : '-'}Bs {movement.amount.toFixed(2)}
                       </span>
                     </td>
                   </tr>

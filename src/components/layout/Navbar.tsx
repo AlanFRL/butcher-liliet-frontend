@@ -10,9 +10,7 @@ import {
   LogOut,
   User,
   ClipboardList,
-  Boxes,
-  Users,
-  Monitor
+  Boxes
 } from 'lucide-react';
 import { useAuthStore } from '../../store';
 

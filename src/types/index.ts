@@ -28,6 +28,8 @@ export type InventoryType =
   | 'VACUUM_PACKED'   // Carnes al vacío - unidades con precio variable (requiere lotes)
   | 'UNIT_STOCK'      // Legacy: Productos por unidad con control de stock
   | 'UNIT_VARIABLE'   // Legacy: Carnes al vacío - unidades con precio variable en código de barras
+  | 'BATCH'           // Productos con lotes
+  | 'REGULAR'         // Productos regulares sin lotes
   | 'WEIGHT_MANUAL'   // Legacy: Carnes de corte - peso manual sin control de stock
   | 'NO_STOCK';       // Legacy: Productos sin control de inventario
 
@@ -273,6 +275,7 @@ export interface OrderItem {
   unit: string;
   unitPrice: number;
   total: number;
+  discount?: number; // Descuento aplicado al item
   notes?: string; // Notas específicas del item (ej: "corte fino", "sin grasa")
   batch?: ProductBatch; // Información del lote (si aplica)
 }
