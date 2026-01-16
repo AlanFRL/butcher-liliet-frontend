@@ -450,12 +450,79 @@ export const productsApi = {
 
 export const categoriesApi = {
   /**
-   * Listar todas las categorías
+   * Listar todas las categorías con productCount
    */
   getAll: async (includeInactive = false): Promise<any[]> => {
     const query = includeInactive ? '?includeInactive=true' : '';
     return apiFetch<any[]>(`/categories${query}`, {
       method: 'GET',
+    });
+  },
+
+  /**
+   * Obtener categoría por ID
+   */
+  getById: async (id: string): Promise<any> => {
+    return apiFetch<any>(`/categories/${id}`, {
+      method: 'GET',
+    });
+  },
+
+  /**
+   * Obtener conteo de productos de una categoría
+   */
+  getProductCount: async (id: string): Promise<number> => {
+    return apiFetch<number>(`/categories/${id}/product-count`, {
+      method: 'GET',
+    });
+  },
+
+  /**
+   * Crear nueva categoría
+   */
+  create: async (data: {
+    name: string;
+    description?: string;
+  }): Promise<any> => {
+    return apiFetch<any>('/categories', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Actualizar categoría
+   */
+  update: async (
+    id: string,
+    data: {
+      name?: string;
+      description?: string;
+      isActive?: boolean;
+    }
+  ): Promise<any> => {
+    return apiFetch<any>(`/categories/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Desactivar categoría (soft delete)
+   */
+  deactivate: async (id: string): Promise<void> => {
+    return apiFetch<void>(`/categories/${id}/deactivate`, {
+      method: 'PATCH',
+    });
+  },
+
+  /**
+   * Eliminar categoría permanentemente (hard delete)
+   * Solo si no tiene productos asociados
+   */
+  delete: async (id: string): Promise<void> => {
+    return apiFetch<void>(`/categories/${id}`, {
+      method: 'DELETE',
     });
   },
 };
