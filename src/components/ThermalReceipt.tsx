@@ -50,26 +50,47 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({ data }) => {
             position: absolute;
             left: 0;
             top: 0;
-            width: 80mm !important;
+            width: 62mm !important;
             margin: 0 !important;
-            padding: 10mm !important;
+            padding: 2mm 3mm !important;
+            box-sizing: border-box !important;
+          }
+          .thermal-receipt * {
+            max-width: 100% !important;
+            box-sizing: border-box !important;
           }
           @page {
-            size: 80mm auto;
+            size: 62mm auto;
             margin: 0;
+          }
+          /* Ajustes específicos para Brother QL-800 */
+          .thermal-receipt {
+            font-size: 10px !important;
+            line-height: 1.2 !important;
+          }
+          .thermal-receipt .text-base {
+            font-size: 11px !important;
+          }
+          .thermal-receipt .text-sm {
+            font-size: 10px !important;
+          }
+          .thermal-receipt .text-xs {
+            font-size: 9px !important;
           }
         }
       `}</style>
       <div 
         className="thermal-receipt bg-white p-6 mx-auto font-mono text-xs"
         style={{ 
-          width: '80mm',
+          width: '62mm',
           minHeight: '200mm',
-          fontFamily: 'Courier New, monospace'
+          fontFamily: 'Courier New, monospace',
+          maxWidth: '62mm',
+          boxSizing: 'border-box'
         }}
       >
       {/* Header */}
-      <div className="text-center mb-4 border-b-2 border-dashed border-gray-400 pb-4">
+      <div className="text-center mb-3 border-b-2 border-dashed border-gray-400 pb-3">
         <div className="text-base font-bold mb-1">{data.business}</div>
         <div className="text-xs">{data.address}</div>
         <div className="text-xs">Tel: {data.phone}</div>
@@ -77,9 +98,9 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({ data }) => {
 
       {/* Título del reporte */}
       <div className="text-center mb-4">
-        <div className="text-sm font-bold">═══════════════════════════════</div>
+        <div className="text-sm font-bold">═══════════════════</div>
         <div className="text-base font-bold my-2">CIERRE DE CAJA</div>
-        <div className="text-sm font-bold">═══════════════════════════════</div>
+        <div className="text-sm font-bold">═══════════════════</div>
       </div>
 
       {/* Información del turno */}
@@ -244,7 +265,7 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({ data }) => {
       <div className="text-center text-xs text-gray-600 mt-6">
         <div>Gracias por su trabajo</div>
         <div className="mt-2">Sistema POS v1.0</div>
-        <div className="mt-4">═══════════════════════════════</div>
+        <div className="mt-4">═══════════════════</div>
         <div className="mt-2">FIN DEL REPORTE</div>
       </div>
     </div>
