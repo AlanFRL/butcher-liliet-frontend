@@ -40,33 +40,50 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({ data }) => {
     <>
       <style>{`
         @media print {
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          
+          body {
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          
           body * {
             visibility: hidden;
           }
+          
           .thermal-receipt, .thermal-receipt * {
             visibility: visible;
           }
+          
           .thermal-receipt {
             position: absolute;
             left: 0;
             top: 0;
-            width: 62mm !important;
+            width: 58mm !important;
+            max-width: 58mm !important;
             margin: 0 !important;
-            padding: 2mm 3mm !important;
+            padding: 2mm !important;
             box-sizing: border-box !important;
+            transform-origin: top left;
           }
+          
           .thermal-receipt * {
             max-width: 100% !important;
             box-sizing: border-box !important;
           }
+          
           @page {
             size: 62mm auto;
-            margin: 0;
+            margin: 0 !important;
           }
+          
           /* Ajustes específicos para Brother QL-800 */
           .thermal-receipt {
-            font-size: 10px !important;
-            line-height: 1.2 !important;
+            font-size: 9px !important;
+            line-height: 1.3 !important;
           }
           .thermal-receipt .text-base {
             font-size: 11px !important;
@@ -77,6 +94,30 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({ data }) => {
           .thermal-receipt .text-xs {
             font-size: 9px !important;
           }
+          
+          .thermal-receipt .mb-4 {
+            margin-bottom: 8px !important;
+          }
+          
+          .thermal-receipt .mb-3 {
+            margin-bottom: 6px !important;
+          }
+          
+          .thermal-receipt .mb-2 {
+            margin-bottom: 4px !important;
+          }
+          
+          .thermal-receipt .pb-4 {
+            padding-bottom: 8px !important;
+          }
+          
+          .thermal-receipt .pb-3 {
+            padding-bottom: 6px !important;
+          }
+          
+          .thermal-receipt .pb-2 {
+            padding-bottom: 4px !important;
+          }
         }
       `}</style>
       <div 
@@ -86,7 +127,8 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({ data }) => {
           minHeight: '200mm',
           fontFamily: 'Courier New, monospace',
           maxWidth: '62mm',
-          boxSizing: 'border-box'
+          boxSizing: 'border-box',
+          padding: '8px'
         }}
       >
       {/* Header */}

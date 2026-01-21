@@ -39,6 +39,16 @@ export const ThermalReceiptSale: React.FC<ThermalReceiptSaleProps> = ({ data }) 
     <>
       <style>{`
         @media print {
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          
+          body {
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          
           body * {
             visibility: hidden;
           }
@@ -51,14 +61,76 @@ export const ThermalReceiptSale: React.FC<ThermalReceiptSaleProps> = ({ data }) 
             position: absolute;
             left: 0;
             top: 0;
-            width: 60mm !important;
+            width: 58mm !important;
+            max-width: 58mm !important;
             margin: 0 !important;
-            padding: 8mm !important;
+            padding: 2mm !important;
+            box-sizing: border-box !important;
+            transform-origin: top left;
+          }
+          
+          .thermal-receipt-sale * {
+            box-sizing: border-box !important;
           }
           
           @page {
-            size: 60mm auto;
-            margin: 0;
+            size: 62mm auto;
+            margin: 0 !important;
+          }
+          
+          /* Ajustes de tamaño de fuente para impresión */
+          .thermal-receipt-sale {
+            font-size: 9px !important;
+            line-height: 1.3 !important;
+          }
+          
+          .thermal-receipt-sale h1 {
+            font-size: 14px !important;
+            margin: 0 0 4px 0 !important;
+          }
+          
+          .thermal-receipt-sale .text-xs {
+            font-size: 8px !important;
+          }
+          
+          .thermal-receipt-sale .text-lg {
+            font-size: 14px !important;
+          }
+          
+          .thermal-receipt-sale .text-base {
+            font-size: 11px !important;
+          }
+          
+          .thermal-receipt-sale .mb-4 {
+            margin-bottom: 8px !important;
+          }
+          
+          .thermal-receipt-sale .mb-3 {
+            margin-bottom: 6px !important;
+          }
+          
+          .thermal-receipt-sale .mb-2 {
+            margin-bottom: 4px !important;
+          }
+          
+          .thermal-receipt-sale .mb-1 {
+            margin-bottom: 2px !important;
+          }
+          
+          .thermal-receipt-sale .pb-3 {
+            padding-bottom: 6px !important;
+          }
+          
+          .thermal-receipt-sale .pb-2 {
+            padding-bottom: 4px !important;
+          }
+          
+          .thermal-receipt-sale .mt-4 {
+            margin-top: 8px !important;
+          }
+          
+          .thermal-receipt-sale .mt-2 {
+            margin-top: 4px !important;
           }
           
           .no-print {
@@ -68,7 +140,7 @@ export const ThermalReceiptSale: React.FC<ThermalReceiptSaleProps> = ({ data }) 
         
         @media screen {
           .thermal-receipt-sale {
-            max-width: 60mm;
+            max-width: 62mm;
             margin: 0 auto;
           }
         }
@@ -77,11 +149,12 @@ export const ThermalReceiptSale: React.FC<ThermalReceiptSaleProps> = ({ data }) 
       <div 
         className="thermal-receipt-sale bg-white" 
         style={{ 
-          width: '60mm',
+          width: '62mm',
           fontFamily: 'Courier New, monospace', 
-          fontSize: '12px', 
-          padding: '16px', 
-          boxSizing: 'border-box' 
+          fontSize: '11px', 
+          padding: '8px', 
+          boxSizing: 'border-box',
+          maxWidth: '62mm'
         }}
       >
         {/* Header */}
