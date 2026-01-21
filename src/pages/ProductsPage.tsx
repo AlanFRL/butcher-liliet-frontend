@@ -434,7 +434,7 @@ export const ProductsPage: React.FC = () => {
             {!editingProduct && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tipo de C\u00f3digo *
+                  ¿Cómo se identifica? *
                 </label>
                 <select
                   value={formData.barcodeType}
@@ -442,9 +442,9 @@ export const ProductsPage: React.FC = () => {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                   required
                 >
-                  <option value="STANDARD">Est\u00e1ndar (EAN-13, UPC)</option>
-                  <option value="WEIGHT_EMBEDDED">Balanza (6 d\u00edgitos W)</option>
-                  <option value="INTERNAL">Interno</option>
+                  <option value="STANDARD">Código del proveedor (productos empacados)</option>
+                  <option value="WEIGHT_EMBEDDED">Código de balanza (carnes pesadas)</option>
+                  <option value="INTERNAL">Código propio del negocio</option>
                 </select>
               </div>
             )}
@@ -461,8 +461,13 @@ export const ProductsPage: React.FC = () => {
               maxLength={formData.barcodeType === 'WEIGHT_EMBEDDED' ? 6 : formData.barcodeType === 'STANDARD' ? 13 : 100}
             />
             {formData.barcodeType === 'WEIGHT_EMBEDDED' && (
-              <p className="text-xs text-gray-500 mt-1">
-                Los primeros 6 d\u00edgitos del c\u00f3digo de la balanza (segmento W)
+              <p className="text-xs text-blue-600 mt-1 bg-blue-50 p-2 rounded border border-blue-200">
+                💡 <strong>Tip:</strong> Ingresa solo los 6 dígitos del medio que identifican el producto. Ejemplo: si la balanza imprime <code className="bg-white px-1">2000010123456</code>, ingresa <code className="bg-white px-1 font-bold">200001</code>
+              </p>
+            )}
+            {formData.barcodeType === 'INTERNAL' && (
+              <p className="text-xs text-gray-600 mt-1 bg-gray-50 p-2 rounded border border-gray-200">
+                💡 Puedes usar letras, números o guiones. Ejemplo: LOMO-001, RES-COSTILLA
               </p>
             )}
           </div>
