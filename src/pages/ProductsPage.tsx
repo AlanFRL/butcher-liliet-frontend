@@ -452,24 +452,35 @@ export const ProductsPage: React.FC = () => {
             )}
           </div>
           
-          {/* Barcode Input */}
-          <div>
-            <Input
-              label={`C\u00f3digo de Barras * ${formData.barcodeType === 'WEIGHT_EMBEDDED' ? '(6 d\u00edgitos)' : formData.barcodeType === 'STANDARD' ? '(8-13 d\u00edgitos)' : ''}`}
-              value={formData.barcode}
-              onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
-              placeholder={formData.barcodeType === 'WEIGHT_EMBEDDED' ? '200001' : formData.barcodeType === 'STANDARD' ? '7501234567890' : 'C\u00f3digo personalizado'}
-              required
-              maxLength={formData.barcodeType === 'WEIGHT_EMBEDDED' ? 6 : formData.barcodeType === 'STANDARD' ? 13 : 100}
-            />
-            {formData.barcodeType === 'WEIGHT_EMBEDDED' && (
-              <p className="text-xs text-blue-600 mt-1 bg-blue-50 p-2 rounded border border-blue-200">
-                💡 <strong>Tip:</strong> Ingresa solo los 6 dígitos del medio que identifican el producto. Ejemplo: si la balanza imprime <code className="bg-white px-1">2000010123456</code>, ingresa <code className="bg-white px-1 font-bold">200001</code>
+          {/* Barcode Input - Solo mostrar si NO es NONE */}
+          {formData.barcodeType !== 'NONE' && (
+            <div>
+              <Input
+                label={`C\u00f3digo de Barras * ${formData.barcodeType === 'WEIGHT_EMBEDDED' ? '(6 d\u00edgitos)' : formData.barcodeType === 'STANDARD' ? '(8-14 d\u00edgitos)' : ''}`}
+                value={formData.barcode}
+                onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+                placeholder={formData.barcodeType === 'WEIGHT_EMBEDDED' ? '200001' : formData.barcodeType === 'STANDARD' ? '7501234567890' : ''}
+                required
+                maxLength={formData.barcodeType === 'WEIGHT_EMBEDDED' ? 6 : formData.barcodeType === 'STANDARD' ? 14 : 100}
+              />
+              {formData.barcodeType === 'WEIGHT_EMBEDDED' && (
+                <p className="text-xs text-blue-600 mt-1 bg-blue-50 p-2 rounded border border-blue-200">
+                  💡 <strong>Tip:</strong> Ingresa solo los 6 dígitos del medio que identifican el producto. Ejemplo: si la balanza imprime <code className="bg-white px-1">2000010123456</code>, ingresa <code className="bg-white px-1 font-bold">200001</code>
+                </p>
+              )}
+            </div>
+          )}
+          
+          {/* Mensaje cuando no tiene código */}
+          {formData.barcodeType === 'NONE' && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <p className="text-sm text-amber-800">
+                ℹ️ Este producto no tiene código de barras. Podrás buscarlo por nombre o categoría en el punto de venta.
               </p>
-            )}
-          </div>
+            </div>
+          )}
 
-          <div className="grid grid-cols-2 gap-3">,
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Categoría
