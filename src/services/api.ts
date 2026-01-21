@@ -149,8 +149,8 @@ export interface ProductResponse {
   sku: string;
   name: string;
   description: string | null;
-  barcode: string; // Required field
-  barcodeType: 'STANDARD' | 'WEIGHT_EMBEDDED' | 'INTERNAL';
+  barcode: string | null; // Nullable cuando barcodeType es NONE
+  barcodeType: 'STANDARD' | 'WEIGHT_EMBEDDED' | 'NONE';
   saleType: 'UNIT' | 'WEIGHT';
   inventoryType: 'UNIT' | 'WEIGHT' | 'VACUUM_PACKED';
   price: string; // Decimal como string
@@ -404,8 +404,8 @@ export const productsApi = {
    */
   create: async (data: {
     name: string;
-    barcode: string;
-    barcodeType: 'STANDARD' | 'WEIGHT_EMBEDDED' | 'INTERNAL';
+    barcode: string | null; // Nullable cuando barcodeType es NONE
+    barcodeType: 'STANDARD' | 'WEIGHT_EMBEDDED' | 'NONE';
     description?: string;
     categoryId: string;
     saleType: 'UNIT' | 'WEIGHT';
@@ -428,8 +428,8 @@ export const productsApi = {
    */
   update: async (id: string, data: {
     name?: string;
-    barcode?: string;
-    barcodeType?: 'STANDARD' | 'WEIGHT_EMBEDDED' | 'INTERNAL';
+    barcode?: string | null;
+    barcodeType?: 'STANDARD' | 'WEIGHT_EMBEDDED' | 'NONE';
     description?: string;
     categoryId?: string;
     saleType?: 'UNIT' | 'WEIGHT';

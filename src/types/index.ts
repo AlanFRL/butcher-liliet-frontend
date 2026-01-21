@@ -36,7 +36,7 @@ export type InventoryType =
 export type BarcodeType =
   | 'STANDARD'        // Código de barras estándar (EAN-13, UPC, etc.)
   | 'WEIGHT_EMBEDDED' // Código con peso embebido (6 dígitos del segmento W de balanza)
-  | 'INTERNAL';       // Código interno del negocio
+  | 'NONE';           // Sin código de barras (productos sin código)
 
 // ============= INTERFACES =============
 

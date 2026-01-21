@@ -459,15 +459,15 @@ export const useProductStore = create<ProductState>((set, get) => ({
     set({ isLoading: true, error: null });
     
     try {
-      // Validar que barcode sea requerido
-      if (!product.barcode || !product.barcodeType) {
+      // Validar que barcode sea requerido solo si no es NONE
+      if (product.barcodeType !== 'NONE' && (!product.barcode || !product.barcodeType)) {
         throw new Error('El código de barras y su tipo son obligatorios');
       }
       
       // Crear producto en el backend (SKU será auto-generado)
       const productData = {
         name: product.name,
-        barcode: product.barcode,
+        barcode: product.barcodeType === 'NONE' ? null : (product.barcode || null),
         barcodeType: product.barcodeType,
         description: (product as any).description,
         categoryId: product.categoryId || '',
@@ -579,7 +579,7 @@ export const useProductStore = create<ProductState>((set, get) => ({
         id: p.id,
         sku: p.sku,
         name: p.name,
-        barcode: p.barcode,
+        barcode: p.barcode || undefined,
         barcodeType: p.barcodeType,
         categoryId: p.categoryId || null,
         saleType: p.saleType,
@@ -737,8 +737,8 @@ export const useCartStore = create<CartState>((set, get) => ({
         categoryId: null,
         sku: orderItem.productSku,
         name: orderItem.productName,
-        barcode: '', // No disponible en datos históricos
-        barcodeType: 'INTERNAL',
+        barcode: undefined, // No disponible en datos históricos
+        barcodeType: 'NONE',
         saleType: orderItem.saleType,
         inventoryType: orderItem.batchId ? 'VACUUM_PACKED' : 'REGULAR', // Inferir tipo de inventario
         unit: orderItem.unit,

@@ -29,7 +29,7 @@ export const ProductsPage: React.FC = () => {
   const [formData, setFormData] = useState({
     name: '',
     barcode: '',
-    barcodeType: 'STANDARD' as 'STANDARD' | 'WEIGHT_EMBEDDED' | 'INTERNAL',
+    barcodeType: 'STANDARD' as 'STANDARD' | 'WEIGHT_EMBEDDED' | 'NONE',
     categoryId: '',
     saleType: 'WEIGHT' as SaleType,
     inventoryType: 'WEIGHT' as 'UNIT' | 'WEIGHT' | 'VACUUM_PACKED',
@@ -73,22 +73,24 @@ export const ProductsPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validar barcode
-    if (!formData.barcode || formData.barcode.trim() === '') {
-      showToast('warning', 'El código de barras es obligatorio');
-      return;
-    }
-    
-    // Validar formato de barcode según tipo
-    if (formData.barcodeType === 'WEIGHT_EMBEDDED') {
-      if (!/^\d{6}$/.test(formData.barcode)) {
-        showToast('warning', 'Para productos pesados, el código debe ser de 6 dígitos (segmento W)');
+    // Validar barcode solo si no es NONE
+    if (formData.barcodeType !== 'NONE') {
+      if (!formData.barcode || formData.barcode.trim() === '') {
+        showToast('warning', 'El código de barras es obligatorio');
         return;
       }
-    } else if (formData.barcodeType === 'STANDARD') {
-      if (!/^\d{8,13}$/.test(formData.barcode)) {
-        showToast('warning', 'El código de barras estándar debe tener entre 8 y 13 dígitos');
-        return;
+      
+      // Validar formato de barcode según tipo
+      if (formData.barcodeType === 'WEIGHT_EMBEDDED') {
+        if (!/^\d{6}$/.test(formData.barcode)) {
+          showToast('warning', 'Para productos pesados, el código debe ser de 6 dígitos (segmento W)');
+          return;
+        }
+      } else if (formData.barcodeType === 'STANDARD') {
+        if (!/^\d{8,14}$/.test(formData.barcode)) {
+          showToast('warning', 'El código de barras estándar debe tener entre 8 y 14 dígitos');
+          return;
+        }
       }
     }
     
@@ -109,7 +111,7 @@ export const ProductsPage: React.FC = () => {
       if (editingProduct) {
         await updateProduct(editingProduct.id, {
           name: formData.name,
-          barcode: formData.barcode,
+          barcode: formData.barcodeType === 'NONE' ? undefined : formData.barcode,
           barcodeType: formData.barcodeType,
           categoryId: formData.categoryId || null,
           saleType: formData.saleType,
@@ -122,7 +124,7 @@ export const ProductsPage: React.FC = () => {
       } else {
         await addProduct({
           name: formData.name,
-          barcode: formData.barcode,
+          barcode: formData.barcodeType === 'NONE' ? undefined : formData.barcode,
           barcodeType: formData.barcodeType,
           categoryId: formData.categoryId || null,
           saleType: formData.saleType,
@@ -444,7 +446,7 @@ export const ProductsPage: React.FC = () => {
                 >
                   <option value="STANDARD">Código del proveedor (productos empacados)</option>
                   <option value="WEIGHT_EMBEDDED">Código de balanza (carnes pesadas)</option>
-                  <option value="INTERNAL">Código propio del negocio</option>
+                  <option value="NONE">Sin código de barras</option>
                 </select>
               </div>
             )}
@@ -465,14 +467,9 @@ export const ProductsPage: React.FC = () => {
                 💡 <strong>Tip:</strong> Ingresa solo los 6 dígitos del medio que identifican el producto. Ejemplo: si la balanza imprime <code className="bg-white px-1">2000010123456</code>, ingresa <code className="bg-white px-1 font-bold">200001</code>
               </p>
             )}
-            {formData.barcodeType === 'INTERNAL' && (
-              <p className="text-xs text-gray-600 mt-1 bg-gray-50 p-2 rounded border border-gray-200">
-                💡 Puedes usar letras, números o guiones. Ejemplo: LOMO-001, RES-COSTILLA
-              </p>
-            )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3">,
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Categoría
