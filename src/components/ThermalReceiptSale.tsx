@@ -44,9 +44,11 @@ export const ThermalReceiptSale: React.FC<ThermalReceiptSaleProps> = ({ data }) 
             print-color-adjust: exact !important;
           }
           
-          body {
+          html, body {
             margin: 0 !important;
             padding: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
           }
           
           body * {
@@ -59,14 +61,17 @@ export const ThermalReceiptSale: React.FC<ThermalReceiptSaleProps> = ({ data }) 
           
           .thermal-receipt-sale {
             position: absolute;
-            left: 0;
-            top: 0;
-            width: 58mm !important;
-            max-width: 58mm !important;
+            left: 0 !important;
+            top: 0 !important;
+            /* Brother QL-800 @ 300 DPI: 62mm = 732px, pero área útil ~700px */
+            width: 700px !important;
+            max-width: 700px !important;
+            min-width: 700px !important;
             margin: 0 !important;
-            padding: 2mm !important;
+            padding: 24px !important;
             box-sizing: border-box !important;
             transform-origin: top left;
+            background: white !important;
           }
           
           .thermal-receipt-sale * {
@@ -74,63 +79,80 @@ export const ThermalReceiptSale: React.FC<ThermalReceiptSaleProps> = ({ data }) 
           }
           
           @page {
-            size: 62mm auto;
+            /* 62mm @ 300 DPI = 732px de ancho */
+            size: 732px auto;
             margin: 0 !important;
           }
           
-          /* Ajustes de tamaño de fuente para impresión */
+          /* Ajustes de tamaño de fuente para impresión @ 300 DPI */
           .thermal-receipt-sale {
-            font-size: 9px !important;
+            font-size: 32px !important;
             line-height: 1.3 !important;
           }
           
           .thermal-receipt-sale h1 {
-            font-size: 14px !important;
-            margin: 0 0 4px 0 !important;
+            font-size: 48px !important;
+            margin: 0 0 12px 0 !important;
           }
           
           .thermal-receipt-sale .text-xs {
-            font-size: 8px !important;
+            font-size: 28px !important;
           }
           
           .thermal-receipt-sale .text-lg {
-            font-size: 14px !important;
+            font-size: 48px !important;
           }
           
           .thermal-receipt-sale .text-base {
-            font-size: 11px !important;
+            font-size: 38px !important;
+          }
+          
+          .thermal-receipt-sale .font-bold {
+            font-weight: bold !important;
+          }
+          
+          .thermal-receipt-sale .font-semibold {
+            font-weight: 600 !important;
           }
           
           .thermal-receipt-sale .mb-4 {
-            margin-bottom: 8px !important;
+            margin-bottom: 28px !important;
           }
           
           .thermal-receipt-sale .mb-3 {
-            margin-bottom: 6px !important;
+            margin-bottom: 20px !important;
           }
           
           .thermal-receipt-sale .mb-2 {
-            margin-bottom: 4px !important;
+            margin-bottom: 14px !important;
           }
           
           .thermal-receipt-sale .mb-1 {
-            margin-bottom: 2px !important;
+            margin-bottom: 8px !important;
           }
           
           .thermal-receipt-sale .pb-3 {
-            padding-bottom: 6px !important;
+            padding-bottom: 20px !important;
           }
           
           .thermal-receipt-sale .pb-2 {
-            padding-bottom: 4px !important;
+            padding-bottom: 14px !important;
           }
           
           .thermal-receipt-sale .mt-4 {
-            margin-top: 8px !important;
+            margin-top: 28px !important;
           }
           
           .thermal-receipt-sale .mt-2 {
-            margin-top: 4px !important;
+            margin-top: 14px !important;
+          }
+          
+          .thermal-receipt-sale .border-b-2 {
+            border-bottom-width: 6px !important;
+          }
+          
+          .thermal-receipt-sale .border-b {
+            border-bottom-width: 3px !important;
           }
           
           .no-print {
