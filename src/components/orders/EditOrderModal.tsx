@@ -51,6 +51,8 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, onClose, 
         categoryId: null,
         name: item.productName,
         sku: item.productSku,
+        barcode: '', // No disponible en datos históricos
+        barcodeType: 'INTERNAL',
         saleType: item.unit === 'kg' ? 'WEIGHT' as const : 'UNIT' as const,
         unit: item.unit,
         price: item.unitPrice,

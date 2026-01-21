@@ -28,7 +28,8 @@ export const ProductsPage: React.FC = () => {
   // Form state
   const [formData, setFormData] = useState({
     name: '',
-    sku: '',
+    barcode: '',
+    barcodeType: 'STANDARD' as 'STANDARD' | 'WEIGHT_EMBEDDED' | 'INTERNAL',
     categoryId: '',
     saleType: 'WEIGHT' as SaleType,
     inventoryType: 'WEIGHT' as 'UNIT' | 'WEIGHT' | 'VACUUM_PACKED',
@@ -43,7 +44,8 @@ export const ProductsPage: React.FC = () => {
       const invType = (product.inventoryType as any) || (product.saleType === 'WEIGHT' ? 'WEIGHT' : 'UNIT');
       setFormData({
         name: product.name,
-        sku: product.sku,
+        barcode: product.barcode || '',
+        barcodeType: (product.barcodeType as any) || 'STANDARD',
         categoryId: product.categoryId || '',
         saleType: product.saleType,
         inventoryType: invType,
@@ -55,7 +57,8 @@ export const ProductsPage: React.FC = () => {
       setEditingProduct(null);
       setFormData({
         name: '',
-        sku: '',
+        barcode: '',
+        barcodeType: 'STANDARD',
         categoryId: '',
         saleType: 'WEIGHT',
         inventoryType: 'WEIGHT',
@@ -69,6 +72,25 @@ export const ProductsPage: React.FC = () => {
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validar barcode
+    if (!formData.barcode || formData.barcode.trim() === '') {
+      showToast('warning', 'El código de barras es obligatorio');
+      return;
+    }
+    
+    // Validar formato de barcode según tipo
+    if (formData.barcodeType === 'WEIGHT_EMBEDDED') {
+      if (!/^\d{6}$/.test(formData.barcode)) {
+        showToast('warning', 'Para productos pesados, el código debe ser de 6 dígitos (segmento W)');
+        return;
+      }
+    } else if (formData.barcodeType === 'STANDARD') {
+      if (!/^\d{8,13}$/.test(formData.barcode)) {
+        showToast('warning', 'El código de barras estándar debe tener entre 8 y 13 dígitos');
+        return;
+      }
+    }
     
     const price = formData.inventoryType === 'VACUUM_PACKED' ? 0 : parseFloat(formData.price);
     if (formData.inventoryType !== 'VACUUM_PACKED' && (isNaN(price) || price < 0)) {
@@ -87,7 +109,8 @@ export const ProductsPage: React.FC = () => {
       if (editingProduct) {
         await updateProduct(editingProduct.id, {
           name: formData.name,
-          sku: formData.sku,
+          barcode: formData.barcode,
+          barcodeType: formData.barcodeType,
           categoryId: formData.categoryId || null,
           saleType: formData.saleType,
           inventoryType: formData.inventoryType,
@@ -99,7 +122,8 @@ export const ProductsPage: React.FC = () => {
       } else {
         await addProduct({
           name: formData.name,
-          sku: formData.sku,
+          barcode: formData.barcode,
+          barcodeType: formData.barcodeType,
           categoryId: formData.categoryId || null,
           saleType: formData.saleType,
           inventoryType: formData.inventoryType,
@@ -109,7 +133,7 @@ export const ProductsPage: React.FC = () => {
           isActive: true,
           stockUnits: stockQuantity,
           minStockAlert: minStock,
-        });
+        } as any);
       }
       
       showToast('success', editingProduct ? 'Producto actualizado exitosamente' : 'Producto creado exitosamente');
@@ -396,12 +420,51 @@ export const ProductsPage: React.FC = () => {
               required
             />
             
+            {/* Mostrar SKU read-only al editar */}
+            {editingProduct && (
+              <Input
+                label="C\u00f3digo SKU (auto-generado)"
+                value={editingProduct.sku}
+                disabled
+                className="bg-gray-50"
+              />
+            )}
+            
+            {/* Barcode Type */}
+            {!editingProduct && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tipo de C\u00f3digo *
+                </label>
+                <select
+                  value={formData.barcodeType}
+                  onChange={(e) => setFormData({ ...formData, barcodeType: e.target.value as any, barcode: '' })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  required
+                >
+                  <option value="STANDARD">Est\u00e1ndar (EAN-13, UPC)</option>
+                  <option value="WEIGHT_EMBEDDED">Balanza (6 d\u00edgitos W)</option>
+                  <option value="INTERNAL">Interno</option>
+                </select>
+              </div>
+            )}
+          </div>
+          
+          {/* Barcode Input */}
+          <div>
             <Input
-              label="Código SKU"
-              value={formData.sku}
-              onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+              label={`C\u00f3digo de Barras * ${formData.barcodeType === 'WEIGHT_EMBEDDED' ? '(6 d\u00edgitos)' : formData.barcodeType === 'STANDARD' ? '(8-13 d\u00edgitos)' : ''}`}
+              value={formData.barcode}
+              onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+              placeholder={formData.barcodeType === 'WEIGHT_EMBEDDED' ? '200001' : formData.barcodeType === 'STANDARD' ? '7501234567890' : 'C\u00f3digo personalizado'}
               required
+              maxLength={formData.barcodeType === 'WEIGHT_EMBEDDED' ? 6 : formData.barcodeType === 'STANDARD' ? 13 : 100}
             />
+            {formData.barcodeType === 'WEIGHT_EMBEDDED' && (
+              <p className="text-xs text-gray-500 mt-1">
+                Los primeros 6 d\u00edgitos del c\u00f3digo de la balanza (segmento W)
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">

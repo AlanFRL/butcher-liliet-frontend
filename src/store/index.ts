@@ -459,10 +459,16 @@ export const useProductStore = create<ProductState>((set, get) => ({
     set({ isLoading: true, error: null });
     
     try {
-      // Crear producto en el backend
+      // Validar que barcode sea requerido
+      if (!product.barcode || !product.barcodeType) {
+        throw new Error('El código de barras y su tipo son obligatorios');
+      }
+      
+      // Crear producto en el backend (SKU será auto-generado)
       const productData = {
-        sku: product.sku,
         name: product.name,
+        barcode: product.barcode,
+        barcodeType: product.barcodeType,
         description: (product as any).description,
         categoryId: product.categoryId || '',
         saleType: product.saleType,
@@ -496,11 +502,12 @@ export const useProductStore = create<ProductState>((set, get) => ({
     set({ isLoading: true, error: null });
     
     try {
-      // Preparar datos para el backend
+      // Preparar datos para el backend (SKU no puede actualizarse)
       const updateData: any = {};
       
       if (updates.name !== undefined) updateData.name = updates.name;
-      if (updates.sku !== undefined) updateData.sku = updates.sku;
+      if (updates.barcode !== undefined) updateData.barcode = updates.barcode;
+      if ((updates as any).barcodeType !== undefined) updateData.barcodeType = (updates as any).barcodeType;
       if ((updates as any).description !== undefined) updateData.description = (updates as any).description;
       if (updates.categoryId !== undefined) updateData.categoryId = updates.categoryId;
       if (updates.saleType !== undefined) updateData.saleType = updates.saleType;
@@ -572,6 +579,8 @@ export const useProductStore = create<ProductState>((set, get) => ({
         id: p.id,
         sku: p.sku,
         name: p.name,
+        barcode: p.barcode,
+        barcodeType: p.barcodeType,
         categoryId: p.categoryId || null,
         saleType: p.saleType,
         inventoryType: p.inventoryType, // CRITICAL: Include inventoryType from backend
@@ -728,6 +737,8 @@ export const useCartStore = create<CartState>((set, get) => ({
         categoryId: null,
         sku: orderItem.productSku,
         name: orderItem.productName,
+        barcode: '', // No disponible en datos históricos
+        barcodeType: 'INTERNAL',
         saleType: orderItem.saleType,
         inventoryType: orderItem.batchId ? 'VACUUM_PACKED' : 'REGULAR', // Inferir tipo de inventario
         unit: orderItem.unit,
