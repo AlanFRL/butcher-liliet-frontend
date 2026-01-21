@@ -64,12 +64,12 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({ data }) => {
             position: absolute;
             left: 0 !important;
             top: 0 !important;
-            /* Brother QL-800 @ 300 DPI: 62mm = 732px, pero área útil ~700px */
-            width: 700px !important;
-            max-width: 700px !important;
-            min-width: 700px !important;
+            /* Brother QL-800 @ 300 DPI: Ajustado a 480px (~40.6mm) */
+            width: 480px !important;
+            max-width: 480px !important;
+            min-width: 480px !important;
             margin: 0 !important;
-            padding: 24px !important;
+            padding: 20px !important;
             box-sizing: border-box !important;
             transform-origin: top left;
             background: white !important;
@@ -81,8 +81,8 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({ data }) => {
           }
           
           @page {
-            /* 62mm @ 300 DPI = 732px de ancho */
-            size: 732px auto;
+            /* Página de 520px (~44mm) para centrar contenido de 480px */
+            size: 520px auto;
             margin: 0 !important;
           }
           
