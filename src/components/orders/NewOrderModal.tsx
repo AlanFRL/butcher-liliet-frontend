@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { Search, Package, XCircle } from 'lucide-react';
+import { Search, Package, XCircle, Tag } from 'lucide-react';
 import { Button, Modal } from '../ui';
 import { useOrderStore, useProductStore } from '../../store';
 import type { Product, ProductBatch } from '../../types';
+import { ItemDiscountModal } from '../ItemDiscountModal';
+import type { CartItem } from '../../types';
 
 interface NewOrderModalProps {
   onClose: () => void;
@@ -20,12 +22,15 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
     product: Product;
     qty: number;
     notes: string;
+    discount?: number; // Nuevo: descuento por item
     batchId?: string;
     batchNumber?: string;
     actualWeight?: number;
     batchPrice?: number;
+    needsBatchCreation?: boolean;
   }>>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [globalDiscount, setGlobalDiscount] = useState(0); // Nuevo: descuento global
   // Estado local para los inputs de cantidad (permite edición libre)
   const [qtyInputs, setQtyInputs] = useState<{ [key: string]: string }>({});
   // Estados para modal de lotes
@@ -33,6 +38,17 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
   const [selectedProductForBatch, setSelectedProductForBatch] = useState<Product | null>(null);
   const [availableBatches, setAvailableBatches] = useState<ProductBatch[]>([]);
   const [loadingBatches, setLoadingBatches] = useState(false);
+  const [showManualBatchForm, setShowManualBatchForm] = useState(false);
+  const [manualBatchData, setManualBatchData] = useState({ weight: '', price: '' });
+  // Estados para modal de descuento
+  const [showDiscountModal, setShowDiscountModal] = useState(false);
+  const [selectedItemForDiscount, setSelectedItemForDiscount] = useState<{
+    index: number;
+    product: Product;
+    qty: number;
+    unitPrice: number;
+    discount: number;
+  } | null>(null);
 
   const { products } = useProductStore();
   const { createOrder } = useOrderStore();
@@ -50,6 +66,19 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
       setShowBatchModal(true);
       await loadBatches(product.id);
       return;
+    }
+
+    // Validar stock disponible para productos por unidad
+    if (product.saleType === 'UNIT' && product.inventoryType === 'UNIT') {
+      const currentInOrder = selectedItems
+        .filter(item => item.product.id === product.id && !item.batchId)
+        .reduce((sum, item) => sum + item.qty, 0);
+      const availableStock = (product.stockUnits || 0) - currentInOrder;
+      
+      if (availableStock <= 0) {
+        showToast('warning', `Stock insuficiente. Solo hay ${product.stockUnits || 0} unidades disponibles`);
+        return;
+      }
     }
 
     // Para productos normales, agregar directamente
@@ -86,10 +115,12 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
       
       if (response.ok) {
         const allBatches: ProductBatch[] = await response.json();
-        // Obtener IDs de lotes ya seleccionados
+        // Obtener IDs de lotes ya seleccionados (sin depender del estado del componente)
         const batchIdsInOrder = selectedItems
           .filter(item => item.batchId)
           .map(item => item.batchId);
+        
+        console.log('📦 Lotes ya en pedido:', batchIdsInOrder);
         
         // Filtrar solo lotes del producto seleccionado, no vendidos, no reservados y no ya en el pedido
         const filtered = allBatches.filter(
@@ -131,6 +162,40 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
     setShowBatchModal(false);
     setSelectedProductForBatch(null);
     setAvailableBatches([]);
+    setShowManualBatchForm(false);
+    setManualBatchData({ weight: '', price: '' });
+  };
+  
+  const handleAddManualBatch = () => {
+    if (!selectedProductForBatch) return;
+    
+    const weight = parseFloat(manualBatchData.weight);
+    const price = parseFloat(manualBatchData.price);
+    
+    if (isNaN(weight) || weight <= 0 || isNaN(price) || price <= 0) {
+      showToast('warning', 'Por favor ingrese peso y precio válidos');
+      return;
+    }
+    
+    // Agregar como lote fantasma
+    setSelectedItems([
+      ...selectedItems,
+      {
+        product: selectedProductForBatch,
+        qty: 1,
+        notes: '',
+        actualWeight: weight,
+        batchPrice: price,
+        batchNumber: '⚠️ Por registrar',
+        needsBatchCreation: true,
+      },
+    ]);
+    
+    setShowBatchModal(false);
+    setSelectedProductForBatch(null);
+    setAvailableBatches([]);
+    setShowManualBatchForm(false);
+    setManualBatchData({ weight: '', price: '' });
   };
 
   const handleRemoveProduct = (index: number) => {
@@ -208,37 +273,129 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
       return;
     }
 
-    const orderItems = selectedItems.map((item) => ({
-      productId: item.product.id,
-      qty: item.qty,
-      notes: item.notes || undefined,
-      batchId: item.batchId, // Incluir batchId si existe
-    }));
+    try {
+      // PASO 1: Crear lotes fantasma ANTES de crear el pedido
+      const itemsWithBatches = [...selectedItems];
+      
+      for (let i = 0; i < itemsWithBatches.length; i++) {
+        const item = itemsWithBatches[i];
+        
+        if (item.needsBatchCreation && item.actualWeight && item.batchPrice) {
+          console.log(`📦 Creando lote fantasma para pedido: ${item.product.name}`);
+          
+          // Generar batchNumber automático
+          const now = new Date();
+          const today = now.getFullYear() + 
+            String(now.getMonth() + 1).padStart(2, '0') + 
+            String(now.getDate()).padStart(2, '0');
+          
+          const batchNumber = `${item.product.sku}-${today}-AUTO-${Date.now().toString().slice(-4)}`;
+          
+          // Crear lote en backend
+          const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+          const response = await fetch(`${API_BASE_URL}/product-batches`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('butcher_auth_token')}`
+            },
+            body: JSON.stringify({
+              productId: item.product.id,
+              batchNumber,
+              actualWeight: item.actualWeight,
+              unitCost: 0,
+              unitPrice: item.batchPrice,
+              packedAt: new Date().toISOString(),
+              expiryDate: null,
+              notes: 'Creado automáticamente desde pedido'
+            })
+          });
+          
+          if (response.ok) {
+            const createdBatch = await response.json();
+            // Actualizar item con el batchId real
+            itemsWithBatches[i] = {
+              ...item,
+              batchId: createdBatch.id,
+              batchNumber: createdBatch.batchNumber,
+              needsBatchCreation: false
+            };
+            console.log(`✅ Lote creado: ${createdBatch.batchNumber}`);
+          } else {
+            console.error('❌ Error creando lote fantasma:', await response.text());
+            throw new Error('Error al crear lote necesario');
+          }
+        }
+      }
 
-    const result = await createOrder({
-      customerName,
-      customerPhone,
-      items: orderItems,
-      deliveryDate,
-      deliveryTime,
-      notes: notes || undefined,
-    });
+      // PASO 2: Crear el pedido con los lotes ya creados
+      const orderItems = itemsWithBatches.map((item) => ({
+        productId: item.product.id,
+        qty: item.qty,
+        discount: item.discount || 0, // Incluir descuento por item
+        notes: item.notes || undefined,
+        batchId: item.batchId, // Incluir batchId si existe
+      }));
 
-    if (result) {
-      showToast('success', 'Pedido creado exitosamente');
-      onClose();
-    } else {
+      const result = await createOrder({
+        customerName,
+        customerPhone,
+        items: orderItems,
+        discount: globalDiscount, // Incluir descuento global
+        deliveryDate,
+        deliveryTime,
+        notes: notes || undefined,
+      });
+
+      if (result) {
+        showToast('success', 'Pedido creado exitosamente');
+        onClose();
+      } else {
+        showToast('error', 'Error al crear el pedido. Por favor intenta nuevamente.');
+      }
+    } catch (error) {
+      console.error('❌ Error en handleSubmit:', error);
       showToast('error', 'Error al crear el pedido. Por favor intenta nuevamente.');
     }
+  };
+  
+  // Funciones para manejar descuentos
+  const handleOpenDiscountModal = (index: number) => {
+    const item = selectedItems[index];
+    const unitPrice = item.batchPrice || item.product.price;
+    setSelectedItemForDiscount({
+      index,
+      product: item.product,
+      qty: item.qty,
+      unitPrice,
+      discount: item.discount || 0,
+    });
+    setShowDiscountModal(true);
+  };
+  
+  const handleApplyDiscount = (discount: number) => {
+    if (selectedItemForDiscount === null) return;
+    
+    setSelectedItems(prevItems =>
+      prevItems.map((item, idx) =>
+        idx === selectedItemForDiscount.index
+          ? { ...item, discount }
+          : item
+      )
+    );
   };
 
   const totalAmount = selectedItems.reduce(
     (sum, item) => {
       const price = item.batchPrice || item.product.price;
-      return sum + item.qty * price;
+      const itemTotal = item.qty * price;
+      const itemDiscount = item.discount || 0;
+      return sum + (itemTotal - itemDiscount);
     },
     0
   );
+  
+  const finalTotal = Math.max(0, totalAmount - globalDiscount);
 
   return (
     <Modal
@@ -379,15 +536,39 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
                       <p className="text-xs">Selecciona productos de la lista</p>
                     </div>
                   ) : (
-                    selectedItems.map((item, index) => (
+                    selectedItems.map((item, index) => {
+                      const currentInOrder = selectedItems
+                        .filter(i => i.product.id === item.product.id && !i.batchId)
+                        .reduce((sum, i) => sum + i.qty, 0);
+                      const availableStock = (item.product.stockUnits || 0) - currentInOrder + item.qty;
+                      
+                      return (
                       <div key={`${item.product.id}-${item.batchId || index}`} className="bg-white rounded-lg p-3 shadow-sm border border-gray-200">
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex-1 pr-2">
-                            <p className="font-medium text-gray-900 text-sm">{item.product.name}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium text-gray-900 text-sm">{item.product.name}</p>
+                              {item.needsBatchCreation && (
+                                <span className="bg-yellow-100 text-yellow-800 text-xs font-medium px-2 py-0.5 rounded">
+                                  ⚠️ Por registrar
+                                </span>
+                              )}
+                            </div>
                             <p className="text-xs text-gray-500">{item.product.sku}</p>
-                            {item.batchId && (
+                            {item.batchId && !item.needsBatchCreation && (
                               <p className="text-xs text-blue-600 mt-1">
                                 📦 {item.batchNumber} ({item.actualWeight} kg)
+                              </p>
+                            )}
+                            {item.needsBatchCreation && (
+                              <p className="text-xs text-yellow-600 mt-1">
+                                📦 Lote: {item.actualWeight} kg - Se creará al guardar
+                              </p>
+                            )}
+                            {/* Mostrar stock para productos UNIT */}
+                            {item.product.saleType === 'UNIT' && item.product.inventoryType === 'UNIT' && !item.batchId && (
+                              <p className="text-xs text-gray-500 mt-1">
+                                Stock: {availableStock} disponibles
                               </p>
                             )}
                           </div>
@@ -398,42 +579,162 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
                             <XCircle className="w-4 h-4" />
                           </button>
                         </div>
-                        {/* Si es lote, mostrar solo info (no editable) */}
-                        {item.batchId ? (
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs text-gray-600">1 paquete</span>
-                            <span className="font-semibold text-gray-900 text-sm">
-                              Bs {Math.round(item.batchPrice || 0)}
-                            </span>
+                        {/* Si es lote o tiene needsBatchCreation, mostrar solo info (no editable) */}
+                        {(item.batchId || item.needsBatchCreation) ? (
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs text-gray-600">1 paquete</span>
+                              <span className="font-semibold text-gray-900 text-sm">
+                                Bs {Math.round(item.batchPrice || 0)}
+                              </span>
+                            </div>
+                            {item.discount && item.discount > 0 && (
+                              <div className="flex items-center justify-between text-xs text-green-600">
+                                <span>Descuento:</span>
+                                <span>-Bs {Math.round(item.discount)}</span>
+                              </div>
+                            )}
+                            <div className="flex items-center justify-between mt-1">
+                              <button
+                                onClick={() => handleOpenDiscountModal(index)}
+                                className="text-xs text-primary-600 hover:text-primary-700 flex items-center gap-1"
+                              >
+                                <Tag className="w-3 h-3" />
+                                {item.discount ? 'Editar' : 'Aplicar'} descuento
+                              </button>
+                            </div>
+                          </div>
+                        ) : item.product.saleType === 'UNIT' ? (
+                          /* Productos UNIT: Botones +/- */
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => {
+                                    const newQty = item.qty - 1;
+                                    if (newQty > 0) handleUpdateQty(item.product.id, newQty);
+                                  }}
+                                  className="w-6 h-6 bg-white border border-gray-300 rounded flex items-center justify-center hover:bg-gray-100"
+                                >
+                                  <span className="text-gray-600">−</span>
+                                </button>
+                                <span className="w-12 text-center font-medium text-sm">{item.qty}</span>
+                                <button
+                                  onClick={() => {
+                                    const newQty = item.qty + 1;
+                                    if (newQty <= (item.product.stockUnits || 0)) {
+                                      handleUpdateQty(item.product.id, newQty);
+                                    } else {
+                                      showToast('warning', `Stock insuficiente. Solo hay ${item.product.stockUnits} unidades`);
+                                    }
+                                  }}
+                                  className="w-6 h-6 bg-white border border-gray-300 rounded flex items-center justify-center hover:bg-gray-100"
+                                >
+                                  <span className="text-gray-600">+</span>
+                                </button>
+                                <span className="text-xs text-gray-500">{item.product.unit}</span>
+                              </div>
+                              <span className="font-semibold text-gray-900 text-sm">
+                                Bs {Math.round(item.qty * item.product.price)}
+                              </span>
+                            </div>
+                            {item.discount && item.discount > 0 && (
+                              <div className="flex items-center justify-between text-xs text-green-600">
+                                <span>Descuento:</span>
+                                <span>-Bs {Math.round(item.discount)}</span>
+                              </div>
+                            )}
+                            <div className="flex items-center justify-between mt-1">
+                              <button
+                                onClick={() => handleOpenDiscountModal(index)}
+                                className="text-xs text-primary-600 hover:text-primary-700 flex items-center gap-1"
+                              >
+                                <Tag className="w-3 h-3" />
+                                {item.discount ? 'Editar' : 'Aplicar'} descuento
+                              </button>
+                            </div>
                           </div>
                         ) : (
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="text"
-                              value={getInputValue(item.product.id, item.qty, item.product.saleType)}
-                              onChange={(e) => handleQtyInputChange(item.product.id, e.target.value)}
-                              onBlur={() => handleQtyInputBlur(item.product.id, item.product.saleType)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.currentTarget.blur();
-                                }
-                              }}
-                              className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary-500"
-                            />
-                            <span className="text-xs text-gray-500">{item.product.unit}</span>
-                            <span className="ml-auto font-semibold text-gray-900 text-sm">
-                              Bs {Math.round(item.qty * item.product.price)}
-                            </span>
+                          /* Productos WEIGHT: Input manual */
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <input
+                                type="text"
+                                value={getInputValue(item.product.id, item.qty, item.product.saleType)}
+                                onChange={(e) => handleQtyInputChange(item.product.id, e.target.value)}
+                                onBlur={() => handleQtyInputBlur(item.product.id, item.product.saleType)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.currentTarget.blur();
+                                  }
+                                }}
+                                className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary-500"
+                              />
+                              <span className="text-xs text-gray-500">{item.product.unit}</span>
+                              <span className="ml-auto font-semibold text-gray-900 text-sm">
+                                Bs {Math.round(item.qty * item.product.price)}
+                              </span>
+                            </div>
+                            {item.discount && item.discount > 0 && (
+                              <div className="flex items-center justify-between text-xs text-green-600">
+                                <span>Descuento:</span>
+                                <span>-Bs {Math.round(item.discount)}</span>
+                              </div>
+                            )}
+                            <div className="flex items-center justify-between mt-1">
+                              <button
+                                onClick={() => handleOpenDiscountModal(index)}
+                                className="text-xs text-primary-600 hover:text-primary-700 flex items-center gap-1"
+                              >
+                                <Tag className="w-3 h-3" />
+                                {item.discount ? 'Editar' : 'Aplicar'} descuento
+                              </button>
+                            </div>
                           </div>
                         )}
                       </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
-                <div className="p-3 bg-white border-t-2 border-primary-600">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-700 font-semibold">Total:</span>
-                    <span className="text-xl font-bold text-primary-700">Bs {Math.round(totalAmount)}</span>
+                <div className="p-3 bg-white border-t-2 border-primary-600 space-y-2">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-600">Subtotal:</span>
+                    <span className="font-semibold text-gray-900">
+                      Bs {Math.round(selectedItems.reduce((sum, item) => {
+                        const price = item.batchPrice || item.product.price;
+                        return sum + (item.qty * price);
+                      }, 0))}
+                    </span>
+                  </div>
+                  {selectedItems.some(item => item.discount && item.discount > 0) && (
+                    <div className="flex justify-between items-center text-sm text-green-600">
+                      <span>Descuentos en items:</span>
+                      <span>
+                        -Bs {Math.round(selectedItems.reduce((sum, item) => sum + (item.discount || 0), 0))}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center text-sm">
+                    <label className="text-gray-600">Descuento global:</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={globalDiscount}
+                        onChange={(e) => setGlobalDiscount(Math.max(0, parseFloat(e.target.value) || 0))}
+                        className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary-500 text-right"
+                        placeholder="0"
+                        min="0"
+                        step="0.01"
+                      />
+                      <span className="text-gray-600">Bs</span>
+                    </div>
+                  </div>
+                  <div className="border-t border-gray-200 pt-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-700 font-bold">Total Final:</span>
+                      <span className="text-xl font-bold text-primary-700">Bs {Math.round(finalTotal)}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -575,29 +876,159 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
                 <p className="mt-4 text-gray-600">Cargando lotes disponibles...</p>
               </div>
             ) : availableBatches.length === 0 ? (
-              <div className="text-center py-8">
-                <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600 font-medium">No hay lotes disponibles</p>
-                <p className="text-sm text-gray-500 mt-2">
-                  Todos los lotes de este producto están vendidos o ya están en el pedido.
-                </p>
-                <Button
-                  onClick={() => {
-                    setShowBatchModal(false);
-                    setSelectedProductForBatch(null);
-                    setAvailableBatches([]);
-                  }}
-                  variant="outline"
-                  className="mt-4"
-                >
-                  Cerrar
-                </Button>
+              <div className="space-y-4">
+                {!showManualBatchForm ? (
+                  <div className="text-center py-8">
+                    <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600 font-medium">No hay lotes disponibles</p>
+                    <p className="text-sm text-gray-500 mt-2">
+                      Todos los lotes de este producto están vendidos o ya están en el pedido.
+                    </p>
+                    <Button
+                      onClick={() => setShowManualBatchForm(true)}
+                      variant="primary"
+                      className="mt-4"
+                    >
+                      ⚠️ Agregar lote no registrado
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setShowBatchModal(false);
+                        setSelectedProductForBatch(null);
+                        setAvailableBatches([]);
+                      }}
+                      variant="outline"
+                      className="mt-2"
+                    >
+                      Cancelar
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="p-4 bg-yellow-50 border-2 border-yellow-400 rounded-lg">
+                    <h4 className="font-semibold text-yellow-900 mb-3">Datos del Lote No Registrado</h4>
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Peso (kg) *
+                        </label>
+                        <input
+                          type="number"
+                          step="0.001"
+                          value={manualBatchData.weight}
+                          onChange={(e) => setManualBatchData(prev => ({ ...prev, weight: e.target.value }))}
+                          placeholder="0.950"
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Precio (Bs) *
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={manualBatchData.price}
+                          onChange={(e) => setManualBatchData(prev => ({ ...prev, price: e.target.value }))}
+                          placeholder="45.00"
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-yellow-700 mb-3">
+                      ⚠️ Este lote se registrará en el inventario al crear el pedido y quedará reservado
+                    </p>
+                    <div className="flex gap-2">
+                      <Button onClick={handleAddManualBatch} variant="primary" size="sm" className="flex-1">
+                        Agregar al Pedido
+                      </Button>
+                      <Button 
+                        onClick={() => {
+                          setShowManualBatchForm(false);
+                          setManualBatchData({ weight: '', price: '' });
+                        }}
+                        variant="outline" 
+                        size="sm"
+                        className="flex-1"
+                      >
+                        Cancelar
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <>
                 <p className="text-sm text-gray-600">
                   Selecciona el paquete específico que deseas agregar al pedido
                 </p>
+                
+                {/* Botón para añadir lote no registrado */}
+                <button
+                  onClick={() => setShowManualBatchForm(true)}
+                  className="w-full p-3 border-2 border-dashed border-yellow-400 bg-yellow-50 rounded-lg hover:bg-yellow-100 transition-all text-left"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-yellow-700 font-semibold">⚠️ Agregar lote no registrado</span>
+                  </div>
+                  <p className="text-xs text-yellow-600 mt-1">
+                    Si tienes un producto empacado que no está en el inventario
+                  </p>
+                </button>
+                
+                {/* Formulario manual de lote fantasma */}
+                {showManualBatchForm && (
+                  <div className="p-4 bg-yellow-50 border-2 border-yellow-400 rounded-lg">
+                    <h4 className="font-semibold text-yellow-900 mb-3">Datos del Lote No Registrado</h4>
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Peso (kg) *
+                        </label>
+                        <input
+                          type="number"
+                          step="0.001"
+                          value={manualBatchData.weight}
+                          onChange={(e) => setManualBatchData(prev => ({ ...prev, weight: e.target.value }))}
+                          placeholder="0.950"
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Precio (Bs) *
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={manualBatchData.price}
+                          onChange={(e) => setManualBatchData(prev => ({ ...prev, price: e.target.value }))}
+                          placeholder="45.00"
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-yellow-700 mb-3">
+                      ⚠️ Este lote se registrará en el inventario al crear el pedido y quedará reservado
+                    </p>
+                    <div className="flex gap-2">
+                      <Button onClick={handleAddManualBatch} variant="primary" size="sm" className="flex-1">
+                        Agregar al Pedido
+                      </Button>
+                      <Button 
+                        onClick={() => {
+                          setShowManualBatchForm(false);
+                          setManualBatchData({ weight: '', price: '' });
+                        }}
+                        variant="outline" 
+                        size="sm"
+                        className="flex-1"
+                      >
+                        Cancelar
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                
                 <div className="grid gap-3 max-h-96 overflow-y-auto">
                   {availableBatches.map((batch) => (
                     <button
@@ -632,6 +1063,29 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
             )}
           </div>
         </Modal>
+      )}
+      
+      {/* Modal de descuento */}
+      {showDiscountModal && selectedItemForDiscount && (
+        <ItemDiscountModal
+          item={{
+            id: selectedItemForDiscount.index.toString(),
+            productId: selectedItemForDiscount.product.id,
+            productName: selectedItemForDiscount.product.name,
+            saleType: selectedItemForDiscount.product.saleType,
+            qty: selectedItemForDiscount.qty,
+            unit: selectedItemForDiscount.product.unit,
+            unitPrice: selectedItemForDiscount.unitPrice,
+            discount: selectedItemForDiscount.discount,
+            total: selectedItemForDiscount.qty * selectedItemForDiscount.unitPrice - selectedItemForDiscount.discount,
+            product: selectedItemForDiscount.product,
+          } as CartItem}
+          onClose={() => {
+            setShowDiscountModal(false);
+            setSelectedItemForDiscount(null);
+          }}
+          onApply={handleApplyDiscount}
+        />
       )}
     </Modal>
   );

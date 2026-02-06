@@ -129,9 +129,19 @@ export interface SaleItem {
   productName: string;
   saleType: SaleType;
   qty: number;
+  unit: string; // 'kg', 'unid', 'lt', etc.
   unitPrice: number;
   discount: number;
   total: number;
+  // Para productos al vacío (VACUUM_PACKED)
+  batchId?: string; // ID del lote
+  batchNumber?: string; // Número de lote para mostrar
+  actualWeight?: number; // Peso real del lote
+  // Para productos de balanza escaneados
+  scannedBarcode?: string; // Código completo de 18 dígitos de la etiqueta
+  scannedSubtotal?: number; // Precio total fijo extraído de la etiqueta
+  // Para lotes fantasma (productos al vacío sin registro previo)
+  needsBatchCreation?: boolean; // Indica que el lote debe crearse al completar la venta
 }
 
 export interface Sale {
@@ -190,6 +200,7 @@ export interface CartItem extends SaleItem {
   batchId?: string; // ID del lote (para productos VACUUM_PACKED)
   batchNumber?: string; // Número de lote para mostrar
   actualWeight?: number; // Peso real del lote (para productos VACUUM_PACKED)
+  needsBatchCreation?: boolean; // Para lotes fantasma
 }
 
 export interface ProductBatch {

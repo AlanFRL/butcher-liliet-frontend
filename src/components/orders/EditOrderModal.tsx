@@ -115,6 +115,19 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, onClose, 
       return;
     }
 
+    // Validar stock disponible para productos por unidad
+    if (product.saleType === 'UNIT' && product.inventoryType === 'UNIT') {
+      const currentInOrder = selectedItems
+        .filter(item => item.product.id === product.id && !item.batchId)
+        .reduce((sum, item) => sum + item.qty, 0);
+      const availableStock = (product.stockUnits || 0) - currentInOrder;
+      
+      if (availableStock <= 0) {
+        showToast('warning', `Stock insuficiente. Solo hay ${product.stockUnits || 0} unidades disponibles`);
+        return;
+      }
+    }
+
     // Producto normal
     const existing = selectedItems.find(item => item.product.id === product.id && !item.batchId);
     if (existing) {
@@ -154,6 +167,8 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, onClose, 
       const batchIdsInOrder = selectedItems
         .filter(item => item.batchId)
         .map(item => item.batchId);
+      
+      console.log('📦 Lotes ya en pedido (edición):', batchIdsInOrder);
       
       const filtered = allBatches.filter(
         b => b.productId === productId && !b.isSold && !(b as any).isReserved && !batchIdsInOrder.includes(b.id)

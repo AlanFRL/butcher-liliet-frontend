@@ -1,0 +1,167 @@
+/* =========================
+   PRINT (XPrinter XP-80T) - Cierre de Caja
+   72mm width, 48 chars/line
+   ========================= */
+@media print {
+  :root {
+    --scale-factor: 1.0;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    box-sizing: border-box !important;
+  }
+
+  @page {
+    size: 70mm auto !important;
+    margin: 0 !important;
+  }
+
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 70mm !important;
+    background: #fff !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  /* Ocultar TODO */
+  body * {
+    visibility: hidden !important;
+  }
+  
+  /* Mostrar SOLO el recibo printable */
+  .thermal-receipt-cash-close[data-printable="true"],
+  .thermal-receipt-cash-close[data-printable="true"] * {
+    visibility: visible !important;
+  }
+
+  /* Posicionar el recibo */
+  .thermal-receipt-cash-close[data-printable="true"] {
+    display: block !important;
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 70mm !important;
+    max-width: 70mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    transform-origin: top left !important;
+    transform: scaleX(var(--scale-factor)) !important;
+    z-index: 999999 !important;
+  }
+  
+  /* Mostrar contenedor .hidden si tiene recibo printable */
+  .hidden:has(.thermal-receipt-cash-close[data-printable="true"]) {
+    display: block !important;
+  }
+  
+  /* Colapsar ancestros */
+  body > *,
+  #root,
+  #root > *,
+  .min-h-screen,
+  .min-h-screen > *,
+  [class*="fixed"][class*="inset-0"],
+  [class*="bg-black"][class*="bg-opacity"] {
+    position: static !important;
+    width: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  /* Ocultar recibos NO printable */
+  .thermal-receipt-cash-close:not([data-printable="true"]) {
+    display: none !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .thermal-receipt-cash-close__inner {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 2mm !important;
+    box-sizing: border-box !important;
+
+    font-family: "Courier New", monospace !important;
+    font-size: 10pt !important;
+    line-height: 1.3 !important;
+    font-weight: 600 !important;
+    color: #000 !important;
+
+    background: #fff !important;
+    font-variant-numeric: tabular-nums !important;
+  }
+
+  /* Tipografías */
+  .thermal-receipt-cash-close__inner h1 {
+    font-size: 12pt !important;
+    font-weight: 700 !important;
+    margin: 0 0 1.4mm 0 !important;
+    letter-spacing: 0.2px !important;
+    color: #000 !important;
+  }
+
+  .thermal-receipt-cash-close__inner .text-xs { font-size: 8pt !important; font-weight: 500 !important; }
+  .thermal-receipt-cash-close__inner .text-sm { font-size: 8.5pt !important; font-weight: 600 !important; }
+  .thermal-receipt-cash-close__inner .text-base { font-size: 9pt !important; font-weight: 600 !important; }
+  .thermal-receipt-cash-close__inner .text-lg { font-size: 11pt !important; font-weight: 700 !important; }
+
+  /* Asegurar negritas más visibles */
+  .thermal-receipt-cash-close__inner .font-bold { font-weight: 700 !important; }
+  .thermal-receipt-cash-close__inner .font-semibold { font-weight: 700 !important; }
+
+  /* Espaciados compactos */
+  .thermal-receipt-cash-close__inner .mb-4 { margin-bottom: 1.6mm !important; }
+  .thermal-receipt-cash-close__inner .mb-3 { margin-bottom: 1.2mm !important; }
+  .thermal-receipt-cash-close__inner .mb-2 { margin-bottom: 0.9mm !important; }
+  .thermal-receipt-cash-close__inner .mb-1 { margin-bottom: 0.6mm !important; }
+  .thermal-receipt-cash-close__inner .mt-4 { margin-top: 1.6mm !important; }
+  .thermal-receipt-cash-close__inner .mt-2 { margin-top: 0.9mm !important; }
+  .thermal-receipt-cash-close__inner .pb-4 { padding-bottom: 1.6mm !important; }
+  .thermal-receipt-cash-close__inner .pb-3 { padding-bottom: 1.2mm !important; }
+  .thermal-receipt-cash-close__inner .pb-2 { padding-bottom: 0.9mm !important; }
+
+  /* Bordes más gruesos para mejor visibilidad */
+  .thermal-receipt-cash-close__inner .border-b-2 { border-bottom-width: 0.6mm !important; border-color: #000 !important; }
+  .thermal-receipt-cash-close__inner .border-b { border-bottom-width: 0.4mm !important; border-color: #000 !important; }
+  .thermal-receipt-cash-close__inner .border-t-2 { border-top-width: 0.6mm !important; border-color: #000 !important; }
+  .thermal-receipt-cash-close__inner .border-t { border-top-width: 0.4mm !important; border-color: #000 !important; }
+
+  /* Evitar desbordes en flex */
+  .thermal-receipt-cash-close__inner .flex { min-width: 0 !important; }
+  .thermal-receipt-cash-close__inner .flex > * { min-width: 0 !important; }
+
+  .thermal-receipt-cash-close__inner .flex > span:last-child {
+    flex: 0 0 auto !important;
+    white-space: nowrap !important;
+    text-align: right !important;
+  }
+
+  .thermal-receipt-cash-close__inner .flex > span:first-child {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+}
+
+/* =========================
+   SCREEN (preview UI)
+   ========================= */
+@media screen {
+  .thermal-receipt-cash-close {
+    max-width: 70mm;
+    margin: 0 auto;
+    background: white;
+  }
+  .thermal-receipt-cash-close__inner {
+    padding: 2mm;
+  }
+}

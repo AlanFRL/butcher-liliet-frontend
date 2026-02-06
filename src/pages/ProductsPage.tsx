@@ -9,6 +9,7 @@ export const ProductsPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{[key: string]: string}>({});
   const { showToast, ToastComponent } = useToast();
   
   const { products, categories, addProduct, updateProduct, toggleProductFavorite, loadProducts, loadCategories, isLoading } = useProductStore();
@@ -39,6 +40,7 @@ export const ProductsPage: React.FC = () => {
   });
   
   const handleOpenModal = (product?: Product) => {
+    setFieldErrors({});
     if (product) {
       setEditingProduct(product);
       const invType = (product.inventoryType as any) || (product.saleType === 'WEIGHT' ? 'WEIGHT' : 'UNIT');
@@ -72,29 +74,82 @@ export const ProductsPage: React.FC = () => {
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const errors: {[key: string]: string} = {};
+    
+    // Validar nombre
+    if (!formData.name.trim()) {
+      errors.name = 'El nombre es obligatorio';
+    } else {
+      // Validar nombre único
+      const nameExists = products.some(
+        p => p.name.toLowerCase() === formData.name.trim().toLowerCase() && 
+             (!editingProduct || p.id !== editingProduct.id)
+      );
+      if (nameExists) {
+        errors.name = 'Ya existe un producto con este nombre';
+      }
+    }
+    
+    // Validar categoría
+    if (!formData.categoryId) {
+      errors.categoryId = 'La categoría es obligatoria';
+    }
     
     // Validar barcode solo si no es NONE
     if (formData.barcodeType !== 'NONE') {
       if (!formData.barcode || formData.barcode.trim() === '') {
-        showToast('warning', 'El código de barras es obligatorio');
-        return;
-      }
-      
-      // Validar formato de barcode según tipo
-      if (formData.barcodeType === 'WEIGHT_EMBEDDED') {
-        if (!/^\d{6}$/.test(formData.barcode)) {
-          showToast('warning', 'Para productos pesados, el código debe ser de 6 dígitos (segmento W)');
-          return;
+        errors.barcode = 'El código de barras es obligatorio';
+      } else {
+        // Validar barcode único
+        const barcodeExists = products.some(
+          p => p.barcode === formData.barcode.trim() && 
+               (!editingProduct || p.id !== editingProduct.id)
+        );
+        if (barcodeExists) {
+          errors.barcode = 'Este código de barras ya está en uso';
         }
-      } else if (formData.barcodeType === 'STANDARD') {
-        if (!/^\d{8,14}$/.test(formData.barcode)) {
-          showToast('warning', 'El código de barras estándar debe tener entre 8 y 14 dígitos');
-          return;
+        
+        // Validar formato de barcode según tipo
+        if (formData.barcodeType === 'WEIGHT_EMBEDDED') {
+          if (!/^\d{6}$/.test(formData.barcode)) {
+            errors.barcode = 'Para productos pesados, el código debe ser de 6 dígitos';
+          }
+        } else if (formData.barcodeType === 'STANDARD') {
+          if (!/^\d{8,14}$/.test(formData.barcode)) {
+            errors.barcode = 'El código estándar debe tener entre 8 y 14 dígitos';
+          }
         }
       }
     }
     
+    // Validar precio (no requerido para productos al vacío)
     const price = formData.inventoryType === 'VACUUM_PACKED' ? 0 : parseFloat(formData.price);
+    if (formData.inventoryType !== 'VACUUM_PACKED') {
+      if (!formData.price || isNaN(price) || price <= 0) {
+        errors.price = 'El precio debe ser mayor a 0';
+      }
+    }
+    
+    // Validar stock solo para productos que NO son por peso y NO son al vacío
+    if (formData.inventoryType === 'UNIT') {
+      if (formData.stockQuantity && parseFloat(formData.stockQuantity) < 0) {
+        errors.stockQuantity = 'El stock no puede ser negativo';
+      }
+      if (formData.minStock && parseFloat(formData.minStock) < 0) {
+        errors.minStock = 'El stock mínimo no puede ser negativo';
+      }
+    }
+    
+    // Mostrar errores si los hay
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      const firstError = Object.values(errors)[0];
+      showToast('error', firstError);
+      return;
+    }
+    
+    setFieldErrors({});
+    
     if (formData.inventoryType !== 'VACUUM_PACKED' && (isNaN(price) || price < 0)) {
       showToast('warning', 'El precio debe ser un número válido');
       return;
@@ -140,9 +195,22 @@ export const ProductsPage: React.FC = () => {
       
       showToast('success', editingProduct ? 'Producto actualizado exitosamente' : 'Producto creado exitosamente');
       setShowModal(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving product:', error);
-      showToast('error', 'Error al guardar el producto');
+      
+      // Intentar extraer mensaje específico del error
+      let errorMessage = 'Error al guardar el producto';
+      const errorText = error?.message || '';
+      
+      if (errorText.includes('Barcode') && errorText.includes('already exists')) {
+        setFieldErrors({ barcode: 'Este código de barras ya está en uso' });
+        errorMessage = 'El código de barras ya está registrado en otro producto';
+      } else if (errorText.includes('name') && errorText.includes('already exists')) {
+        setFieldErrors({ name: 'Ya existe un producto con este nombre' });
+        errorMessage = 'El nombre del producto ya está en uso';
+      }
+      
+      showToast('error', errorMessage);
     }
   };
 
@@ -281,6 +349,9 @@ export const ProductsPage: React.FC = () => {
                 Producto
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                Código de Barras
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                 Categoría
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
@@ -314,6 +385,9 @@ export const ProductsPage: React.FC = () => {
                         <p className="text-sm text-gray-500">{product.sku}</p>
                       </div>
                     </div>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-600">
+                    {product.barcode || 'Sin código'}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">
                     {category?.name || '-'}
@@ -419,6 +493,7 @@ export const ProductsPage: React.FC = () => {
               label="Nombre del Producto"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              error={fieldErrors.name}
               required
             />
             
@@ -458,8 +533,7 @@ export const ProductsPage: React.FC = () => {
               <Input
                 label={`C\u00f3digo de Barras * ${formData.barcodeType === 'WEIGHT_EMBEDDED' ? '(6 d\u00edgitos)' : formData.barcodeType === 'STANDARD' ? '(8-14 d\u00edgitos)' : ''}`}
                 value={formData.barcode}
-                onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
-                placeholder={formData.barcodeType === 'WEIGHT_EMBEDDED' ? '200001' : formData.barcodeType === 'STANDARD' ? '7501234567890' : ''}
+                onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}                error={fieldErrors.barcode}                placeholder={formData.barcodeType === 'WEIGHT_EMBEDDED' ? '200001' : formData.barcodeType === 'STANDARD' ? '7501234567890' : ''}
                 required
                 maxLength={formData.barcodeType === 'WEIGHT_EMBEDDED' ? 6 : formData.barcodeType === 'STANDARD' ? 14 : 100}
               />
@@ -488,7 +562,7 @@ export const ProductsPage: React.FC = () => {
               <select
                 value={formData.categoryId}
                 onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className={`w-full px-4 py-2 border ${fieldErrors.categoryId ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500`}
               >
                 <option value="">Sin categoría</option>
                 {categories.map((cat) => (
@@ -497,6 +571,9 @@ export const ProductsPage: React.FC = () => {
                   </option>
                 ))}
               </select>
+              {fieldErrors.categoryId && (
+                <p className="mt-1 text-xs text-red-500">{fieldErrors.categoryId}</p>
+              )}
             </div>
 
             <div>
@@ -548,26 +625,44 @@ export const ProductsPage: React.FC = () => {
                 min="0"
                 value={formData.price}
                 onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                error={fieldErrors.price}
                 required
               />
-              <Input
-                label="Stock Actual"
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.stockQuantity}
-                onChange={(e) => setFormData({ ...formData, stockQuantity: e.target.value })}
-                placeholder="0"
-              />
-              <Input
-                label="Stock Mínimo"
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.minStock}
-                onChange={(e) => setFormData({ ...formData, minStock: e.target.value })}
-                placeholder="0"
-              />
+              
+              {/* Stock solo para productos por unidad (no por peso ni al vacío) */}
+              {formData.inventoryType === 'UNIT' && (
+                <>
+                  <Input
+                    label="Stock Actual"
+                    type="number"
+                    step="1"
+                    min="0"
+                    value={formData.stockQuantity}
+                    onChange={(e) => setFormData({ ...formData, stockQuantity: e.target.value })}
+                    error={fieldErrors.stockQuantity}
+                    placeholder="0"
+                  />
+                  <Input
+                    label="Stock Mínimo"
+                    type="number"
+                    step="1"
+                    min="0"
+                    value={formData.minStock}
+                    onChange={(e) => setFormData({ ...formData, minStock: e.target.value })}
+                    error={fieldErrors.minStock}
+                    placeholder="0"
+                  />
+                </>
+              )}
+              
+              {/* Nota para productos por peso */}
+              {formData.inventoryType === 'WEIGHT' && (
+                <div className="bg-gray-50 px-3 py-2 rounded-lg">
+                  <p className="text-xs text-gray-600">
+                    ℹ️ Los productos por peso no requieren control de inventario
+                  </p>
+                </div>
+              )}
             </div>
           )}
 

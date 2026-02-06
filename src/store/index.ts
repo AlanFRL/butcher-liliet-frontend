@@ -57,6 +57,7 @@ interface CashState {
   closeCashSession: (countedCash: number, note?: string) => Promise<boolean>;
   addCashMovement: (type: 'DEPOSIT' | 'WITHDRAWAL' | 'ADJUSTMENT', amount: number, reason: string) => Promise<boolean>;
   loadCurrentSession: () => Promise<void>;
+  loadCashMovements: (sessionId: string) => Promise<void>;
   clearSession: () => void;
 }
 
@@ -78,9 +79,13 @@ interface ProductState {
 
 interface CartState {
   cartItems: CartItem[];
-  addToCart: (product: Product, qty: number) => void;
-  addBatchToCart: (product: Product, batch: { id: string; batchNumber: string; actualWeight: number; unitPrice: number }) => void;
+  globalDiscount: number; // Descuento adicional sobre el subtotal
+  addToCart: (product: Product, qty: number, scannedData?: { barcode: string; subtotal: number }) => void;
+  addBatchToCart: (product: Product, batch: { id?: string; batchNumber?: string; actualWeight: number; unitPrice: number; needsCreation?: boolean }) => void;
   updateCartItem: (itemId: string, qty: number) => void;
+  setItemDiscount: (itemId: string, discount: number) => void;
+  setItemUnitPrice: (itemId: string, newUnitPrice: number) => void; // Cambiar precio/kg
+  setGlobalDiscount: (discount: number) => void;
   removeFromCart: (itemId: string) => void;
   clearCart: () => void;
   loadOrderToCart: (order: Order) => void; // Pre-cargar items de un pedido
@@ -373,7 +378,25 @@ export const useCashStore = create<CashState>((set, get) => ({
         createdAt: response.createdAt,
       };
       
+      // Actualizar expectedAmount de la sesión
+      let updatedSession = currentSession;
+      if (currentSession.expectedAmount !== null) {
+        const movementAmount = parseDecimal(response.amount);
+        if (type === 'DEPOSIT') {
+          updatedSession = {
+            ...currentSession,
+            expectedAmount: currentSession.expectedAmount + movementAmount,
+          };
+        } else if (type === 'WITHDRAWAL') {
+          updatedSession = {
+            ...currentSession,
+            expectedAmount: currentSession.expectedAmount - movementAmount,
+          };
+        }
+      }
+      
       set({ 
+        currentSession: updatedSession,
         cashMovements: [...cashMovements, newMovement],
         isLoading: false,
         error: null 
@@ -417,15 +440,42 @@ export const useCashStore = create<CashState>((set, get) => ({
           expectedAmount: response.expectedAmount ? parseDecimal(response.expectedAmount) : null,
           closingAmount: response.closingAmount ? parseDecimal(response.closingAmount) : null,
           differenceAmount: response.differenceAmount ? parseDecimal(response.differenceAmount) : null,
+          user: response.user ? {
+            id: response.user.id,
+            fullName: response.user.fullName,
+          } : undefined,
+          closedBy: response.closedBy ? {
+            id: response.closedBy.id,
+            fullName: response.closedBy.fullName,
+          } : undefined,
         };
         
         set({ 
           currentSession: session,
           isLoading: false 
         });
+        
+        // Cargar movimientos de la sesión
+        try {
+          const movements = await cashSessionsApi.getMovements(session.id);
+          const cashMovements: CashMovement[] = movements.map((m: any) => ({
+            id: m.id,
+            cashSessionId: m.sessionId,
+            type: m.type,
+            amount: parseDecimal(m.amount),
+            reason: m.reason,
+            createdBy: m.createdBy,
+            createdAt: m.createdAt,
+          }));
+          set({ cashMovements });
+        } catch (error) {
+          console.error('Error loading cash movements:', error);
+          set({ cashMovements: [] });
+        }
       } else {
         set({ 
           currentSession: null,
+          cashMovements: [],
           isLoading: false 
         });
       }
@@ -433,7 +483,37 @@ export const useCashStore = create<CashState>((set, get) => ({
       console.error('Error loading current session:', error);
       set({ 
         currentSession: null,
+        cashMovements: [],
         isLoading: false 
+      });
+    }
+  },
+  
+  loadCashMovements: async (sessionId: string) => {
+    set({ isLoading: true, error: null });
+    
+    try {
+      const movements = await cashSessionsApi.getMovements(sessionId);
+      const cashMovements: CashMovement[] = movements.map((m: any) => ({
+        id: m.id,
+        cashSessionId: m.sessionId,
+        type: m.type,
+        amount: parseDecimal(m.amount),
+        reason: m.reason,
+        createdBy: m.createdBy,
+        createdAt: m.createdAt,
+      }));
+      
+      set({ 
+        cashMovements,
+        isLoading: false 
+      });
+    } catch (error) {
+      console.error('Error loading cash movements:', error);
+      set({ 
+        cashMovements: [],
+        isLoading: false,
+        error: 'Error al cargar movimientos' 
       });
     }
   },
@@ -633,9 +713,32 @@ export const useProductStore = create<ProductState>((set, get) => ({
 
 export const useCartStore = create<CartState>((set, get) => ({
   cartItems: [],
+  globalDiscount: 0,
   
-  addToCart: (product, qty) => {
+  addToCart: (product, qty, scannedData) => {
     const { cartItems } = get();
+    
+    // Para productos WEIGHT_EMBEDDED: siempre crear item nuevo (nunca sumar)
+    if (product.barcodeType === 'WEIGHT_EMBEDDED') {
+      const newItem: CartItem = {
+        id: uuidv4(),
+        productId: product.id,
+        productName: product.name,
+        saleType: product.saleType,
+        unit: product.unit,
+        qty,
+        unitPrice: scannedData ? scannedData.subtotal / qty : product.price, // Calcular precio/kg real
+        discount: 0,
+        total: scannedData ? scannedData.subtotal : qty * product.price,
+        product,
+        scannedBarcode: scannedData?.barcode,
+        scannedSubtotal: scannedData?.subtotal,
+      };
+      set({ cartItems: [...cartItems, newItem] });
+      return;
+    }
+    
+    // Para productos STANDARD: sumar cantidades si ya existe
     const existingItem = cartItems.find((item) => item.productId === product.id);
     
     if (existingItem) {
@@ -658,6 +761,7 @@ export const useCartStore = create<CartState>((set, get) => ({
         productId: product.id,
         productName: product.name,
         saleType: product.saleType,
+        unit: product.unit,
         qty,
         unitPrice: product.price,
         discount: 0,
@@ -677,14 +781,16 @@ export const useCartStore = create<CartState>((set, get) => ({
       productId: product.id,
       productName: product.name,
       saleType: 'UNIT', // Los lotes siempre se venden como unidades
+      unit: product.unit,
       qty: 1, // Siempre 1 unidad (1 paquete)
       unitPrice: batch.unitPrice,
       discount: 0,
       total: batch.unitPrice,
       product,
       batchId: batch.id,
-      batchNumber: batch.batchNumber,
+      batchNumber: batch.batchNumber || (batch.needsCreation ? '⚠️ Por registrar' : undefined),
       actualWeight: batch.actualWeight,
+      needsBatchCreation: batch.needsCreation || false,
     };
     
     set({ cartItems: [...cartItems, newItem] });
@@ -710,6 +816,68 @@ export const useCartStore = create<CartState>((set, get) => ({
     }));
   },
   
+  setItemDiscount: (itemId, discount) => {
+    // Validar que el descuento no sea negativo
+    if (discount < 0) {
+      return;
+    }
+    
+    set((state) => ({
+      cartItems: state.cartItems.map((item) => {
+        if (item.id === itemId) {
+          // Calcular subtotal del item sin descuento
+          const itemSubtotal = item.qty * item.unitPrice;
+          
+          // No permitir descuento mayor al subtotal
+          const validDiscount = Math.min(discount, itemSubtotal);
+          
+          return {
+            ...item,
+            discount: validDiscount,
+            total: Math.round(itemSubtotal - validDiscount),
+          };
+        }
+        return item;
+      }),
+    }));
+  },
+  
+  setItemUnitPrice: (itemId, newUnitPrice) => {
+    // Validar que el precio sea positivo
+    if (newUnitPrice <= 0) {
+      return;
+    }
+    
+    set((state) => ({
+      cartItems: state.cartItems.map((item) => {
+        if (item.id === itemId) {
+          return {
+            ...item,
+            unitPrice: newUnitPrice,
+            discount: 0, // Resetear descuento al cambiar precio
+            total: Math.round(item.qty * newUnitPrice),
+          };
+        }
+        return item;
+      }),
+    }));
+  },
+  
+  setGlobalDiscount: (discount) => {
+    // Validar que el descuento no sea negativo
+    if (discount < 0) {
+      return;
+    }
+    
+    // Calcular subtotal total
+    const subtotal = get().getCartSubtotal();
+    
+    // No permitir descuento mayor al subtotal
+    const validDiscount = Math.min(discount, subtotal);
+    
+    set({ globalDiscount: validDiscount });
+  },
+  
   removeFromCart: (itemId) => {
     set((state) => ({
       cartItems: state.cartItems.filter((item) => item.id !== itemId),
@@ -717,7 +885,7 @@ export const useCartStore = create<CartState>((set, get) => ({
   },
   
   clearCart: () => {
-    set({ cartItems: [] });
+    set({ cartItems: [], globalDiscount: 0 });
   },
   
   loadOrderToCart: (order) => {
@@ -753,6 +921,7 @@ export const useCartStore = create<CartState>((set, get) => ({
         productId: orderItem.productId,
         productName: orderItem.productName,
         saleType: orderItem.saleType,
+        unit: orderItem.unit,
         qty: orderItem.qty,
         unitPrice: orderItem.unitPrice,
         discount: 0,
@@ -776,11 +945,15 @@ export const useCartStore = create<CartState>((set, get) => ({
   },
   
   getCartSubtotal: () => {
+    // Suma de totales de items (ya incluye descuentos por item)
     return get().cartItems.reduce((sum, item) => sum + item.total, 0);
   },
   
   getCartTotal: () => {
-    return get().getCartSubtotal();
+    const subtotal = get().getCartSubtotal();
+    const globalDiscount = get().globalDiscount;
+    // Total = Subtotal - Descuento Global
+    return Math.max(0, subtotal - globalDiscount);
   },
 }));
 
@@ -806,35 +979,93 @@ export const useSalesStore = create<SalesState>((set, get) => ({
     }
     
     try {
-      // Llamar al backend para crear la venta
+      // PASO 1: Crear lotes fantasma antes de completar la venta
+      const itemsWithBatches = [...cartState.cartItems];
+      
+      for (let i = 0; i < itemsWithBatches.length; i++) {
+        const item = itemsWithBatches[i];
+        
+        if (item.needsBatchCreation && item.actualWeight && item.unitPrice) {
+          console.log(`📦 Creando lote fantasma para: ${item.productName}`);
+          
+          try {
+            // Generar batchNumber automático
+            const now = new Date();
+            const today = now.getFullYear() + 
+              String(now.getMonth() + 1).padStart(2, '0') + 
+              String(now.getDate()).padStart(2, '0');
+            
+            const product = item.product;
+            const batchNumber = `${product.sku}-${today}-AUTO-${Date.now().toString().slice(-4)}`;
+            
+            // Crear lote en backend
+            const response = await fetch(`${API_BASE_URL}/product-batches`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('butcher_auth_token')}`
+              },
+              body: JSON.stringify({
+                productId: item.productId,
+                batchNumber,
+                actualWeight: item.actualWeight,
+                unitCost: 0,
+                unitPrice: item.unitPrice,
+                packedAt: new Date().toISOString(),
+                expiryDate: null,
+                notes: 'Creado automáticamente en venta'
+              })
+            });
+            
+            if (response.ok) {
+              const createdBatch = await response.json();
+              // Actualizar item con el batchId real
+              itemsWithBatches[i] = {
+                ...item,
+                batchId: createdBatch.id,
+                batchNumber: createdBatch.batchNumber,
+                needsBatchCreation: false
+              };
+              console.log(`✅ Lote creado: ${createdBatch.batchNumber}`);
+            } else {
+              console.error('❌ Error creando lote fantasma:', await response.text());
+              throw new Error('Error al crear lote necesario');
+            }
+          } catch (error) {
+            console.error('❌ Error creando lote fantasma:', error);
+            throw error;
+          }
+        }
+      }
+      
+      // PASO 2: Crear la venta con los lotes ya existentes
       const saleData = {
         sessionId: cashState.currentSession.id,
-        items: cartState.cartItems.map((item) => ({
+        items: itemsWithBatches.map((item) => ({
           productId: item.productId,
           quantity: item.qty,
-          unitPrice: item.unitPrice, // Enviar precio específico (importante para batches)
-          discount: item.discount || 0,
-          // Incluir datos de batch si existen (para productos VACUUM_PACKED)
+          unitPrice: item.unitPrice,
+          discount: item.discount || 0, // Descuento del item
           batchId: item.batchId,
           batchNumber: item.batchNumber,
           actualWeight: item.actualWeight,
         })),
-        discount: 0,
+        discount: cartState.globalDiscount || 0, // Descuento global de la venta
         paymentMethod,
         cashAmount: paymentMethod === 'CASH' && cashPaid ? cashPaid : undefined,
         cardAmount: paymentMethod === 'CARD' ? cartState.getCartTotal() : undefined,
         transferAmount: paymentMethod === 'TRANSFER' ? cartState.getCartTotal() : undefined,
-        notes: undefined, // No agregar notas automáticamente
+        notes: undefined,
         customerName: undefined,
-        orderId: orderId, // Vincular con pedido si existe
+        orderId: orderId,
       };
 
       console.log('📤 Enviando venta al backend...', saleData);
       const backendSale = await salesApi.create(saleData);
       console.log('✅ Venta creada en backend:', backendSale);
 
-      // Marcar lotes como vendidos (si hay productos al vacío)
-      const batchUpdates = cartState.cartItems
+      // PASO 3: Marcar lotes como vendidos
+      const batchUpdates = itemsWithBatches
         .filter(item => item.batchId)
         .map(item => item.batchId!);
 
@@ -860,16 +1091,24 @@ export const useSalesStore = create<SalesState>((set, get) => ({
         cashSessionId: backendSale.sessionId,
         cashierId: backendSale.cashierId,
         status: backendSale.status as SaleStatus,
-        items: (backendSale.items || []).map((item: any) => ({
-          id: item.id,
-          productId: item.productId,
-          productName: item.productName,
-          saleType: cartState.cartItems.find(ci => ci.productId === item.productId)?.saleType || 'UNIT',
-          qty: parseDecimal(item.quantity),
-          unitPrice: parseDecimal(item.unitPrice),
-          discount: parseDecimal(item.discount),
-          total: parseDecimal(item.subtotal),
-        })),
+        items: (backendSale.items || []).map((item: any) => {
+          const cartItem = cartState.cartItems.find(ci => ci.productId === item.productId);
+          return {
+            id: item.id,
+            productId: item.productId,
+            productName: item.productName,
+            saleType: cartItem?.saleType || 'UNIT',
+            qty: parseDecimal(item.quantity),
+            unit: cartItem?.product.unit || 'unid', // Obtener unidad del producto
+            unitPrice: parseDecimal(item.unitPrice),
+            discount: parseDecimal(item.discount),
+            total: parseDecimal(item.subtotal),
+            // Incluir información de lote si existe
+            batchId: item.batchId || cartItem?.batchId,
+            batchNumber: item.batchNumber || cartItem?.batchNumber,
+            actualWeight: item.actualWeight ? parseDecimal(item.actualWeight) : cartItem?.actualWeight,
+          };
+        }),
         subtotal: parseDecimal(backendSale.subtotal),
         discount: parseDecimal(backendSale.discount),
         total: parseDecimal(backendSale.total),
@@ -982,8 +1221,10 @@ interface OrderState {
       productId: string;
       batchId?: string;
       qty: number;
+      discount?: number; // Descuento por item
       notes?: string;
     }>;
+    discount?: number; // Descuento global
     deliveryDate: string;
     deliveryTime: string;
     notes?: string;
@@ -1086,7 +1327,7 @@ export const useOrderStore = create<OrderState>((set, get) => ({
         productId: item.productId,
         batchId: item.batchId,
         quantity: item.qty,
-        discount: 0,
+        discount: item.discount || 0, // Incluir descuento por item
         notes: item.notes,
       }));
 
@@ -1094,6 +1335,7 @@ export const useOrderStore = create<OrderState>((set, get) => ({
         customerName: data.customerName,
         customerPhone: data.customerPhone,
         items: backendItems,
+        discount: data.discount || 0, // Incluir descuento global
         deliveryDate: data.deliveryDate,
         deliveryTime: data.deliveryTime,
         notes: data.notes,

@@ -1,4 +1,5 @@
 import React from 'react';
+import './ThermalReceiptCashClose.css';
 
 interface ThermalReceiptProps {
   data: {
@@ -13,19 +14,14 @@ interface ThermalReceiptProps {
     openTime: string;
     closeTime: string;
     initialAmount: number;
-    sales: Array<{
-      id: string;
-      time: string;
+    // Resumen de productos vendidos
+    productsSummary: Array<{
+      productName: string;
+      quantity: number;
+      unit: string; // 'kg', 'unidad', 'lote'
       total: number;
-      items: Array<{
-        name: string;
-        quantity: number;
-        unit: string;
-        price: number;
-        subtotal: number;
-      }>;
-      paymentMethod: string;
     }>;
+    salesCount: number; // Total de ventas realizadas
     totalSales: number;
     totalCashSales: number;
     totalTransferSales: number;
@@ -33,134 +29,16 @@ interface ThermalReceiptProps {
     finalAmount: number;
     difference: number;
   };
+  printable?: boolean;
 }
 
-export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({ data }) => {
+export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({ data, printable = false }) => {
   return (
-    <>
-      <style>{`
-        @media print {
-          * {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          
-          html, body {
-            margin: 0 !important;
-            padding: 0 !important;
-            width: 100% !important;
-            height: 100% !important;
-          }
-          
-          body * {
-            visibility: hidden;
-          }
-          
-          .thermal-receipt, .thermal-receipt * {
-            visibility: visible;
-          }
-          
-          .thermal-receipt {
-            position: absolute;
-            left: 0 !important;
-            top: 0 !important;
-            /* Brother QL-800 @ 300 DPI: Ajustado a 480px (~40.6mm) */
-            width: 480px !important;
-            max-width: 480px !important;
-            min-width: 480px !important;
-            margin: 0 !important;
-            padding: 20px !important;
-            box-sizing: border-box !important;
-            transform-origin: top left;
-            background: white !important;
-          }
-          
-          .thermal-receipt * {
-            max-width: 100% !important;
-            box-sizing: border-box !important;
-          }
-          
-          @page {
-            /* Página de 520px (~44mm) para centrar contenido de 480px */
-            size: 520px auto;
-            margin: 0 !important;
-          }
-          
-          /* Ajustes específicos para Brother QL-800 @ 300 DPI */
-          .thermal-receipt {
-            font-size: 32px !important;
-            line-height: 1.3 !important;
-          }
-          
-          .thermal-receipt .text-base {
-            font-size: 38px !important;
-          }
-          
-          .thermal-receipt .text-sm {
-            font-size: 34px !important;
-          }
-          
-          .thermal-receipt .text-xs {
-            font-size: 28px !important;
-          }
-          
-          .thermal-receipt .font-bold {
-            font-weight: bold !important;
-          }
-          }
-          
-          .thermal-receipt .mb-4 {
-            margin-bottom: 8px !important;
-          }
-          
-          .thermal-receipt .mb-3 {
-            margin-bottom: 20px !important;
-          }
-          
-          .thermal-receipt .mb-2 {
-            margin-bottom: 14px !important;
-          }
-          
-          .thermal-receipt .mb-4 {
-            margin-bottom: 28px !important;
-          }
-          
-          .thermal-receipt .pb-4 {
-            padding-bottom: 28px !important;
-          }
-          
-          .thermal-receipt .pb-3 {
-            padding-bottom: 20px !important;
-          }
-          
-          .thermal-receipt .pb-2 {
-            padding-bottom: 14px !important;
-          }
-          
-          .thermal-receipt .border-b-2 {
-            border-bottom-width: 6px !important;
-          }
-          
-          .thermal-receipt .border-t-2 {
-            border-top-width: 6px !important;
-          }
-          
-          .thermal-receipt .border-t {
-            border-top-width: 3px !important;
-          }
-        }
-      `}</style>
-      <div 
-        className="thermal-receipt bg-white p-6 mx-auto font-mono text-xs"
-        style={{ 
-          width: '62mm',
-          minHeight: '200mm',
-          fontFamily: 'Courier New, monospace',
-          maxWidth: '62mm',
-          boxSizing: 'border-box',
-          padding: '8px'
-        }}
-      >
+    <div 
+      className={`thermal-receipt-cash-close bg-white ${printable ? '' : 'no-print'}`}
+      data-printable={printable}
+    >
+      <div className="thermal-receipt-cash-close__inner">
       {/* Header */}
       <div className="text-center mb-3 border-b-2 border-dashed border-gray-400 pb-3">
         <div className="text-base font-bold mb-1">{data.business}</div>
@@ -231,79 +109,77 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({ data }) => {
 
       <div className="border-t border-dashed border-gray-400 my-2"></div>
 
-      {/* Ventas del día */}
+      {/* Resumen de Productos Vendidos */}
       <div className="mb-4">
-        <div className="text-center font-bold mb-2">VENTAS DEL TURNO</div>
+        <div className="text-center font-bold mb-2">PRODUCTOS VENDIDOS</div>
         
-        {data.sales.length === 0 ? (
-          <div className="text-center text-gray-500 py-2">No hay ventas registradas</div>
+        {data.productsSummary.length === 0 ? (
+          <div className="text-center text-gray-500 py-2">No hay productos</div>
         ) : (
           <>
-            {data.sales.map((sale, index) => (
-              <div key={sale.id} className="mb-3 pb-2 border-b border-gray-200">
-                <div className="flex justify-between mb-1">
-                  <span className="font-bold">Venta #{index + 1}</span>
-                  <span>{sale.time}</span>
-                </div>
-                <div className="text-xs text-gray-600 mb-1">
-                  {sale.paymentMethod === 'CASH' ? 'Efectivo' : 'Transferencia'}
-                </div>
-                {sale.items.map((item, idx) => (
-                  <div key={idx} className="ml-2 text-xs mb-1">
-                    <div className="flex justify-between">
-                      <span>{item.name}</span>
-                    </div>
-                    <div className="flex justify-between ml-2 text-gray-600">
-                      <span>{item.quantity.toFixed(3)} {item.unit} × Bs {item.price.toFixed(2)}</span>
-                      <span>Bs {item.subtotal.toFixed(2)}</span>
-                    </div>
-                  </div>
-                ))}
-                <div className="flex justify-between mt-1">
-                  <span className="ml-2 font-bold">Total:</span>
-                  <span className="font-bold">Bs {sale.total.toFixed(2)}</span>
-                </div>
+            {/* Header de tabla */}
+            <div className="flex justify-between text-xs font-bold border-b border-gray-300 pb-1 mb-1">
+              <span className="flex-1">Producto</span>
+              <span className="w-20 text-right">Cantidad</span>
+              <span className="w-16 text-right">Total</span>
+            </div>
+            
+            {/* Filas de productos */}
+            {data.productsSummary.map((product, index) => (
+              <div key={index} className="flex justify-between text-xs py-0.5 border-b border-gray-100">
+                <span className="flex-1 font-medium">{product.productName}</span>
+                <span className="w-20 text-right text-gray-600">
+                  {product.unit === 'kg' 
+                    ? `${product.quantity.toFixed(3)} kg`
+                    : product.unit === 'lote'
+                    ? `${product.quantity} lotes`
+                    : `${product.quantity} unid`}
+                </span>
+                <span className="w-16 text-right font-semibold">Bs {product.total.toFixed(2)}</span>
               </div>
             ))}
             
-            <div className="border-t border-dashed border-gray-400 my-2"></div>
-            
-            <div className="flex justify-between font-bold text-sm">
-              <span>TOTAL VENTAS ({data.sales.length}):</span>
-              <span>Bs {data.totalSales.toFixed(2)}</span>
+            <div className="border-t border-dashed border-gray-400 mt-2 pt-2">
+              <div className="flex justify-between font-bold text-sm">
+                <span>TOTAL ({data.salesCount} ventas):</span>
+                <span>Bs {data.totalSales.toFixed(2)}</span>
+              </div>
             </div>
           </>
         )}
       </div>
-
+      
       <div className="border-t border-dashed border-gray-400 my-2"></div>
 
-      {/* Resumen de caja */}
+      {/* Desglose por método de pago */}
       <div className="mb-4">
-        <div className="text-center font-bold mb-2">RESUMEN DE CAJA</div>
-        
-        <div className="flex justify-between">
-          <span>Monto Inicial:</span>
-          <span>Bs {data.initialAmount.toFixed(2)}</span>
-        </div>
-        
-        <div className="border-t border-gray-200 my-1"></div>
-        <div className="text-xs font-bold mb-1">VENTAS POR MÉTODO DE PAGO:</div>
-        
-        <div className="flex justify-between text-xs ml-2">
+        <div className="text-center font-bold mb-2 text-xs">VENTAS POR MÉTODO</div>
+        <div className="flex justify-between text-xs">
           <span>Efectivo:</span>
           <span>Bs {data.totalCashSales.toFixed(2)}</span>
         </div>
-        <div className="flex justify-between text-xs ml-2">
+        <div className="flex justify-between text-xs">
           <span>Transferencia:</span>
           <span>Bs {data.totalTransferSales.toFixed(2)}</span>
         </div>
-        <div className="flex justify-between font-bold">
-          <span>Total Ventas:</span>
-          <span>Bs {data.totalSales.toFixed(2)}</span>
+      </div>
+
+      <div className="border-t border-dashed border-gray-400 my-2"></div>
+
+      {/* Resumen de caja - SIMPLIFICADO */}
+      <div className="mb-4">
+        <div className="text-center font-bold mb-2">RESUMEN DE CAJA</div>
+        
+        <div className="flex justify-between text-xs">
+          <span>Monto Inicial:</span>
+          <span>Bs {data.initialAmount.toFixed(2)}</span>
+        </div>
+        <div className="flex justify-between text-xs">
+          <span>(+) Ventas Efectivo:</span>
+          <span>Bs {data.totalCashSales.toFixed(2)}</span>
         </div>
         
-        <div className="border-t border-gray-300 my-2"></div>
+        <div className="border-t border-gray-300 my-1"></div>
         
         <div className="flex justify-between font-bold text-sm">
           <span>EFECTIVO ESPERADO:</span>
@@ -314,33 +190,25 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({ data }) => {
           <span>Bs {data.totalCash.toFixed(2)}</span>
         </div>
         
-        <div className="border-t border-gray-300 my-2"></div>
+        <div className="border-t border-gray-300 my-1"></div>
         
-        <div className={`flex justify-between font-bold text-base ${
-          data.difference === 0 ? 'text-green-600' : 
-          data.difference > 0 ? 'text-blue-600' : 'text-red-600'
+        <div className={`flex justify-between font-bold text-sm ${
+          data.difference === 0 ? '' : 
+          data.difference > 0 ? '' : ''
         }`}>
           <span>DIFERENCIA:</span>
-          <span>Bs {data.difference.toFixed(2)}</span>
+          <span>{data.difference === 0 ? '✓ Bs 0.00' : `Bs ${data.difference.toFixed(2)} (${data.difference > 0 ? 'Sobrante' : 'Faltante'})`}</span>
         </div>
-        
-        {data.difference !== 0 && (
-          <div className="text-center text-xs mt-1 text-gray-600">
-            ({data.difference > 0 ? 'Sobrante' : 'Faltante'})
-          </div>
-        )}
       </div>
 
-      <div className="border-t-2 border-dashed border-gray-400 my-4"></div>
+      <div className="border-t-2 border-dashed border-gray-400 my-2"></div>
 
       {/* Footer */}
-      <div className="text-center text-xs text-gray-600 mt-6">
-        <div>Gracias por su trabajo</div>
-        <div className="mt-2">Sistema POS v1.0</div>
-        <div className="mt-4">═══════════════════</div>
-        <div className="mt-2">FIN DEL REPORTE</div>
+      <div className="text-center text-xs mt-3">
+        <div>Sistema POS v1.0</div>
+        <div className="mt-1">════════════════</div>
       </div>
     </div>
-    </>
+    </div>
   );
 };

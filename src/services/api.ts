@@ -128,7 +128,27 @@ export class ApiError extends Error {
   }
 }
 
+// ============= UTILIDADES =============
+
+/**
+ * Convierte un string decimal del backend a number
+ */
+export function parseDecimal(value: string | number): number {
+  if (typeof value === 'number') return value;
+  return parseFloat(value);
+}
+
 // ============= TIPOS DE RESPUESTA DEL BACKEND =============
+
+/**
+ * Respuesta paginada genérica
+ */
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  totalPages: number;
+}
 
 export interface LoginResponse {
   access_token: string;
@@ -695,6 +715,64 @@ export const cashSessionsApi = {
       method: 'GET',
     });
   },
+
+  /**
+   * Obtener historial de sesiones con filtros
+   * Soporta paginación opcional
+   */
+  getAll: async (params?: {
+    startDate?: string;
+    endDate?: string;
+    terminalId?: string;
+    userId?: string;
+    status?: 'OPEN' | 'CLOSED';
+    page?: number;
+    limit?: number;
+  }): Promise<CashSessionResponse[] | PaginatedResponse<CashSessionResponse>> => {
+    const queryParams = new URLSearchParams();
+    if (params?.startDate) queryParams.append('startDate', params.startDate);
+    if (params?.endDate) queryParams.append('endDate', params.endDate);
+    if (params?.terminalId) queryParams.append('terminalId', params.terminalId);
+    if (params?.userId) queryParams.append('userId', params.userId);
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.page !== undefined) queryParams.append('page', String(params.page));
+    if (params?.limit !== undefined) queryParams.append('limit', String(params.limit));
+
+    const query = queryParams.toString();
+    return apiFetch<CashSessionResponse[] | PaginatedResponse<CashSessionResponse>>(
+      `/cash-sessions${query ? `?${query}` : ''}`,
+      {
+        method: 'GET',
+      }
+    );
+  },
+
+  /**
+   * Obtener sesión por ID con detalles completos
+   */
+  getById: async (sessionId: string): Promise<CashSessionResponse> => {
+    return apiFetch<CashSessionResponse>(`/cash-sessions/${sessionId}`, {
+      method: 'GET',
+    });
+  },
+
+  /**
+   * Obtener movimientos de una sesión
+   */
+  getMovements: async (sessionId: string): Promise<any[]> => {
+    return apiFetch<any[]>(`/cash-sessions/${sessionId}/movements`, {
+      method: 'GET',
+    });
+  },
+
+  /**
+   * Obtener ventas de una sesión
+   */
+  getSales: async (sessionId: string): Promise<SaleResponse[]> => {
+    return apiFetch<SaleResponse[]>(`/sales?sessionId=${sessionId}`, {
+      method: 'GET',
+    });
+  },
 };
 
 // ============= API: VENTAS =============
@@ -728,24 +806,40 @@ export const salesApi = {
 
   /**
    * Listar ventas con filtros
+   * Soporta paginación opcional
    */
   getAll: async (params?: {
     sessionId?: string;
     status?: string;
     startDate?: string;
     endDate?: string;
-  }): Promise<SaleResponse[]> => {
+    page?: number;
+    limit?: number;
+  }): Promise<SaleResponse[] | PaginatedResponse<SaleResponse>> => {
     const queryParams = new URLSearchParams();
     if (params?.sessionId) queryParams.append('sessionId', params.sessionId);
     if (params?.status) queryParams.append('status', params.status);
     if (params?.startDate) queryParams.append('startDate', params.startDate);
     if (params?.endDate) queryParams.append('endDate', params.endDate);
+    if (params?.page !== undefined) queryParams.append('page', String(params.page));
+    if (params?.limit !== undefined) queryParams.append('limit', String(params.limit));
 
     const query = queryParams.toString();
-    return apiFetch<SaleResponse[]>(`/sales${query ? `?${query}` : ''}`, {
+    return apiFetch<SaleResponse[] | PaginatedResponse<SaleResponse>>(`/sales${query ? `?${query}` : ''}`, {
       method: 'GET',
     });
   },
+
+  /**
+   * NOTA: Este endpoint NO EXISTE en el backend actual
+   * Los items ya vienen incluidos en GET /sales?sessionId=XXX
+   * Mantener comentado por si el backend lo implementa en el futuro
+   */
+  // getSaleItems: async (saleId: string): Promise<SaleItemResponse[]> => {
+  //   return apiFetch<SaleItemResponse[]>(`/sales/${saleId}/items`, {
+  //     method: 'GET',
+  //   });
+  // },
 
   /**
    * Obtener estadísticas de ventas de una sesión
@@ -977,20 +1071,3 @@ export const ordersApi = {
     });
   },
 };
-
-// ============= UTILIDADES =============
-
-/**
- * Convierte decimales del backend (string) a number
- */
-export function parseDecimal(value: string | null | undefined): number {
-  if (!value) return 0;
-  return parseFloat(value);
-}
-
-/**
- * Convierte number a decimal para el backend
- */
-export function toDecimal(value: number): number {
-  return value;
-}

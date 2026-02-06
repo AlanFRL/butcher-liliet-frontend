@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DollarSign, Receipt, AlertCircle, Printer } from 'lucide-react';
+import { DollarSign, Receipt, AlertCircle, Eye, Printer } from 'lucide-react';
 import { Button } from '../components/ui';
 import { useCashStore, useSalesStore, useAuthStore, useAppStore } from '../store';
 import { ThermalReceipt } from '../components/ThermalReceipt';
@@ -9,6 +9,7 @@ export const CashClosePage: React.FC = () => {
   const [countedCash, setCountedCash] = useState('');
   const [note, setNote] = useState('');
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
   const [localError, setLocalError] = useState('');
   const [closedSessionSnapshot, setClosedSessionSnapshot] = useState<any>(null);
@@ -28,6 +29,60 @@ export const CashClosePage: React.FC = () => {
       return user.username.charAt(0).toUpperCase() + user.username.slice(1);
     }
     return 'Usuario';
+  };
+  
+  // Helper para agregar productos de todas las ventas en un resumen
+  const aggregateProductsSummary = (salesList: any[]) => {
+    const productMap = new Map<string, { quantity: number; unit: string; total: number }>();
+    
+    salesList.forEach((sale) => {
+      sale.items.forEach((item: any) => {
+        const productName = item.productName;
+        
+        // Determinar unidad y cantidad según tipo de producto
+        let unit: string;
+        let quantity: number;
+        
+        // 1. Productos al vacío tienen batchId (inventario por lotes)
+        if (item.batchId) {
+          unit = 'lote';
+          quantity = item.qty || 1;
+        }
+        // 2. Productos por peso (saleType = WEIGHT, no manejan inventario)
+        else if (item.saleType === 'WEIGHT') {
+          unit = 'kg';
+          quantity = item.actualWeight ? parseFloat(item.actualWeight) : item.qty;
+        }
+        // 3. Productos por unidad (saleType = UNIT, manejan inventario)
+        else {
+          unit = 'unidad';
+          quantity = item.qty || 1;
+        }
+        
+        const subtotal = item.total;
+        
+        if (productMap.has(productName)) {
+          const existing = productMap.get(productName)!;
+          existing.quantity += quantity;
+          existing.total += subtotal;
+          // Actualizar unidad si cambia (priorizar kg > lote > unidad)
+          if (unit === 'kg' && existing.unit !== 'kg') {
+            existing.unit = 'kg';
+          } else if (unit === 'lote' && existing.unit === 'unidad') {
+            existing.unit = 'lote';
+          }
+        } else {
+          productMap.set(productName, { quantity, unit, total: subtotal });
+        }
+      });
+    });
+    
+    return Array.from(productMap.entries()).map(([productName, data]) => ({
+      productName,
+      quantity: parseFloat(data.quantity.toFixed(3)), // Redondear a 3 decimales
+      unit: data.unit,
+      total: data.total,
+    }));
   };
   
   // Si no hay caja abierta Y no hay reporte que mostrar
@@ -80,6 +135,17 @@ export const CashClosePage: React.FC = () => {
   const countedCashNum = parseFloat(countedCash) || 0;
   const difference = countedCashNum - expectedCash;
   
+  const handleShowPreview = () => {
+    setLocalError('');
+    
+    if (!countedCash) {
+      setLocalError('Debes ingresar el efectivo contado');
+      return;
+    }
+    
+    setShowPreview(true);
+  };
+  
   const handleCloseCash = async () => {
     setLocalError('');
     
@@ -92,7 +158,8 @@ export const CashClosePage: React.FC = () => {
     const snapshot = {
       session: currentSession!,
       user: currentSession!.user,
-      sales: sessionSales,
+      productsSummary: aggregateProductsSummary(sessionSales),
+      salesCount: sessionSales.length,
       terminal: terminals.find(t => t.id === currentSession!.terminalId),
       totals: { totalSales, totalCashSales, totalTransferSales },
       countedCash: countedCashNum,
@@ -383,6 +450,15 @@ export const CashClosePage: React.FC = () => {
             Cancelar
           </Button>
           <Button
+            onClick={handleShowPreview}
+            variant="secondary"
+            size="lg"
+            className="flex-1"
+          >
+            <Eye className="w-5 h-5 mr-2" />
+            Vista Previa
+          </Button>
+          <Button
             onClick={() => setShowConfirm(true)}
             disabled={!countedCash || (Math.abs(difference) > 0.01 && !note)}
             variant="danger"
@@ -393,6 +469,88 @@ export const CashClosePage: React.FC = () => {
           </Button>
         </div>
       </div>
+      
+      {/* Modal Vista Previa ANTES de cerrar */}
+      {showPreview && currentSession && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-gray-100 rounded-lg p-6 max-w-md w-full my-8">
+            <div className="flex justify-between items-center mb-4 no-print">
+              <h3 className="text-xl font-bold text-gray-900">
+                Vista Previa - Cierre de Caja
+              </h3>
+              <button
+                onClick={() => setShowPreview(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="overflow-y-auto" style={{ maxHeight: '60vh' }}>
+              <ThermalReceipt
+                printable={true}
+                data={{
+                  business: 'BUTCHER LILIETH',
+                  address: '3er Anillo Interno #123',
+                  phone: '62409387',
+                  date: new Date().toLocaleDateString('es-BO', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  }),
+                  cashier: getUserDisplayName(currentUser),
+                  openedBy: getUserDisplayName(currentSession.user),
+                  closedBy: getUserDisplayName(currentUser),
+                  cashRegister: terminals.find(t => t.id === currentSession.terminalId)?.name || 'Caja Principal',
+                  openTime: new Date(currentSession.openedAt).toLocaleDateString('es-BO', {
+                    day: '2-digit',
+                    month: 'short',
+                  }) + ' ' + new Date(currentSession.openedAt).toLocaleTimeString('es-BO', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  }),
+                  closeTime: new Date().toLocaleDateString('es-BO', {
+                    day: '2-digit',
+                    month: 'short',
+                  }) + ' ' + new Date().toLocaleTimeString('es-BO', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  }),
+                  initialAmount: currentSession.openingAmount,
+                  productsSummary: aggregateProductsSummary(sessionSales),
+                  salesCount: sessionSales.length,
+                  totalSales,
+                  totalCashSales,
+                  totalTransferSales,
+                  totalCash: countedCashNum,
+                  finalAmount: currentSession.openingAmount + totalSales,
+                  difference,
+                }}
+              />
+            </div>
+            
+            <div className="flex space-x-3 mt-4 no-print">
+              <Button
+                onClick={() => window.print()}
+                variant="secondary"
+                size="lg"
+                className="flex-1"
+              >
+                <Printer className="w-5 h-5 mr-2" />
+                Imprimir
+              </Button>
+              <Button
+                onClick={() => setShowPreview(false)}
+                variant="outline"
+                size="lg"
+                className="flex-1"
+              >
+                Cerrar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Confirmación */}
       {showConfirm && (
@@ -431,9 +589,9 @@ export const CashClosePage: React.FC = () => {
       {showReceipt && closedSessionSnapshot && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-gray-100 rounded-lg p-6 max-w-md w-full my-8">
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex justify-between items-center mb-4 no-print">
               <h3 className="text-xl font-bold text-gray-900">
-                Cierre de Caja Exitoso
+                ¡Cierre de Caja Exitoso!
               </h3>
               <button
                 onClick={() => { setShowReceipt(false); navigate('/dashboard'); }}
@@ -443,12 +601,13 @@ export const CashClosePage: React.FC = () => {
               </button>
             </div>
             
-            <div className="overflow-y-auto" style={{ maxHeight: '70vh' }}>
+            <div className="overflow-y-auto" style={{ maxHeight: '60vh' }}>
               <ThermalReceipt
+                printable={true}
                 data={{
                   business: 'BUTCHER LILIETH',
-                  address: 'Av. Principal #123, La Paz',
-                  phone: '+591 2-1234567',
+                  address: '3er Anillo Interno #123',
+                  phone: '62409387',
                   date: new Date().toLocaleDateString('es-BO', {
                     year: 'numeric',
                     month: 'long',
@@ -458,31 +617,23 @@ export const CashClosePage: React.FC = () => {
                   openedBy: getUserDisplayName(closedSessionSnapshot.user),
                   closedBy: getUserDisplayName(currentUser),
                   cashRegister: closedSessionSnapshot.terminal?.name || 'Caja Principal',
-                  openTime: new Date(closedSessionSnapshot.session.openedAt).toLocaleTimeString('es-BO', {
+                  openTime: new Date(closedSessionSnapshot.session.openedAt).toLocaleDateString('es-BO', {
+                    day: '2-digit',
+                    month: 'short',
+                  }) + ' ' + new Date(closedSessionSnapshot.session.openedAt).toLocaleTimeString('es-BO', {
                     hour: '2-digit',
                     minute: '2-digit',
                   }),
-                  closeTime: new Date().toLocaleTimeString('es-BO', {
+                  closeTime: new Date().toLocaleDateString('es-BO', {
+                    day: '2-digit',
+                    month: 'short',
+                  }) + ' ' + new Date().toLocaleTimeString('es-BO', {
                     hour: '2-digit',
                     minute: '2-digit',
                   }),
                   initialAmount: closedSessionSnapshot.session.openingAmount,
-                  sales: closedSessionSnapshot.sales.map((sale: any) => ({
-                    id: sale.id,
-                    time: new Date(sale.createdAt).toLocaleTimeString('es-BO', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    }),
-                    total: sale.total,
-                    paymentMethod: sale.paymentMethod,
-                    items: sale.items.map((item: { productName: string; qty: number; saleType: string; unitPrice: number; total: number }) => ({
-                      name: item.productName,
-                      quantity: item.qty,
-                      unit: item.saleType === 'WEIGHT' ? 'kg' : 'und',
-                      price: item.unitPrice,
-                      subtotal: item.total,
-                    })),
-                  })),
+                  productsSummary: closedSessionSnapshot.productsSummary,
+                  salesCount: closedSessionSnapshot.salesCount,
                   totalSales: closedSessionSnapshot.totals.totalSales,
                   totalCashSales: closedSessionSnapshot.totals.totalCashSales,
                   totalTransferSales: closedSessionSnapshot.totals.totalTransferSales,
@@ -493,23 +644,23 @@ export const CashClosePage: React.FC = () => {
               />
             </div>
             
-            <div className="mt-4 flex space-x-3">
+            <div className="flex space-x-3 mt-4 no-print">
               <Button
-                onClick={() => { setShowReceipt(false); navigate('/dashboard'); }}
-                variant="outline"
+                onClick={() => window.print()}
+                variant="secondary"
                 size="lg"
                 className="flex-1"
               >
-                Cerrar
-              </Button>
-              <Button
-                onClick={() => window.print()}
-                variant="primary"
-                size="lg"
-                className="flex-1 flex items-center justify-center"
-              >
                 <Printer className="w-5 h-5 mr-2" />
                 Imprimir
+              </Button>
+              <Button
+                onClick={() => { setShowReceipt(false); navigate('/dashboard'); }}
+                variant="primary"
+                size="lg"
+                className="flex-1"
+              >
+                Ir al Dashboard
               </Button>
             </div>
           </div>

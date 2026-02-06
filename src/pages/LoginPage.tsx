@@ -157,7 +157,7 @@ export const LoginPage: React.FC = () => {
         </div>
         
         <p className="text-center text-primary-200 text-sm mt-6">
-          © 2025 Butcher Lilieth - Prototipo Demo
+          © 2026 Butcher Lilieth - Sistema POS
         </p>
       </div>
     </div>

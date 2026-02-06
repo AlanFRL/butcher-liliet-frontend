@@ -1,7 +1,8 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect } from "react";
+// USAR CSS EXTERNO para evitar acumulación de tags <style>
 import "./ThermalReceiptSale.css";
 
-interface ThermalReceiptSaleProps {
+interface PrintableSaleReceiptProps {
   data: {
     saleId: string;
     date: string;
@@ -24,80 +25,96 @@ interface ThermalReceiptSaleProps {
     cashPaid?: number;
     change?: number;
   };
-  printable?: boolean; // Marca este recibo como el único que debe imprimirse
+  printable?: boolean;
 }
 
-export const ThermalReceiptSale: React.FC<ThermalReceiptSaleProps> = ({ data, printable = false }) => {
-  const receiptRef = useRef<HTMLDivElement>(null);
-  
+export const PrintableSaleReceipt: React.FC<PrintableSaleReceiptProps> = ({ data, printable = false }) => {
   // Log para depuración
-  console.log('🖨️ [ThermalReceiptSale] Component RENDERED:', {
+  console.log('🖨️ [PrintableSaleReceipt] Component RENDERED:', {
     saleId: data.saleId.slice(-8),
     printable: printable,
     itemsCount: data.items.length,
+    timestamp: new Date().toISOString(),
+    stack: new Error().stack?.split('\n').slice(1, 4).join('\n')
   });
 
-  // Detectar eventos de impresión y capturar estilos
+  // Detectar eventos de impresión
   useEffect(() => {
-    console.log('🟢 [ThermalReceiptSale] Component MOUNTED for sale:', data.saleId.slice(-8), 'printable:', printable);
+    console.log('🟢 [PrintableSaleReceipt] Component MOUNTED for sale:', data.saleId.slice(-8), 'printable:', printable);
     
     const beforePrint = () => {
-      console.log('🎯 [POS PRINT EVENT] beforeprint fired for sale:', data.saleId.slice(-8));
+      console.log('🎯 [PRINT EVENT] beforeprint fired for sale:', data.saleId.slice(-8));
       
-      // Capturar información del DOM
-      const allReceipts = document.querySelectorAll('.thermal-receipt-sale');
-      const printableReceipts = document.querySelectorAll('.thermal-receipt-sale[data-printable="true"]');
-      
-      console.log('📊 [DEBUG] DOM state:', { 
-        total: allReceipts.length, 
-        printable: printableReceipts.length 
-      });
-      
-      // Capturar estilos computados del recibo printable
-      if (receiptRef.current && printable) {
-        const styles = window.getComputedStyle(receiptRef.current);
-        console.log('🔍 [DEBUG] Computed styles for THIS receipt:', {
+      // Buscar el recibo
+      const receipt = document.querySelector('.thermal-receipt-sale[data-printable="true"]') as HTMLElement;
+      if (receipt) {
+        const styles = window.getComputedStyle(receipt);
+        console.log('📐 [PRINT EVENT] Receipt COMPUTED styles during print:', {
+          position: styles.position,
           width: styles.width,
           maxWidth: styles.maxWidth,
-          fontSize: styles.fontSize,
+          left: styles.left,
+          top: styles.top,
           visibility: styles.visibility,
           display: styles.display,
-          position: styles.position,
-          transform: styles.transform,
+          zIndex: styles.zIndex,
+          fontSize: styles.fontSize,
+          fontWeight: styles.fontWeight,
         });
         
         // Verificar el inner
-        const inner = receiptRef.current.querySelector('.thermal-receipt-sale__inner');
+        const inner = receipt.querySelector('.thermal-receipt-sale__inner') as HTMLElement;
         if (inner) {
           const innerStyles = window.getComputedStyle(inner);
-          console.log('🔍 [DEBUG] Inner styles:', {
+          console.log('📐 [PRINT EVENT] Inner COMPUTED styles:', {
             fontSize: innerStyles.fontSize,
             fontWeight: innerStyles.fontWeight,
+            width: innerStyles.width,
             padding: innerStyles.padding,
           });
         }
+        
+        // Verificar ancestros
+        let parent = receipt.parentElement;
+        let level = 1;
+        while (parent && level <= 5) {
+          const parentStyles = window.getComputedStyle(parent);
+          console.log(`📐 [PRINT EVENT] Ancestor ${level} (${parent.className.slice(0,50)}):`, {
+            display: parentStyles.display,
+            visibility: parentStyles.visibility,
+            width: parentStyles.width,
+            height: parentStyles.height,
+            position: parentStyles.position,
+          });
+          parent = parent.parentElement;
+          level++;
+        }
       }
       
-      // Log de todos los recibos
-      allReceipts.forEach((el, i) => {
+      // Verificar qué elementos son visibles
+      const allElements = document.querySelectorAll('body *');
+      let visibleCount = 0;
+      allElements.forEach(el => {
         const styles = window.getComputedStyle(el);
-        console.log(`📋 [DEBUG] Receipt ${i}:`, {
-          printable: el.getAttribute('data-printable'),
-          width: styles.width,
-          visibility: styles.visibility,
-          display: styles.display,
-        });
+        if (styles.visibility === 'visible' && styles.display !== 'none') {
+          visibleCount++;
+        }
       });
+      console.log('👁️ [PRINT EVENT] Total visible elements during print:', visibleCount);
+      
+      // Verificar la URL actual
+      console.log('🌐 [PRINT EVENT] Current URL:', window.location.pathname);
     };
 
     const afterPrint = () => {
-      console.log('✅ [POS PRINT EVENT] afterprint fired for sale:', data.saleId.slice(-8));
+      console.log('✅ [PRINT EVENT] afterprint fired for sale:', data.saleId.slice(-8));
     };
 
     window.addEventListener('beforeprint', beforePrint);
     window.addEventListener('afterprint', afterPrint);
 
     return () => {
+      console.log('🔴 [PrintableSaleReceipt] Component UNMOUNTED for sale:', data.saleId.slice(-8));
       window.removeEventListener('beforeprint', beforePrint);
       window.removeEventListener('afterprint', afterPrint);
     };
@@ -118,64 +135,8 @@ export const ThermalReceiptSale: React.FC<ThermalReceiptSaleProps> = ({ data, pr
     }
   };
 
-  // Estilos de impresión inyectados directamente para garantizar que se apliquen
-  const printStyles = printable ? `
-    @media print {
-      @page { size: 70mm auto !important; margin: 0 !important; }
-      html, body { margin: 0 !important; padding: 0 !important; width: 70mm !important; }
-      body * { visibility: hidden !important; }
-      
-      .thermal-receipt-sale[data-printable="true"],
-      .thermal-receipt-sale[data-printable="true"] * { 
-        visibility: visible !important; 
-      }
-      
-      .thermal-receipt-sale[data-printable="true"] {
-        position: fixed !important;
-        left: 0 !important;
-        top: 0 !important;
-        width: 70mm !important;
-        max-width: 70mm !important;
-        min-width: 70mm !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        background: #fff !important;
-        z-index: 999999 !important;
-      }
-      
-      .thermal-receipt-sale[data-printable="true"] .thermal-receipt-sale__inner {
-        width: 100% !important;
-        padding: 2mm !important;
-        font-family: "Courier New", monospace !important;
-        font-size: 10pt !important;
-        font-weight: 600 !important;
-        line-height: 1.3 !important;
-        color: #000 !important;
-        background: #fff !important;
-      }
-      
-      .thermal-receipt-sale[data-printable="true"] h1 {
-        font-size: 12pt !important;
-        font-weight: 700 !important;
-      }
-      
-      .thermal-receipt-sale[data-printable="true"] .text-xs { font-size: 8pt !important; }
-      .thermal-receipt-sale[data-printable="true"] .text-lg { font-size: 11pt !important; }
-      .thermal-receipt-sale[data-printable="true"] .font-bold { font-weight: 700 !important; }
-      .thermal-receipt-sale[data-printable="true"] .font-semibold { font-weight: 700 !important; }
-      
-      .thermal-receipt-sale:not([data-printable="true"]) { display: none !important; }
-      .no-print { display: none !important; }
-      .hidden { display: block !important; visibility: visible !important; }
-      .print\\:block { display: block !important; visibility: visible !important; }
-    }
-  ` : '';
-
   return (
-    <>
-      {printable && <style dangerouslySetInnerHTML={{ __html: printStyles }} />}
-      <div
-        ref={receiptRef}
+    <div
         className={`thermal-receipt-sale bg-white ${printable ? '' : 'no-print'}`}
         data-printable={printable}
       >
@@ -216,6 +177,9 @@ export const ThermalReceiptSale: React.FC<ThermalReceiptSaleProps> = ({ data, pr
           <div className="mb-2 pb-2 border-b-2 border-gray-900">
             <div className="text-xs font-bold mb-2 pb-1 border-b border-gray-900">PRODUCTOS</div>
             {data.items.map((item, index) => {
+              const hasActualWeight = item.actualWeight && item.actualWeight > 0;
+              const actualWeight = item.actualWeight || 0;
+              const pricePerKg = hasActualWeight ? (item.price / actualWeight) : item.price;
               const itemSubtotalBeforeDiscount = item.quantity * item.price;
               const itemDiscount = item.discount || 0;
               
@@ -226,15 +190,15 @@ export const ThermalReceiptSale: React.FC<ThermalReceiptSaleProps> = ({ data, pr
                   </div>
                   <div className="flex justify-between text-xs">
                     <span>
-                      {item.quantity.toFixed(item.unit === "kg" ? 3 : 0)} {item.unit} x Bs{" "}
-                      {item.price.toFixed(2)}
-                      {item.batchNumber && (
-                        <span className="text-gray-600 ml-1">(Lote: {item.batchNumber})</span>
-                      )}
-                      {item.actualWeight && (
-                        <span className="text-gray-600 ml-1">
-                          ({item.actualWeight.toFixed(3)} kg)
-                        </span>
+                      {hasActualWeight ? (
+                        // Producto en lote (vacuum-packed): peso × precio/kg
+                        `${actualWeight.toFixed(3)} kg × Bs ${pricePerKg.toFixed(2)}/kg`
+                      ) : item.unit === "kg" ? (
+                        // Producto por peso: peso × precio/kg
+                        `${item.quantity.toFixed(3)} kg × Bs ${item.price.toFixed(2)}/kg`
+                      ) : (
+                        // Producto por unidad: qty × precio
+                        `${item.quantity.toFixed(0)} ${item.unit} × Bs ${item.price.toFixed(2)}`
                       )}
                     </span>
                     <span className="font-bold">Bs {itemSubtotalBeforeDiscount.toFixed(2)}</span>
@@ -308,6 +272,5 @@ export const ThermalReceiptSale: React.FC<ThermalReceiptSaleProps> = ({ data, pr
           </div>
         </div>
       </div>
-    </>
   );
 };

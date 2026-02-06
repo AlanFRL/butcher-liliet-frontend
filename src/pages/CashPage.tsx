@@ -5,9 +5,15 @@ import { Button } from '../components/ui';
 import { useCashStore, useSalesStore, useAuthStore } from '../store';
 
 export const CashPage: React.FC = () => {
-  const { currentSession, cashMovements } = useCashStore();
+  const { currentSession, cashMovements, addCashMovement } = useCashStore();
   const { sales } = useSalesStore();
   const { currentUser } = useAuthStore();
+  const [showDepositModal, setShowDepositModal] = React.useState(false);
+  const [showWithdrawalModal, setShowWithdrawalModal] = React.useState(false);
+  const [amount, setAmount] = React.useState('');
+  const [reason, setReason] = React.useState('');
+  const [isProcessing, setIsProcessing] = React.useState(false);
+  const [error, setError] = React.useState('');
   
   // Calcular totales de la sesión actual
   const sessionSales = currentSession
@@ -30,6 +36,60 @@ export const CashPage: React.FC = () => {
   const expectedCash = currentSession
     ? currentSession.openingAmount + totalSales + cashIn - cashOut
     : 0;
+  
+  const handleDeposit = async () => {
+    setError('');
+    const amountNum = parseFloat(amount);
+    
+    if (isNaN(amountNum) || amountNum <= 0) {
+      setError('El monto debe ser mayor a 0');
+      return;
+    }
+    
+    if (!reason.trim()) {
+      setError('Debe ingresar un motivo');
+      return;
+    }
+    
+    setIsProcessing(true);
+    const success = await addCashMovement('DEPOSIT', amountNum, reason);
+    setIsProcessing(false);
+    
+    if (success) {
+      setShowDepositModal(false);
+      setAmount('');
+      setReason('');
+    } else {
+      setError('Error al registrar el ingreso');
+    }
+  };
+  
+  const handleWithdrawal = async () => {
+    setError('');
+    const amountNum = parseFloat(amount);
+    
+    if (isNaN(amountNum) || amountNum <= 0) {
+      setError('El monto debe ser mayor a 0');
+      return;
+    }
+    
+    if (!reason.trim()) {
+      setError('Debe ingresar un motivo');
+      return;
+    }
+    
+    setIsProcessing(true);
+    const success = await addCashMovement('WITHDRAWAL', amountNum, reason);
+    setIsProcessing(false);
+    
+    if (success) {
+      setShowWithdrawalModal(false);
+      setAmount('');
+      setReason('');
+    } else {
+      setError('Error al registrar el retiro');
+    }
+  };
   
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
@@ -146,9 +206,13 @@ export const CashPage: React.FC = () => {
                 </div>
               </div>
               <p className="text-xs text-gray-500 mb-3">
-                Función disponible próximamente
+                Registra ingresos adicionales de efectivo
               </p>
-              <Button variant="outline" className="w-full" disabled>
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={() => setShowDepositModal(true)}
+              >
                 Registrar Ingreso
               </Button>
             </div>
@@ -166,9 +230,13 @@ export const CashPage: React.FC = () => {
                 </div>
               </div>
               <p className="text-xs text-gray-500 mb-3">
-                Función disponible próximamente
+                Registra salidas de efectivo de la caja
               </p>
-              <Button variant="outline" className="w-full" disabled>
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={() => setShowWithdrawalModal(true)}
+              >
                 Registrar Retiro
               </Button>
             </div>
@@ -245,6 +313,150 @@ export const CashPage: React.FC = () => {
             Abre caja al iniciar tu jornada, registra movimientos si es necesario, y cierra al finalizar
             para realizar el arqueo.
           </p>
+        </div>
+      )}
+      
+      {/* Modal de Ingreso */}
+      {showDepositModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Registrar Ingreso de Efectivo</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Monto <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">Bs</span>
+                  <input
+                    type="number"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    className="w-full pl-12 pr-4 py-2 text-lg font-bold border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Motivo <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  rows={3}
+                  placeholder="Describe el motivo del ingreso..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+                />
+              </div>
+              
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-lg text-sm">
+                  {error}
+                </div>
+              )}
+              
+              <div className="flex space-x-3 pt-2">
+                <Button
+                  onClick={() => {
+                    setShowDepositModal(false);
+                    setAmount('');
+                    setReason('');
+                    setError('');
+                  }}
+                  variant="outline"
+                  className="flex-1"
+                  disabled={isProcessing}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleDeposit}
+                  variant="success"
+                  className="flex-1"
+                  isLoading={isProcessing}
+                >
+                  Registrar
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Modal de Retiro */}
+      {showWithdrawalModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Registrar Retiro de Efectivo</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Monto <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">Bs</span>
+                  <input
+                    type="number"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    className="w-full pl-12 pr-4 py-2 text-lg font-bold border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Motivo <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  rows={3}
+                  placeholder="Describe el motivo del retiro..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+                />
+              </div>
+              
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-lg text-sm">
+                  {error}
+                </div>
+              )}
+              
+              <div className="flex space-x-3 pt-2">
+                <Button
+                  onClick={() => {
+                    setShowWithdrawalModal(false);
+                    setAmount('');
+                    setReason('');
+                    setError('');
+                  }}
+                  variant="outline"
+                  className="flex-1"
+                  disabled={isProcessing}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleWithdrawal}
+                  variant="danger"
+                  className="flex-1"
+                  isLoading={isProcessing}
+                >
+                  Registrar
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

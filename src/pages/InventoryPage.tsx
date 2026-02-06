@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Plus, Package, DollarSign, Weight, Trash2, CheckCircle, Box } from 'lucide-react';
 import { useProductStore } from '../store';
+import { parseScaleBarcode } from '../utils/barcodeParser';
 
 interface ProductBatch {
   id: string;
@@ -53,6 +54,12 @@ export const InventoryPage: React.FC = () => {
       expiryDate: '' 
     }
   ]);
+  
+  // Estados para scanner en modal de inventario
+  const barcodeBufferRef = useRef('');
+  const lastKeyTimeRef = useRef(0);
+  const scanTimeoutRef = useRef<number | null>(null);
+  const [activeBatchRowId, setActiveBatchRowId] = useState<string>('1');
 
   // Form state for stock adjustment
   const [stockFormData, setStockFormData] = useState({
@@ -67,6 +74,112 @@ export const InventoryPage: React.FC = () => {
     loadProducts();
     loadBatches();
   }, []);
+  
+  // Scanner para modal de inventario
+  useEffect(() => {
+    if (!showBatchModal) return;
+    
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Permitir scanner siempre en el modal, excepto si se está escribiendo en inputs de texto normales
+      const target = e.target as HTMLElement;
+      const isTextInput = (target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'text') || 
+                          target.tagName === 'TEXTAREA';
+      
+      // Solo bloquear si es un input de texto y el usuario está escribiendo manualmente
+      if (isTextInput) {
+        const timeDiff = Date.now() - lastKeyTimeRef.current;
+        if (timeDiff > 200) return; // Si hay pausa larga, es escritura manual
+      }
+      
+      const currentTime = Date.now();
+      const timeDiff = currentTime - lastKeyTimeRef.current;
+      
+      if (e.key === 'Enter') {
+        const barcode = barcodeBufferRef.current;
+        if (barcode.length >= 6) {
+          handleBarcodeScannedInModal(barcode);
+          e.preventDefault();
+        }
+        barcodeBufferRef.current = '';
+        lastKeyTimeRef.current = 0;
+        if (scanTimeoutRef.current) {
+          clearTimeout(scanTimeoutRef.current);
+          scanTimeoutRef.current = null;
+        }
+        return;
+      }
+      
+      if (e.key.length === 1) {
+        if (timeDiff > 150 && barcodeBufferRef.current.length > 0) {
+          barcodeBufferRef.current = e.key;
+        } else {
+          barcodeBufferRef.current += e.key;
+        }
+        
+        lastKeyTimeRef.current = currentTime;
+        
+        if (scanTimeoutRef.current) {
+          clearTimeout(scanTimeoutRef.current);
+        }
+        
+        scanTimeoutRef.current = setTimeout(() => {
+          const barcode = barcodeBufferRef.current;
+          if (barcode.length >= 6) {
+            handleBarcodeScannedInModal(barcode);
+            barcodeBufferRef.current = '';
+            lastKeyTimeRef.current = 0;
+          }
+        }, 200);
+      }
+    };
+    
+    document.addEventListener('keydown', handleKeyDown);
+    
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      if (scanTimeoutRef.current) {
+        clearTimeout(scanTimeoutRef.current);
+      }
+    };
+  }, [showBatchModal, activeBatchRowId, batchRows]);
+  
+  const handleBarcodeScannedInModal = (barcode: string) => {
+    console.log('📟 Código escaneado en modal:', barcode);
+    
+    const scaleData = parseScaleBarcode(barcode);
+    if (!scaleData) {
+      console.log('⚠️ No es código de balanza válido');
+      return;
+    }
+    
+    console.log('✅ Datos extraídos:', scaleData);
+    
+    // Buscar la primera fila vacía o la fila activa
+    const emptyRow = batchRows.find(row => !row.weight && !row.price);
+    const targetRowId = emptyRow ? emptyRow.id : activeBatchRowId;
+    
+    // Autorellenar fila
+    setBatchRows(rows => rows.map(row => 
+      row.id === targetRowId
+        ? {
+            ...row,
+            weight: scaleData.weightKg.toString(),
+            price: scaleData.totalPrice.toString()
+          }
+        : row
+    ));
+    
+    // Crear nueva fila automáticamente para el siguiente escaneo
+    const newId = String(Date.now());
+    setBatchRows(rows => [...rows, {
+      id: newId,
+      weight: '',
+      price: '',
+      packedAt: new Date().toISOString().split('T')[0],
+      expiryDate: ''
+    }]);
+    setActiveBatchRowId(newId);
+  };
 
   const loadBatches = async () => {
     setIsLoading(true);
@@ -267,6 +380,7 @@ export const InventoryPage: React.FC = () => {
         expiryDate: '' 
       }
     ]);
+    setActiveBatchRowId('1'); // Sincronizar con primera fila
   };
 
   const addBatchRow = () => {
@@ -747,7 +861,13 @@ export const InventoryPage: React.FC = () => {
           {showBatchModal && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
               <div className="bg-white rounded-lg p-5 w-full max-w-4xl max-h-[85vh] flex flex-col">
-                <h2 className="text-xl font-bold mb-3">Agregar Paquetes</h2>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-xl font-bold">Agregar Paquetes</h2>
+                  <div className="flex items-center gap-2 text-sm text-green-600">
+                    <div className="w-2 h-2 bg-green-600 rounded-full animate-pulse"></div>
+                    <span>📟 Lector activo</span>
+                  </div>
+                </div>
                 
                 <form onSubmit={handleBatchSubmit} className="flex flex-col flex-1">
                   {/* Product Select */}
@@ -814,9 +934,11 @@ export const InventoryPage: React.FC = () => {
                                   min="0.001"
                                   value={row.weight}
                                   onChange={(e) => updateBatchRow(row.id, 'weight', e.target.value)}
-                                  className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                                  onFocus={() => setActiveBatchRowId(row.id)}
+                                  className={`w-full border rounded px-2 py-1 text-sm batch-row-input ${
+                                    row.id === activeBatchRowId ? 'border-primary-500 ring-1 ring-primary-500' : 'border-gray-300'
+                                  }`}
                                   placeholder="0.950"
-                                  required
                                 />
                               </td>
                               <td className="px-2 py-1">
@@ -826,9 +948,11 @@ export const InventoryPage: React.FC = () => {
                                   min="0.01"
                                   value={row.price}
                                   onChange={(e) => updateBatchRow(row.id, 'price', e.target.value)}
-                                  className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                                  onFocus={() => setActiveBatchRowId(row.id)}
+                                  className={`w-full border rounded px-2 py-1 text-sm batch-row-input ${
+                                    row.id === activeBatchRowId ? 'border-primary-500 ring-1 ring-primary-500' : 'border-gray-300'
+                                  }`}
                                   placeholder="45.00"
-                                  required
                                 />
                               </td>
                               <td className="px-2 py-1">
@@ -837,7 +961,6 @@ export const InventoryPage: React.FC = () => {
                                   value={row.packedAt}
                                   onChange={(e) => updateBatchRow(row.id, 'packedAt', e.target.value)}
                                   className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
-                                  required
                                 />
                               </td>
                               <td className="px-2 py-1">
@@ -865,7 +988,7 @@ export const InventoryPage: React.FC = () => {
                       </table>
                     </div>
                     <p className="text-xs text-gray-500 mt-1">
-                      Los códigos se generan automáticamente (SKU-FECHA-NNN)
+                      💡 Escanea los productos directamente. Los códigos se generan automáticamente (SKU-FECHA-NNN). Usa el botón "+" para agregar más filas manualmente.
                     </p>
                   </div>
 
