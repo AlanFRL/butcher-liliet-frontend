@@ -209,9 +209,28 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
     }
     
     setSelectedItems(
-      selectedItems.map((item) =>
-        item.product.id === productId ? { ...item, qty } : item
-      )
+      selectedItems.map((item) => {
+        if (item.product.id !== productId) return item;
+        
+        // Si hay descuento aplicado, recalcularlo proporcionalmente
+        if (item.discount && item.discount > 0) {
+          const price = item.batchPrice || item.product.price;
+          const oldQty = item.qty;
+          
+          // Calcular el precio efectivo por unidad (precio con descuento)
+          const oldTotal = Math.round(oldQty * price);
+          const effectiveUnitPrice = (oldTotal - item.discount) / oldQty;
+          
+          // Aplicar el mismo precio efectivo a la nueva cantidad
+          const newSubtotal = Math.round(qty * price);
+          const newTotal = Math.round(qty * effectiveUnitPrice);
+          const newDiscount = Math.round(newSubtotal - newTotal);
+          
+          return { ...item, qty, discount: newDiscount > 0 ? newDiscount : 0 };
+        }
+        
+        return { ...item, qty };
+      })
     );
   };
   
@@ -372,25 +391,13 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
     });
     setShowDiscountModal(true);
   };
-  
-  const handleApplyDiscount = (discount: number) => {
-    if (selectedItemForDiscount === null) return;
-    
-    setSelectedItems(prevItems =>
-      prevItems.map((item, idx) =>
-        idx === selectedItemForDiscount.index
-          ? { ...item, discount }
-          : item
-      )
-    );
-  };
 
   const totalAmount = selectedItems.reduce(
     (sum, item) => {
       const price = item.batchPrice || item.product.price;
-      const itemTotal = item.qty * price;
-      const itemDiscount = item.discount || 0;
-      return sum + (itemTotal - itemDiscount);
+      const itemTotal = Math.round(item.qty * price);
+      const itemDiscount = Math.round(item.discount || 0);
+      return sum + Math.round(itemTotal - itemDiscount);
     },
     0
   );
@@ -510,7 +517,7 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
                         ) : (
                           <>
                             <p className="text-primary-700 font-semibold text-sm">
-                              Bs {product.price.toFixed(2)}
+                              Bs {Math.round(product.price)}
                             </p>
                             <p className="text-xs text-gray-500">/{product.unit}</p>
                           </>
@@ -583,16 +590,25 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
                         {(item.batchId || item.needsBatchCreation) ? (
                           <div>
                             <div className="flex items-center justify-between mb-1">
-                              <span className="text-xs text-gray-600">1 paquete</span>
+                              <div className="flex flex-col">
+                                <span className="text-xs text-gray-600">{item.actualWeight?.toFixed(3)} kg × Bs {Math.round((item.batchPrice || 0) / (item.actualWeight || 1))}/kg</span>
+                                <span className="text-xs text-gray-500">1 paquete</span>
+                              </div>
                               <span className="font-semibold text-gray-900 text-sm">
                                 Bs {Math.round(item.batchPrice || 0)}
                               </span>
                             </div>
                             {item.discount && item.discount > 0 && (
-                              <div className="flex items-center justify-between text-xs text-green-600">
-                                <span>Descuento:</span>
-                                <span>-Bs {Math.round(item.discount)}</span>
-                              </div>
+                              <>
+                                <div className="flex items-center justify-between text-xs text-green-600">
+                                  <span>Descuento:</span>
+                                  <span>-Bs {Math.round(item.discount)}</span>
+                                </div>
+                                <div className="flex items-center justify-between text-xs font-semibold text-gray-900">
+                                  <span>Total:</span>
+                                  <span>Bs {Math.round((item.batchPrice || 0) - item.discount)}</span>
+                                </div>
+                              </>
                             )}
                             <div className="flex items-center justify-between mt-1">
                               <button
@@ -639,10 +655,16 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
                               </span>
                             </div>
                             {item.discount && item.discount > 0 && (
-                              <div className="flex items-center justify-between text-xs text-green-600">
-                                <span>Descuento:</span>
-                                <span>-Bs {Math.round(item.discount)}</span>
-                              </div>
+                              <>
+                                <div className="flex items-center justify-between text-xs text-green-600">
+                                  <span>Descuento:</span>
+                                  <span>-Bs {Math.round(item.discount)}</span>
+                                </div>
+                                <div className="flex items-center justify-between text-xs font-semibold text-gray-900">
+                                  <span>Total:</span>
+                                  <span>Bs {Math.round(item.qty * item.product.price - item.discount)}</span>
+                                </div>
+                              </>
                             )}
                             <div className="flex items-center justify-between mt-1">
                               <button
@@ -676,10 +698,16 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
                               </span>
                             </div>
                             {item.discount && item.discount > 0 && (
-                              <div className="flex items-center justify-between text-xs text-green-600">
-                                <span>Descuento:</span>
-                                <span>-Bs {Math.round(item.discount)}</span>
-                              </div>
+                              <>
+                                <div className="flex items-center justify-between text-xs text-green-600">
+                                  <span>Descuento:</span>
+                                  <span>-Bs {Math.round(item.discount)}</span>
+                                </div>
+                                <div className="flex items-center justify-between text-xs font-semibold text-gray-900">
+                                  <span>Total:</span>
+                                  <span>Bs {Math.round(item.qty * item.product.price - item.discount)}</span>
+                                </div>
+                              </>
                             )}
                             <div className="flex items-center justify-between mt-1">
                               <button
@@ -703,7 +731,7 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
                     <span className="font-semibold text-gray-900">
                       Bs {Math.round(selectedItems.reduce((sum, item) => {
                         const price = item.batchPrice || item.product.price;
-                        return sum + (item.qty * price);
+                        return sum + Math.round(item.qty * price);
                       }, 0))}
                     </span>
                   </div>
@@ -1039,7 +1067,7 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
                       <div className="flex items-center justify-between mb-2">
                         <span className="font-bold text-lg text-gray-900">{batch.batchNumber}</span>
                         <span className="text-2xl font-bold text-primary-700">
-                          Bs {Number(batch.unitPrice).toFixed(2)}
+                          Bs {Math.round(Number(batch.unitPrice))}
                         </span>
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-sm">
@@ -1066,27 +1094,50 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
       )}
       
       {/* Modal de descuento */}
-      {showDiscountModal && selectedItemForDiscount && (
-        <ItemDiscountModal
-          item={{
-            id: selectedItemForDiscount.index.toString(),
-            productId: selectedItemForDiscount.product.id,
-            productName: selectedItemForDiscount.product.name,
-            saleType: selectedItemForDiscount.product.saleType,
-            qty: selectedItemForDiscount.qty,
-            unit: selectedItemForDiscount.product.unit,
-            unitPrice: selectedItemForDiscount.unitPrice,
-            discount: selectedItemForDiscount.discount,
-            total: selectedItemForDiscount.qty * selectedItemForDiscount.unitPrice - selectedItemForDiscount.discount,
-            product: selectedItemForDiscount.product,
-          } as CartItem}
-          onClose={() => {
-            setShowDiscountModal(false);
-            setSelectedItemForDiscount(null);
-          }}
-          onApply={handleApplyDiscount}
-        />
-      )}
+      {showDiscountModal && selectedItemForDiscount && (() => {
+        const item = selectedItems[selectedItemForDiscount.index];
+        return (
+          <ItemDiscountModal
+            item={{
+              id: selectedItemForDiscount.index.toString(),
+              productId: selectedItemForDiscount.product.id,
+              productName: selectedItemForDiscount.product.name,
+              saleType: selectedItemForDiscount.product.saleType,
+              qty: selectedItemForDiscount.qty,
+              unit: selectedItemForDiscount.product.unit,
+              unitPrice: selectedItemForDiscount.unitPrice,
+              discount: selectedItemForDiscount.discount,
+              total: selectedItemForDiscount.qty * selectedItemForDiscount.unitPrice - selectedItemForDiscount.discount,
+              product: selectedItemForDiscount.product,
+              actualWeight: item?.actualWeight, // Incluir actualWeight si existe
+              batchId: item?.batchId,
+              batchNumber: item?.batchNumber,
+            } as CartItem}
+            onClose={() => {
+              setShowDiscountModal(false);
+              setSelectedItemForDiscount(null);
+            }}
+            onApplyUnitPrice={(newUnitPrice) => {
+              // Aplicar nuevo precio unitario
+              const item = selectedItems[selectedItemForDiscount.index];
+              if (item) {
+                const originalPrice = item.batchPrice || item.product.price;
+                const newTotal = Math.round(item.qty * newUnitPrice);
+                const expectedTotal = Math.round(item.qty * originalPrice);
+                const newDiscount = Math.round(expectedTotal - newTotal);
+                
+                setSelectedItems(selectedItems.map((i, idx) => 
+                  idx === selectedItemForDiscount.index
+                    ? { ...i, discount: newDiscount }
+                    : i
+                ));
+              }
+              setShowDiscountModal(false);
+              setSelectedItemForDiscount(null);
+            }}
+          />
+        );
+      })()}
     </Modal>
   );
 };

@@ -216,8 +216,29 @@ export const ThermalReceiptSale: React.FC<ThermalReceiptSaleProps> = ({ data, pr
           <div className="mb-2 pb-2 border-b-2 border-gray-900">
             <div className="text-xs font-bold mb-2 pb-1 border-b border-gray-900">PRODUCTOS</div>
             {data.items.map((item, index) => {
-              const itemSubtotalBeforeDiscount = item.quantity * item.price;
+              console.log('🖨️ [ThermalReceipt] Item data:', {
+                name: item.name,
+                price: item.price,
+                quantity: item.quantity,
+                actualWeight: item.actualWeight,
+                unit: item.unit,
+                discount: item.discount,
+                subtotal: item.subtotal,
+              });
+              
               const itemDiscount = item.discount || 0;
+              // Para productos con lote, usar actualWeight en lugar de quantity
+              const effectiveQuantity = item.actualWeight || item.quantity;
+              const effectiveUnit = item.actualWeight ? 'kg' : item.unit;
+              const itemSubtotalBeforeDiscount = Math.round(effectiveQuantity * item.price);
+              const itemFinalTotal = Math.round(itemSubtotalBeforeDiscount - itemDiscount);
+              
+              console.log('🖨️ [ThermalReceipt] Calculated:', {
+                effectiveQuantity,
+                effectiveUnit,
+                itemSubtotalBeforeDiscount,
+                itemFinalTotal,
+              });
               
               return (
                 <div key={index} className="mb-2">
@@ -226,24 +247,22 @@ export const ThermalReceiptSale: React.FC<ThermalReceiptSaleProps> = ({ data, pr
                   </div>
                   <div className="flex justify-between text-xs">
                     <span>
-                      {item.quantity.toFixed(item.unit === "kg" ? 3 : 0)} {item.unit} x Bs{" "}
-                      {item.price.toFixed(2)}
-                      {item.batchNumber && (
-                        <span className="text-gray-600 ml-1">(Lote: {item.batchNumber})</span>
-                      )}
-                      {item.actualWeight && (
-                        <span className="text-gray-600 ml-1">
-                          ({item.actualWeight.toFixed(3)} kg)
-                        </span>
-                      )}
+                      {effectiveQuantity.toFixed(effectiveUnit === "kg" ? 3 : 0)} {effectiveUnit} × Bs{" "}
+                      {Math.round(item.price)}/{effectiveUnit}
                     </span>
-                    <span className="font-bold">Bs {itemSubtotalBeforeDiscount.toFixed(2)}</span>
+                    <span className="font-bold">Bs {itemSubtotalBeforeDiscount}</span>
                   </div>
                   {itemDiscount > 0 && (
-                    <div className="flex justify-between text-xs text-red-600 ml-2">
-                      <span>Descuento</span>
-                      <span>-Bs {itemDiscount.toFixed(2)}</span>
-                    </div>
+                    <>
+                      <div className="flex justify-between text-xs text-red-600 ml-2">
+                        <span>Descuento</span>
+                        <span>-Bs {Math.round(itemDiscount)}</span>
+                      </div>
+                      <div className="flex justify-between text-xs font-semibold ml-2">
+                        <span>Subtotal:</span>
+                        <span>Bs {itemFinalTotal}</span>
+                      </div>
+                    </>
                   )}
                 </div>
               );
@@ -252,21 +271,22 @@ export const ThermalReceiptSale: React.FC<ThermalReceiptSaleProps> = ({ data, pr
 
           {/* Totales */}
           <div className="mb-2 pb-2 border-b-2 border-gray-900">
-            <div className="flex justify-between text-xs mb-1">
-              <span>Subtotal:</span>
-              <span className="font-bold">Bs {data.subtotal.toFixed(2)}</span>
-            </div>
-
             {data.discount > 0 && (
-              <div className="flex justify-between text-xs mb-1 text-red-600">
-                <span>Descuento:</span>
-                <span className="font-bold">-Bs {data.discount.toFixed(2)}</span>
-              </div>
+              <>
+                <div className="flex justify-between text-xs mb-1">
+                  <span>Subtotal:</span>
+                  <span className="font-bold">Bs {Math.round(data.subtotal)}</span>
+                </div>
+                <div className="flex justify-between text-xs mb-1 text-red-600">
+                  <span>Descuento:</span>
+                  <span className="font-bold">-Bs {Math.round(data.discount)}</span>
+                </div>
+              </>
             )}
 
             <div className="flex justify-between font-bold text-base mt-1">
               <span>TOTAL:</span>
-              <span>Bs {data.total.toFixed(2)}</span>
+              <span>Bs {Math.round(data.total)}</span>
             </div>
           </div>
 
@@ -283,10 +303,10 @@ export const ThermalReceiptSale: React.FC<ThermalReceiptSaleProps> = ({ data, pr
                   <span>Pagado:</span>
                   <span className="font-bold">Bs {data.cashPaid.toFixed(2)}</span>
                 </div>
-                {data.change !== undefined && (
+                {data.change !== undefined && data.change > 0 && (
                   <div className="flex justify-between text-xs font-bold">
                     <span>Cambio:</span>
-                    <span>Bs {data.change.toFixed(2)}</span>
+                    <span>Bs {Math.round(data.change).toFixed(2)}</span>
                   </div>
                 )}
               </>

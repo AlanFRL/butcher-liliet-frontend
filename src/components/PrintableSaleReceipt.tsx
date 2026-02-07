@@ -158,7 +158,8 @@ export const PrintableSaleReceipt: React.FC<PrintableSaleReceiptProps> = ({ data
               />
             </div>
             <h1 className="text-lg font-bold mb-1">BUTCHER LILIETH</h1>
-            <p className="text-xs">3er Anillo Interno #123</p>
+            <p className="text-xs">3er Anillo Interno</p>
+            <p className="text-xs">Entre Av. Centenario y C/Urubó</p>
             <p className="text-xs">Tel: 62409387</p>
             <p className="text-xs mt-1">
               {data.date} - {data.time}
@@ -177,11 +178,12 @@ export const PrintableSaleReceipt: React.FC<PrintableSaleReceiptProps> = ({ data
           <div className="mb-2 pb-2 border-b-2 border-gray-900">
             <div className="text-xs font-bold mb-2 pb-1 border-b border-gray-900">PRODUCTOS</div>
             {data.items.map((item, index) => {
-              const hasActualWeight = item.actualWeight && item.actualWeight > 0;
-              const actualWeight = item.actualWeight || 0;
-              const pricePerKg = hasActualWeight ? (item.price / actualWeight) : item.price;
-              const itemSubtotalBeforeDiscount = item.quantity * item.price;
               const itemDiscount = item.discount || 0;
+              // Para productos con lote, usar actualWeight en lugar de quantity
+              const effectiveQuantity = item.actualWeight || item.quantity;
+              const effectiveUnit = item.actualWeight ? 'kg' : item.unit;
+              const itemSubtotalBeforeDiscount = Math.round(effectiveQuantity * item.price);
+              const itemFinalTotal = Math.round(itemSubtotalBeforeDiscount - itemDiscount);
               
               return (
                 <div key={index} className="mb-2">
@@ -190,24 +192,22 @@ export const PrintableSaleReceipt: React.FC<PrintableSaleReceiptProps> = ({ data
                   </div>
                   <div className="flex justify-between text-xs">
                     <span>
-                      {hasActualWeight ? (
-                        // Producto en lote (vacuum-packed): peso × precio/kg
-                        `${actualWeight.toFixed(3)} kg × Bs ${pricePerKg.toFixed(2)}/kg`
-                      ) : item.unit === "kg" ? (
-                        // Producto por peso: peso × precio/kg
-                        `${item.quantity.toFixed(3)} kg × Bs ${item.price.toFixed(2)}/kg`
-                      ) : (
-                        // Producto por unidad: qty × precio
-                        `${item.quantity.toFixed(0)} ${item.unit} × Bs ${item.price.toFixed(2)}`
-                      )}
+                      {effectiveQuantity.toFixed(effectiveUnit === "kg" ? 3 : 0)} {effectiveUnit} × Bs{" "}
+                      {Math.round(item.price)}/{effectiveUnit}
                     </span>
-                    <span className="font-bold">Bs {itemSubtotalBeforeDiscount.toFixed(2)}</span>
+                    <span className="font-bold">Bs {itemSubtotalBeforeDiscount}</span>
                   </div>
                   {itemDiscount > 0 && (
-                    <div className="flex justify-between text-xs text-red-600 ml-2">
-                      <span>Descuento</span>
-                      <span>-Bs {itemDiscount.toFixed(2)}</span>
-                    </div>
+                    <>
+                      <div className="flex justify-between text-xs text-red-600 ml-2">
+                        <span>Descuento</span>
+                        <span>-Bs {Math.round(itemDiscount)}</span>
+                      </div>
+                      <div className="flex justify-between text-xs font-semibold ml-2">
+                        <span>Subtotal:</span>
+                        <span>Bs {itemFinalTotal}</span>
+                      </div>
+                    </>
                   )}
                 </div>
               );
@@ -216,21 +216,22 @@ export const PrintableSaleReceipt: React.FC<PrintableSaleReceiptProps> = ({ data
 
           {/* Totales */}
           <div className="mb-2 pb-2 border-b-2 border-gray-900">
-            <div className="flex justify-between text-xs mb-1">
-              <span>Subtotal:</span>
-              <span className="font-bold">Bs {data.subtotal.toFixed(2)}</span>
-            </div>
-
             {data.discount > 0 && (
-              <div className="flex justify-between text-xs mb-1 text-red-600">
-                <span>Descuento:</span>
-                <span className="font-bold">-Bs {data.discount.toFixed(2)}</span>
-              </div>
+              <>
+                <div className="flex justify-between text-xs mb-1">
+                  <span>Subtotal:</span>
+                  <span className="font-bold">Bs {Math.round(data.subtotal)}</span>
+                </div>
+                <div className="flex justify-between text-xs mb-1 text-red-600">
+                  <span>Descuento:</span>
+                  <span className="font-bold">-Bs {Math.round(data.discount)}</span>
+                </div>
+              </>
             )}
 
             <div className="flex justify-between font-bold text-base mt-1">
               <span>TOTAL:</span>
-              <span>Bs {data.total.toFixed(2)}</span>
+              <span>Bs {Math.round(data.total)}</span>
             </div>
           </div>
 
@@ -247,10 +248,10 @@ export const PrintableSaleReceipt: React.FC<PrintableSaleReceiptProps> = ({ data
                   <span>Pagado:</span>
                   <span className="font-bold">Bs {data.cashPaid.toFixed(2)}</span>
                 </div>
-                {data.change !== undefined && (
+                {data.change !== undefined && data.change > 0 && (
                   <div className="flex justify-between text-xs font-bold">
                     <span>Cambio:</span>
-                    <span>Bs {data.change.toFixed(2)}</span>
+                    <span>Bs {Math.round(data.change).toFixed(2)}</span>
                   </div>
                 )}
               </>

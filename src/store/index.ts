@@ -91,6 +91,7 @@ interface CartState {
   loadOrderToCart: (order: Order) => void; // Pre-cargar items de un pedido
   getCartTotal: () => number;
   getCartSubtotal: () => number;
+  getItemDiscountsTotal: () => number;
 }
 
 interface SalesState {
@@ -720,6 +721,23 @@ export const useCartStore = create<CartState>((set, get) => ({
     
     // Para productos WEIGHT_EMBEDDED: siempre crear item nuevo (nunca sumar)
     if (product.barcodeType === 'WEIGHT_EMBEDDED') {
+      const unitPrice = product.price; // Precio original del sistema
+      const finalTotal = scannedData ? scannedData.subtotal : Math.round(qty * product.price);
+      
+      // Detectar descuento: comparar precio esperado con precio real
+      const expectedTotal = Math.round(qty * unitPrice);
+      const discount = expectedTotal - finalTotal;
+      
+      // Calcular precio efectivo por kg REDONDEADO (sin decimales)
+      const effectivePricePerKg = qty > 0 ? Math.round(finalTotal / qty) : unitPrice;
+      const priceDiscountPerKg = unitPrice - effectivePricePerKg;
+      
+      // Detectar descuento: si el precio por kg es diferente (tolerancia 1 Bs/kg)
+      const hasDiscount = Math.abs(priceDiscountPerKg) >= 1;
+      
+      // Precio efectivo es un entero (sin decimales)
+      const effectiveUnitPrice = hasDiscount ? effectivePricePerKg : unitPrice;
+      
       const newItem: CartItem = {
         id: uuidv4(),
         productId: product.id,
@@ -727,9 +745,12 @@ export const useCartStore = create<CartState>((set, get) => ({
         saleType: product.saleType,
         unit: product.unit,
         qty,
-        unitPrice: scannedData ? scannedData.subtotal / qty : product.price, // Calcular precio/kg real
-        discount: 0,
-        total: scannedData ? scannedData.subtotal : qty * product.price,
+        unitPrice, // Precio ORIGINAL del sistema
+        originalUnitPrice: unitPrice,
+        effectiveUnitPrice: hasDiscount ? effectiveUnitPrice : undefined, // Solo guardar si hay descuento
+        discount: hasDiscount ? discount : 0,
+        discountAutoDetected: hasDiscount,
+        total: finalTotal, // Precio FINAL después del descuento
         product,
         scannedBarcode: scannedData?.barcode,
         scannedSubtotal: scannedData?.subtotal,
@@ -749,7 +770,7 @@ export const useCartStore = create<CartState>((set, get) => ({
             ? {
                 ...item,
                 qty: item.qty + qty,
-                total: (item.qty + qty) * item.unitPrice,
+                total: Math.round((item.qty + qty) * item.unitPrice),
               }
             : item
         ),
@@ -764,8 +785,9 @@ export const useCartStore = create<CartState>((set, get) => ({
         unit: product.unit,
         qty,
         unitPrice: product.price,
+        originalUnitPrice: product.price,
         discount: 0,
-        total: qty * product.price,
+        total: Math.round(qty * product.price),
         product,
       };
       set({ cartItems: [...cartItems, newItem] });
@@ -774,6 +796,12 @@ export const useCartStore = create<CartState>((set, get) => ({
 
   addBatchToCart: (product, batch) => {
     const { cartItems } = get();
+    
+    // Calcular total esperado basado en peso y precio del sistema
+    const expectedTotal = Math.round(batch.actualWeight * product.price);
+    const actualTotal = batch.unitPrice;
+    const discount = expectedTotal - actualTotal;
+    const hasDiscount = Math.abs(discount) >= 1; // Tolerancia de 1 Bs
     
     // Para lotes, siempre agregamos un item nuevo (no acumulamos)
     const newItem: CartItem = {
@@ -784,7 +812,10 @@ export const useCartStore = create<CartState>((set, get) => ({
       unit: product.unit,
       qty: 1, // Siempre 1 unidad (1 paquete)
       unitPrice: batch.unitPrice,
-      discount: 0,
+      originalUnitPrice: product.price, // Precio/kg del sistema para referencia
+      effectiveUnitPrice: hasDiscount ? batch.unitPrice : undefined,
+      discount: hasDiscount && discount > 0 ? discount : 0,
+      discountAutoDetected: hasDiscount && discount > 0,
       total: batch.unitPrice,
       product,
       batchId: batch.id,
@@ -803,16 +834,26 @@ export const useCartStore = create<CartState>((set, get) => ({
     }
     
     set((state) => ({
-      cartItems: state.cartItems.map((item) =>
-        item.id === itemId
-          ? {
-              ...item,
-              qty,
-              // Redondear el total al entero más cercano
-              total: Math.round(qty * item.unitPrice - item.discount),
-            }
-          : item
-      ),
+      cartItems: state.cartItems.map((item) => {
+        if (item.id !== itemId) return item;
+        
+        // Si existe effectiveUnitPrice, usarlo para mantener el precio con descuento
+        // Si no, usar el unitPrice original (sin descuento)
+        const priceToUse = item.effectiveUnitPrice || item.unitPrice;
+        
+        // Calcular nuevo subtotal y total
+        const newSubtotal = Math.round(qty * item.unitPrice);
+        const newTotalRaw = qty * priceToUse;
+        const newTotal = Math.round(newTotalRaw);
+        const newDiscount = newSubtotal - newTotal; // Ya están redondeados, no redondear de nuevo
+        
+        return {
+          ...item,
+          qty,
+          discount: newDiscount > 0 ? newDiscount : 0,
+          total: newTotal,
+        };
+      }),
     }));
   },
   
@@ -851,11 +892,20 @@ export const useCartStore = create<CartState>((set, get) => ({
     set((state) => ({
       cartItems: state.cartItems.map((item) => {
         if (item.id === itemId) {
+          // unitPrice siempre es el precio ORIGINAL del sistema
+          const originalUnitPrice = item.originalUnitPrice || item.product.price;
+          
+          // Calcular descuento y total
+          const expectedTotal = Math.round(item.qty * originalUnitPrice);
+          const newTotal = Math.round(item.qty * newUnitPrice);
+          const discount = expectedTotal - newTotal;
+          
           return {
             ...item,
-            unitPrice: newUnitPrice,
-            discount: 0, // Resetear descuento al cambiar precio
-            total: Math.round(item.qty * newUnitPrice),
+            unitPrice: originalUnitPrice, // MANTENER precio original
+            effectiveUnitPrice: newUnitPrice, // Guardar precio efectivo para cálculos proporcionales
+            discount: discount > 0 ? discount : 0,
+            total: newTotal, // Total con descuento aplicado
           };
         }
         return item;
@@ -924,10 +974,16 @@ export const useCartStore = create<CartState>((set, get) => ({
         unit: orderItem.unit,
         qty: orderItem.qty,
         unitPrice: orderItem.unitPrice,
-        discount: 0,
-        total: Math.round(orderItem.qty * orderItem.unitPrice),
+        discount: orderItem.discount || 0, // Cargar descuento del pedido
+        total: Math.round(orderItem.qty * orderItem.unitPrice - (orderItem.discount || 0)),
         product: productData,
       };
+
+      // Si hay descuento, calcular effectiveUnitPrice para mantenerlo al cambiar cantidad
+      if (orderItem.discount && orderItem.discount > 0) {
+        const subtotal = orderItem.qty * orderItem.unitPrice;
+        cartItem.effectiveUnitPrice = (subtotal - orderItem.discount) / orderItem.qty;
+      }
 
       // Si el pedido tiene un batch asociado, incluir información del lote
       if (orderItem.batchId && orderItem.batch) {
@@ -936,24 +992,36 @@ export const useCartStore = create<CartState>((set, get) => ({
         cartItem.actualWeight = typeof orderItem.batch.actualWeight === 'string' 
           ? parseDecimal(orderItem.batch.actualWeight)
           : orderItem.batch.actualWeight;
+        // Para productos con batch, el unitPrice es el precio del paquete,
+        // pero necesitamos originalUnitPrice (precio por kg del sistema) para displays
+        cartItem.originalUnitPrice = product?.price || orderItem.unitPrice;
       }
 
       return cartItem;
     });
     
-    set({ cartItems });
+    set({ 
+      cartItems,
+      globalDiscount: order.discount || 0 // Cargar descuento global del pedido
+    });
   },
   
   getCartSubtotal: () => {
-    // Suma de totales de items (ya incluye descuentos por item)
-    return get().cartItems.reduce((sum, item) => sum + item.total, 0);
+    // Suma de subtotales ANTES de descuentos por item (qty × unitPrice)
+    return get().cartItems.reduce((sum, item) => sum + (item.qty * item.unitPrice), 0);
+  },
+  
+  getItemDiscountsTotal: () => {
+    // Suma de todos los descuentos por item
+    return get().cartItems.reduce((sum, item) => sum + (item.discount || 0), 0);
   },
   
   getCartTotal: () => {
     const subtotal = get().getCartSubtotal();
+    const itemDiscounts = get().getItemDiscountsTotal();
     const globalDiscount = get().globalDiscount;
-    // Total = Subtotal - Descuento Global
-    return Math.max(0, subtotal - globalDiscount);
+    // Total = Subtotal - Descuentos de Items - Descuento Global
+    return Math.max(0, subtotal - itemDiscounts - globalDiscount);
   },
 }));
 
@@ -1039,22 +1107,25 @@ export const useSalesStore = create<SalesState>((set, get) => ({
       }
       
       // PASO 2: Crear la venta con los lotes ya existentes
+      const cartTotal = Math.round(cartState.getCartTotal());
+      const cashPaidRounded = cashPaid ? Math.round(cashPaid) : 0;
+      
       const saleData = {
         sessionId: cashState.currentSession.id,
         items: itemsWithBatches.map((item) => ({
           productId: item.productId,
-          quantity: item.qty,
-          unitPrice: item.unitPrice,
-          discount: item.discount || 0, // Descuento del item
+          quantity: Math.round(item.qty * 1000) / 1000, // Redondear a 3 decimales para peso
+          unitPrice: Math.round(item.unitPrice), // Precio del paquete (para lotes) o precio unitario (para otros)
+          discount: Math.round(item.discount || 0), // Redondear descuento
           batchId: item.batchId,
           batchNumber: item.batchNumber,
-          actualWeight: item.actualWeight,
+          actualWeight: item.actualWeight ? Math.round(item.actualWeight * 1000) / 1000 : undefined, // Redondear peso
         })),
-        discount: cartState.globalDiscount || 0, // Descuento global de la venta
+        discount: Math.round(cartState.globalDiscount || 0), // Redondear descuento global
         paymentMethod,
-        cashAmount: paymentMethod === 'CASH' && cashPaid ? cashPaid : undefined,
-        cardAmount: paymentMethod === 'CARD' ? cartState.getCartTotal() : undefined,
-        transferAmount: paymentMethod === 'TRANSFER' ? cartState.getCartTotal() : undefined,
+        cashAmount: paymentMethod === 'CASH' ? cashPaidRounded : undefined,
+        cardAmount: paymentMethod === 'CARD' ? cartTotal : undefined,
+        transferAmount: paymentMethod === 'TRANSFER' ? cartTotal : undefined,
         notes: undefined,
         customerName: undefined,
         orderId: orderId,
@@ -1093,16 +1164,18 @@ export const useSalesStore = create<SalesState>((set, get) => ({
         status: backendSale.status as SaleStatus,
         items: (backendSale.items || []).map((item: any) => {
           const cartItem = cartState.cartItems.find(ci => ci.productId === item.productId);
+          const product = useProductStore.getState().products.find(p => p.id === item.productId);
           return {
             id: item.id,
             productId: item.productId,
             productName: item.productName,
             saleType: cartItem?.saleType || 'UNIT',
             qty: parseDecimal(item.quantity),
-            unit: cartItem?.product.unit || 'unid', // Obtener unidad del producto
+            unit: cartItem?.product.unit || product?.unit || 'unid',
             unitPrice: parseDecimal(item.unitPrice),
             discount: parseDecimal(item.discount),
             total: parseDecimal(item.subtotal),
+            originalUnitPrice: product?.price, // Buscar directamente del store de productos
             // Incluir información de lote si existe
             batchId: item.batchId || cartItem?.batchId,
             batchNumber: item.batchNumber || cartItem?.batchNumber,
@@ -1279,6 +1352,7 @@ export const useOrderStore = create<OrderState>((set, get) => ({
           unit: item.unit,
           unitPrice: parseDecimal(item.unitPrice),
           total: parseDecimal(item.subtotal),
+          discount: parseDecimal(item.discount || 0), // Cargar descuento del item
           notes: item.notes,
           batch: item.batch ? {
             id: item.batch.id,
@@ -1363,6 +1437,7 @@ export const useOrderStore = create<OrderState>((set, get) => ({
           unit: item.unit,
           unitPrice: parseDecimal(item.unitPrice),
           total: parseDecimal(item.subtotal),
+          discount: parseDecimal(item.discount || 0), // Cargar descuento del item
           notes: item.notes,
           batch: item.batch ? {
             id: item.batch.id,

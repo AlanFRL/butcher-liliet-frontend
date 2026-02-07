@@ -197,6 +197,9 @@ export interface Terminal {
 
 export interface CartItem extends SaleItem {
   product: Product;
+  originalUnitPrice?: number; // Precio original del sistema (antes del descuento)
+  effectiveUnitPrice?: number; // Precio efectivo por unidad (después del descuento) - usado para cálculos proporcionales
+  discountAutoDetected?: boolean; // Indica si el descuento fue detectado automáticamente por la balanza
   batchId?: string; // ID del lote (para productos VACUUM_PACKED)
   batchNumber?: string; // Número de lote para mostrar
   actualWeight?: number; // Peso real del lote (para productos VACUUM_PACKED)

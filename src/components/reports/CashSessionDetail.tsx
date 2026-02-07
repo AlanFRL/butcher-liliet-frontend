@@ -441,6 +441,8 @@ export const CashSessionDetail: React.FC<CashSessionDetailProps> = ({
                   totalSales,
                   totalCashSales,
                   totalTransferSales: totalTransferSales,
+                  totalDeposits,
+                  totalWithdrawals,
                   totalCash: closingBalance,
                   finalAmount: closingBalance,
                   difference,

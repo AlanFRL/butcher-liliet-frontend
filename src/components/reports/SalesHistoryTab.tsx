@@ -312,7 +312,7 @@ const SaleDetailModal: React.FC<{
                         const itemTotal = typeof item.subtotal === 'string' ? parseFloat(item.subtotal) : (item.total || item.subtotal);
                         const itemDiscount = item.discount ? (typeof item.discount === 'string' ? parseFloat(item.discount) : item.discount) : 0;
                         const actualWeight = item.actualWeight ? (typeof item.actualWeight === 'string' ? parseFloat(item.actualWeight) : item.actualWeight) : null;
-                        const itemSubtotalBeforeDiscount = qty * unitPrice;
+                        const itemSubtotalBeforeDiscount = Math.round(qty * unitPrice);
                         
                         return (
                           <tr key={item.id}>
@@ -338,11 +338,11 @@ const SaleDetailModal: React.FC<{
                             </td>
                             <td className="px-4 py-3 text-right">
                               <p className="font-semibold text-gray-900">
-                                Bs {itemSubtotalBeforeDiscount.toFixed(2)}
+                                Bs {itemSubtotalBeforeDiscount}
                               </p>
                               {itemDiscount > 0 && (
                                 <p className="text-xs text-gray-500">
-                                  (Final: Bs {itemTotal.toFixed(2)})
+                                  (Final: Bs {Math.round(itemTotal)})
                                 </p>
                               )}
                             </td>

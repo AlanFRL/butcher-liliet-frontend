@@ -122,12 +122,13 @@ export const ProductsPage: React.FC = () => {
       }
     }
     
-    // Validar precio (no requerido para productos al vacío)
-    const price = formData.inventoryType === 'VACUUM_PACKED' ? 0 : parseFloat(formData.price);
-    if (formData.inventoryType !== 'VACUUM_PACKED') {
-      if (!formData.price || isNaN(price) || price <= 0) {
-        errors.price = 'El precio debe ser mayor a 0';
-      }
+    // Validar precio
+    // VACUUM_PACKED: precio/kg para detectar descuentos (no se usa en venta directa)
+    // WEIGHT: precio/kg para venta
+    // UNIT: precio por unidad
+    const price = parseFloat(formData.price);
+    if (!formData.price || isNaN(price) || price <= 0) {
+      errors.price = 'El precio debe ser mayor a 0';
     }
     
     // Validar stock solo para productos que NO son por peso y NO son al vacío
@@ -150,14 +151,14 @@ export const ProductsPage: React.FC = () => {
     
     setFieldErrors({});
     
-    if (formData.inventoryType !== 'VACUUM_PACKED' && (isNaN(price) || price < 0)) {
+    if (isNaN(price) || price < 0) {
       showToast('warning', 'El precio debe ser un número válido');
       return;
     }
     
-    // Stock solo aplica para productos normales, no al vacío
-    const stockQuantity = formData.inventoryType !== 'VACUUM_PACKED' && formData.stockQuantity ? parseFloat(formData.stockQuantity) : undefined;
-    const minStock = formData.inventoryType !== 'VACUUM_PACKED' && formData.minStock ? parseFloat(formData.minStock) : undefined;
+    // Stock solo aplica para productos UNIT normales (no WEIGHT ni VACUUM_PACKED)
+    const stockQuantity = formData.inventoryType === 'UNIT' && formData.stockQuantity ? parseFloat(formData.stockQuantity) : undefined;
+    const minStock = formData.inventoryType === 'UNIT' && formData.minStock ? parseFloat(formData.minStock) : undefined;
     
     // Determinar unidad automáticamente
     const unit = formData.saleType === 'WEIGHT' ? 'kg' : (formData.inventoryType === 'VACUUM_PACKED' ? 'paquete' : 'unidad');
@@ -615,56 +616,55 @@ export const ProductsPage: React.FC = () => {
             </div>
           )}
 
-          {/* Precio y Stock - Solo para productos normales */}
-          {formData.inventoryType !== 'VACUUM_PACKED' && (
-            <div className="grid grid-cols-3 gap-3">
-              <Input
-                label="Precio (Bs)"
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.price}
-                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                error={fieldErrors.price}
-                required
-              />
-              
-              {/* Stock solo para productos por unidad (no por peso ni al vacío) */}
-              {formData.inventoryType === 'UNIT' && (
-                <>
-                  <Input
-                    label="Stock Actual"
-                    type="number"
-                    step="1"
-                    min="0"
-                    value={formData.stockQuantity}
-                    onChange={(e) => setFormData({ ...formData, stockQuantity: e.target.value })}
-                    error={fieldErrors.stockQuantity}
-                    placeholder="0"
-                  />
-                  <Input
-                    label="Stock Mínimo"
-                    type="number"
-                    step="1"
-                    min="0"
-                    value={formData.minStock}
-                    onChange={(e) => setFormData({ ...formData, minStock: e.target.value })}
-                    error={fieldErrors.minStock}
-                    placeholder="0"
-                  />
-                </>
-              )}
-              
-              {/* Nota para productos por peso */}
-              {formData.inventoryType === 'WEIGHT' && (
-                <div className="bg-gray-50 px-3 py-2 rounded-lg">
-                  <p className="text-xs text-gray-600">
-                    ℹ️ Los productos por peso no requieren control de inventario
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
+          {/* Precio y Stock */}
+          <div className="grid grid-cols-3 gap-3">
+            <Input
+              label={formData.inventoryType === 'VACUUM_PACKED' ? 'Precio/Kg (Bs)' : 'Precio (Bs)'}
+              type="number"
+              step="0.01"
+              min="0"
+              value={formData.price}
+              onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+              error={fieldErrors.price}
+              required
+              helperText={formData.inventoryType === 'VACUUM_PACKED' ? 'Precio por kilo para detectar descuentos' : undefined}
+            />
+            
+            {/* Stock solo para productos por unidad (no por peso ni al vacío) */}
+            {formData.inventoryType === 'UNIT' && (
+              <>
+                <Input
+                  label="Stock Actual"
+                  type="number"
+                  step="1"
+                  min="0"
+                  value={formData.stockQuantity}
+                  onChange={(e) => setFormData({ ...formData, stockQuantity: e.target.value })}
+                  error={fieldErrors.stockQuantity}
+                  placeholder="0"
+                />
+                <Input
+                  label="Stock Mínimo"
+                  type="number"
+                  step="1"
+                  min="0"
+                  value={formData.minStock}
+                  onChange={(e) => setFormData({ ...formData, minStock: e.target.value })}
+                  error={fieldErrors.minStock}
+                  placeholder="0"
+                />
+              </>
+            )}
+            
+            {/* Nota para productos por peso */}
+            {formData.inventoryType === 'WEIGHT' && (
+              <div className="bg-gray-50 px-3 py-2 rounded-lg">
+                <p className="text-xs text-gray-600">
+                  ℹ️ Los productos por peso no requieren control de inventario
+                </p>
+              </div>
+            )}
+          </div>
 
           {/* Nota para productos al vacío */}
           {formData.inventoryType === 'VACUUM_PACKED' && (

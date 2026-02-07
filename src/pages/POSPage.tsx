@@ -49,7 +49,7 @@ export const POSPage: React.FC = () => {
   const { currentUser } = useAuthStore();
   const { products, categories, getFavoriteProducts, toggleProductFavorite } = useProductStore();
   const cartStore = useCartStore();
-  const { cartItems, addToCart, addBatchToCart, updateCartItem, removeFromCart, clearCart, getCartTotal, getCartSubtotal, setItemDiscount, setItemUnitPrice, globalDiscount, setGlobalDiscount } = cartStore;
+  const { cartItems, addToCart, addBatchToCart, updateCartItem, removeFromCart, clearCart, getCartTotal, getCartSubtotal, getItemDiscountsTotal, setItemUnitPrice, globalDiscount, setGlobalDiscount } = cartStore;
   const { completeSale } = useSalesStore();
   
   // Obtener orderId si viene desde pedidos
@@ -266,8 +266,15 @@ export const POSPage: React.FC = () => {
           subtotal: scaleData.totalPrice
         });
         
+        // Detectar si hay descuento para informar al usuario
+        const expectedTotal = Math.round(scaleData.weightKg * product.price);
+        const discount = expectedTotal - scaleData.totalPrice;
+        const hasDiscount = discount >= 1;
+        
         showScannerFeedback(
-          `${product.name} - ${scaleData.weightKg.toFixed(3)}kg - Bs ${scaleData.totalPrice.toFixed(2)}`,
+          hasDiscount 
+            ? `${product.name} - ${scaleData.weightKg.toFixed(3)}kg - Bs ${scaleData.totalPrice.toFixed(2)} (🎉 Descuento: Bs ${discount})`
+            : `${product.name} - ${scaleData.weightKg.toFixed(3)}kg - Bs ${scaleData.totalPrice.toFixed(2)}`,
           'success'
         );
         return;
@@ -493,7 +500,7 @@ export const POSPage: React.FC = () => {
   const handleCompleteSale = async () => {
     const sale = await completeSale(
       paymentMethod,
-      paymentMethod === 'CASH' ? parseFloat(cashPaid) : undefined,
+      paymentMethod === 'CASH' ? Math.round(parseFloat(cashPaid)) : undefined,
       orderId // Vincular con pedido si existe
     );
     
@@ -672,12 +679,6 @@ export const POSPage: React.FC = () => {
     setShowDiscountModal(true);
   };
   
-  const handleApplyDiscount = (discount: number) => {
-    if (selectedItemForDiscount) {
-      setItemDiscount(selectedItemForDiscount.id, discount);
-    }
-  };
-  
   const handleApplyUnitPrice = (newUnitPrice: number) => {
     if (selectedItemForDiscount) {
       setItemUnitPrice(selectedItemForDiscount.id, newUnitPrice);
@@ -790,7 +791,7 @@ export const POSPage: React.FC = () => {
                       {product.name}
                     </p>
                     <p className="text-accent-700 font-semibold">
-                      Bs {product.price.toFixed(2)}/{product.unit}
+                      Bs {Math.round(product.price)}/{product.unit}
                     </p>
                   </button>
                 ))}
@@ -969,11 +970,32 @@ export const POSPage: React.FC = () => {
                           ? 'Cantidad: 1 paquete'
                           : `${item.qty.toFixed(3)} ${item.product.unit}`
                         }
+                        {/* Mostrar precio por kg para productos con lote o escaneados */}
+                        {(item.batchId || item.needsBatchCreation || item.scannedBarcode) && item.product.saleType === 'WEIGHT' && (
+                          <span className="text-xs text-gray-500 block mt-1">
+                            Bs {Math.round(item.originalUnitPrice || item.unitPrice)}/{item.product.unit}
+                          </span>
+                        )}
                       </div>
                       <div className="text-right">
-                        <p className="text-lg font-bold text-primary-700">
-                          Bs {Math.round(item.total)}
-                        </p>
+                        {item.discount > 0 ? (
+                          <>
+                            <p className="text-xs text-gray-400 line-through">
+                              Bs {Math.round(
+                                (item.batchId || item.needsBatchCreation) && item.actualWeight
+                                  ? item.actualWeight * (item.originalUnitPrice || item.unitPrice)
+                                  : item.qty * item.unitPrice
+                              )}
+                            </p>
+                            <p className="text-lg font-bold text-primary-700">
+                              Bs {Math.round(item.total)}
+                            </p>
+                          </>
+                        ) : (
+                          <p className="text-lg font-bold text-primary-700">
+                            Bs {Math.round(item.total)}
+                          </p>
+                        )}
                       </div>
                     </div>
                     
@@ -987,8 +1009,10 @@ export const POSPage: React.FC = () => {
                         {item.discount > 0 ? 'Modificar desc.' : 'Aplicar desc.'}
                       </button>
                       {item.discount > 0 && (
-                        <span className="text-xs font-semibold text-red-600">
-                          -Bs {item.discount.toFixed(2)}
+                        <span className={`text-xs font-semibold ${
+                          item.discountAutoDetected ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          {item.discountAutoDetected && '🎉 '}Descuento: -Bs {Math.round(item.discount)}
                         </span>
                       )}
                     </div>
@@ -1043,11 +1067,22 @@ export const POSPage: React.FC = () => {
                     
                     <div className="text-right">
                       <p className="text-xs text-gray-500">
-                        Bs {item.unitPrice.toFixed(2)}/{item.product.unit}
+                        Bs {Math.round(item.unitPrice)}/{item.product.unit}
                       </p>
-                      <p className="text-lg font-bold text-primary-700">
-                        Bs {Math.round(item.total)}
-                      </p>
+                      {item.discount > 0 ? (
+                        <>
+                          <p className="text-xs text-gray-400 line-through">
+                            Bs {Math.round(item.qty * item.unitPrice)}
+                          </p>
+                          <p className="text-lg font-bold text-primary-700">
+                            Bs {Math.round(item.total)}
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-lg font-bold text-primary-700">
+                          Bs {Math.round(item.total)}
+                        </p>
+                      )}
                     </div>
                   </div>
                   
@@ -1061,8 +1096,10 @@ export const POSPage: React.FC = () => {
                       {item.discount > 0 ? 'Modificar desc.' : 'Aplicar desc.'}
                     </button>
                     {item.discount > 0 && (
-                      <span className="text-xs font-semibold text-red-600">
-                        -Bs {item.discount.toFixed(2)}
+                      <span className={`text-xs font-semibold ${
+                        item.discountAutoDetected ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {item.discountAutoDetected && '🎉 '}Descuento: -Bs {Math.round(item.discount)}
                       </span>
                     )}
                   </div>
@@ -1077,12 +1114,18 @@ export const POSPage: React.FC = () => {
         {/* Total y Pagar */}
         <div className="p-4 border-t border-gray-200 bg-gray-50">
           <div className="mb-4">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-gray-600">Subtotal:</span>
-              <span className="font-semibold text-gray-900">
-                Bs {Math.round(cartTotal)}
-              </span>
-            </div>
+            {getItemDiscountsTotal() > 0 && (
+              <>
+                <div className="flex justify-between items-center text-sm text-gray-600 mb-1">
+                  <span>Subtotal:</span>
+                  <span>Bs {Math.round(getCartSubtotal())}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm text-red-600 mb-2">
+                  <span>Desc. items:</span>
+                  <span>-Bs {Math.round(getItemDiscountsTotal())}</span>
+                </div>
+              </>
+            )}
             <div className="flex justify-between items-center text-2xl font-bold">
               <span className="text-gray-900">TOTAL:</span>
               <span className="text-primary-700">Bs {Math.round(cartTotal)}</span>
@@ -1115,10 +1158,13 @@ export const POSPage: React.FC = () => {
             <h3 className="text-sm font-semibold text-gray-700 mb-3">Resumen de Venta</h3>
             <div className="space-y-2">
               {cartItems.map((item) => {
-                const isVacuumPacked = item.product.inventoryType === 'VACUUM_PACKED' && item.batchId;
+                const isVacuumPacked = item.product.inventoryType === 'VACUUM_PACKED' && (item.batchId || item.needsBatchCreation);
                 const actualWeight = item.actualWeight || item.qty;
-                const pricePerKg = isVacuumPacked && item.actualWeight ? (item.unitPrice / item.actualWeight) : item.unitPrice;
-                const itemSubtotalBeforeDiscount = item.qty * item.unitPrice;
+                const originalPrice = item.originalUnitPrice || item.product.price;
+                const pricePerKg = isVacuumPacked && item.actualWeight ? originalPrice : item.unitPrice;
+                const itemSubtotalBeforeDiscount = isVacuumPacked && item.actualWeight
+                  ? Math.round(item.actualWeight * originalPrice)
+                  : Math.round(item.qty * item.unitPrice);
                 const itemDiscount = item.discount || 0;
                 
                 return (
@@ -1128,21 +1174,21 @@ export const POSPage: React.FC = () => {
                       <span>
                         {isVacuumPacked ? (
                           // Productos en lote: peso × precio/kg
-                          `${actualWeight.toFixed(3)} kg × Bs ${pricePerKg.toFixed(2)}/kg`
+                          `${actualWeight.toFixed(3)} kg × Bs ${Math.round(pricePerKg)}/kg`
                         ) : item.product.saleType === 'WEIGHT' ? (
                           // Productos por peso: peso × precio/kg
-                          `${item.qty.toFixed(3)} kg × Bs ${item.unitPrice.toFixed(2)}/kg`
+                          `${item.qty.toFixed(3)} kg × Bs ${Math.round(item.unitPrice)}/kg`
                         ) : (
                           // Productos por unidad: qty × precio
-                          `${item.qty} unid × Bs ${item.unitPrice.toFixed(2)}`
+                          `${item.qty} unid × Bs ${Math.round(item.unitPrice)}`
                         )}
                       </span>
-                      <span className="font-semibold">Bs {itemSubtotalBeforeDiscount.toFixed(2)}</span>
+                      <span className="font-semibold">Bs {Math.round(itemSubtotalBeforeDiscount)}</span>
                     </div>
                     {itemDiscount > 0 && (
                       <div className="flex justify-between text-xs text-red-600 mt-1 ml-2">
                         <span>Descuento</span>
-                        <span>-Bs {itemDiscount.toFixed(2)}</span>
+                        <span>-Bs {Math.round(itemDiscount)}</span>
                       </div>
                     )}
                   </div>
@@ -1162,7 +1208,7 @@ export const POSPage: React.FC = () => {
               </span>
               <input
                 type="number"
-                value={globalDiscount.toFixed(2)}
+                value={Math.round(globalDiscount)}
                 onChange={(e) => {
                   const value = parseFloat(e.target.value) || 0;
                   setGlobalDiscount(value);
@@ -1175,7 +1221,7 @@ export const POSPage: React.FC = () => {
               />
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              Máximo: Bs {getCartSubtotal().toFixed(2)}
+              Máximo: Bs {Math.round(getCartSubtotal())}
             </p>
           </div>
           
@@ -1184,14 +1230,14 @@ export const POSPage: React.FC = () => {
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">Subtotal</span>
               <span className="font-semibold text-gray-900">
-                Bs {getCartSubtotal().toFixed(2)}
+                Bs {Math.round(getCartSubtotal())}
               </span>
             </div>
             {cartItems.some(item => item.discount > 0) && (
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Desc. en items</span>
                 <span className="font-semibold text-red-600">
-                  -Bs {cartItems.reduce((sum, item) => sum + item.discount, 0).toFixed(2)}
+                  -Bs {Math.round(cartItems.reduce((sum, item) => sum + item.discount, 0))}
                 </span>
               </div>
             )}
@@ -1199,7 +1245,7 @@ export const POSPage: React.FC = () => {
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Desc. adicional</span>
                 <span className="font-semibold text-red-600">
-                  -Bs {globalDiscount.toFixed(2)}
+                  -Bs {Math.round(globalDiscount)}
                 </span>
               </div>
             )}
@@ -1328,11 +1374,11 @@ export const POSPage: React.FC = () => {
                   </svg>
                 </div>
                 <p className="text-2xl font-bold text-green-600 mb-1">
-                  Bs {lastSale.total.toFixed(2)}
+                  Bs {Math.round(lastSale.total)}
                 </p>
                 {lastSale.changeAmount > 0 && (
                   <p className="text-lg text-gray-600">
-                    Cambio: Bs {lastSale.changeAmount.toFixed(2)}
+                    Cambio: Bs {Math.round(lastSale.changeAmount)}
                   </p>
                 )}
               </div>
@@ -1386,14 +1432,32 @@ export const POSPage: React.FC = () => {
                             {item.batchNumber && (
                               <p className="text-xs text-gray-500">Lote: {item.batchNumber}</p>
                             )}
+                            {item.discount > 0 && (
+                              <p className="text-xs text-red-600">
+                                Descuento: -Bs {Math.round(item.discount)}
+                              </p>
+                            )}
                           </td>
                           <td className="px-3 py-2 text-center text-sm text-gray-600">
                             {item.actualWeight 
                               ? `${Number(item.actualWeight).toFixed(2)} kg`
                               : `${item.qty} ${item.unit}`}
                           </td>
-                          <td className="px-3 py-2 text-right font-medium text-gray-900 text-sm">
-                            Bs {item.total.toFixed(2)}
+                          <td className="px-3 py-2 text-right">
+                            {item.discount > 0 ? (
+                              <>
+                                <p className="text-xs text-gray-400 line-through">
+                                  Bs {Math.round((item.actualWeight || item.qty) * (item.originalUnitPrice || item.unitPrice))}
+                                </p>
+                                <p className="font-medium text-gray-900 text-sm">
+                                  Bs {Math.round((item.actualWeight || item.qty) * (item.originalUnitPrice || item.unitPrice) - item.discount)}
+                                </p>
+                              </>
+                            ) : (
+                              <p className="font-medium text-gray-900 text-sm">
+                                Bs {Math.round(item.total)}
+                              </p>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -1406,17 +1470,17 @@ export const POSPage: React.FC = () => {
               <div className="mt-4 pt-4 border-t border-gray-200">
                 <div className="flex justify-between text-sm mb-1">
                   <span className="text-gray-600">Subtotal:</span>
-                  <span>Bs {lastSale.subtotal.toFixed(2)}</span>
+                  <span>Bs {Math.round(lastSale.subtotal)}</span>
                 </div>
                 {lastSale.discount > 0 && (
                   <div className="flex justify-between text-sm text-green-600 mb-1">
                     <span>Descuento:</span>
-                    <span>-Bs {lastSale.discount.toFixed(2)}</span>
+                    <span>-Bs {Math.round(lastSale.discount)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-lg font-bold mt-2 pt-2 border-t">
                   <span>TOTAL:</span>
-                  <span className="text-primary-600">Bs {lastSale.total.toFixed(2)}</span>
+                  <span className="text-primary-600">Bs {Math.round(lastSale.total)}</span>
                 </div>
               </div>
             </div>
@@ -1458,7 +1522,7 @@ export const POSPage: React.FC = () => {
                   name: item.productName,
                   quantity: item.qty,
                   unit: item.unit,
-                  price: item.unitPrice,
+                  price: item.originalUnitPrice || item.unitPrice,
                   subtotal: item.total,
                   discount: item.discount || 0,
                   batchNumber: item.batchNumber,
@@ -1593,7 +1657,7 @@ export const POSPage: React.FC = () => {
                       </div>
                       <div className="text-right">
                         <p className="text-lg font-bold text-primary-600">
-                          Bs {Number(batch.unitPrice).toFixed(2)}
+                          Bs {Math.round(Number(batch.unitPrice))}
                         </p>
                       </div>
                     </div>
@@ -1626,7 +1690,6 @@ export const POSPage: React.FC = () => {
             setShowDiscountModal(false);
             setSelectedItemForDiscount(null);
           }}
-          onApply={handleApplyDiscount}
           onApplyUnitPrice={handleApplyUnitPrice}
         />
       )}

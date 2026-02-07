@@ -25,6 +25,8 @@ interface ThermalReceiptProps {
     totalSales: number;
     totalCashSales: number;
     totalTransferSales: number;
+    totalDeposits?: number;
+    totalWithdrawals?: number;
     totalCash: number;
     finalAmount: number;
     difference: number;
@@ -178,12 +180,24 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({ data, printable 
           <span>(+) Ventas Efectivo:</span>
           <span>Bs {data.totalCashSales.toFixed(2)}</span>
         </div>
+        {data.totalDeposits != null && data.totalDeposits > 0 && (
+          <div className="flex justify-between text-xs">
+            <span>(+) Ingresos:</span>
+            <span>Bs {data.totalDeposits.toFixed(2)}</span>
+          </div>
+        )}
+        {data.totalWithdrawals != null && data.totalWithdrawals > 0 && (
+          <div className="flex justify-between text-xs">
+            <span>(-) Retiros:</span>
+            <span>Bs {data.totalWithdrawals.toFixed(2)}</span>
+          </div>
+        )}
         
         <div className="border-t border-gray-300 my-1"></div>
         
         <div className="flex justify-between font-bold text-sm">
           <span>EFECTIVO ESPERADO:</span>
-          <span>Bs {(data.initialAmount + data.totalCashSales).toFixed(2)}</span>
+          <span>Bs {(data.initialAmount + data.totalCashSales + (data.totalDeposits || 0) - (data.totalWithdrawals || 0)).toFixed(2)}</span>
         </div>
         <div className="flex justify-between font-bold text-sm">
           <span>EFECTIVO CONTADO:</span>
