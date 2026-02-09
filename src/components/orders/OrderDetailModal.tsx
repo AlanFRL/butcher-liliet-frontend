@@ -31,10 +31,12 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order: initi
   const currentOrder = getOrderById(initialOrder.id) || initialOrder;
   
   // Verificar si la orden puede ser eliminada
+  // Los pedidos cancelados pueden eliminarse sin restricción de sesión
   const canDelete = canDeleteOrders && 
     !currentOrder.saleId && 
     currentSession?.status === 'OPEN' &&
-    new Date(currentOrder.createdAt) >= new Date(currentSession.openedAt);
+    (currentOrder.status === 'CANCELLED' || 
+     new Date(currentOrder.createdAt) >= new Date(currentSession.openedAt));
 
   const handleChargeOrder = () => {
     // Pre-cargar items del pedido al carrito
