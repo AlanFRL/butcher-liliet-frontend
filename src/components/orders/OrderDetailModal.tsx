@@ -153,93 +153,96 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order: initi
                 </span>
               )}
             </div>
-            {currentOrder.status !== 'CANCELLED' && (
-              <div className="flex flex-wrap gap-2">
-                {/* Botón para editar - solo PENDING o READY */}
-                {(currentOrder.status === 'PENDING' || currentOrder.status === 'READY') && onEdit && (
-                  <Button
-                    onClick={() => onEdit(currentOrder)}
-                    variant="outline"
-                    size="sm"
-                  >
-                    Editar
-                  </Button>
-                )}
-                
-                {/* Botón para cobrar en POS - READY o DELIVERED sin pago */}
-                {(currentOrder.status === 'READY' || 
-                  (currentOrder.status === 'DELIVERED' && !currentOrder.saleId)) && (
-                  <Button
-                    onClick={handleChargeOrder}
-                    variant="primary"
-                    size="sm"
-                  >
-                    <CreditCard className="w-4 h-4 mr-1" />
-                    Cobrar en POS
-                  </Button>
-                )}
-                
-                {/* Botón para nota de venta - READY o DELIVERED (con o sin pago) */}
-                {(currentOrder.status === 'READY' || currentOrder.status === 'DELIVERED') && (
-                  <Button
-                    onClick={handlePrintInvoice}
-                    variant="outline"
-                    size="sm"
-                    className="text-primary-600 border-primary-600 hover:bg-primary-50"
-                  >
-                    <FileText className="w-4 h-4 mr-1" />
-                    Nota de Venta
-                  </Button>
-                )}
-                
-                {/* Botón marcar como listo */}
-                {currentOrder.status === 'PENDING' && (
-                  <Button
-                    onClick={() => handleStatusChange('READY')}
-                    variant="primary"
-                    size="sm"
-                  >
-                    Marcar como Listo
-                  </Button>
-                )}
-                
-                {/* Botón marcar como entregado - solo si no está entregado */}
-                {currentOrder.status === 'READY' && (
-                  <Button
-                    onClick={() => handleStatusChange('DELIVERED')}
-                    variant="outline"
-                    size="sm"
-                  >
-                    Marcar como Entregado
-                  </Button>
-                )}
-                
-                {/* Botón cancelar - solo si no está entregado ni cancelado */}
-                {currentOrder.status !== 'DELIVERED' && (
-                  <Button
-                    onClick={() => setShowCancelModal(true)}
-                    variant="outline"
-                    size="sm"
-                    className="text-red-600 border-red-600 hover:bg-red-50"
-                  >
-                    Cancelar Pedido
-                  </Button>
-                )}
-                
-                {/* Botón eliminar - solo para ADMIN y si cumple las condiciones */}
-                {canDelete && (
-                  <Button
-                    onClick={() => setShowDeleteModal(true)}
-                    variant="outline"
-                    size="sm"
-                    className="text-red-700 border-red-700 hover:bg-red-50"
-                  >
-                    <Trash2 className="w-4 h-4 mr-1" />
-                    Eliminar Pedido
-                  </Button>
-                )}
-              </div>
-            )}
+            <div className="flex flex-wrap gap-2">
+              {/* Botones de acción normales - solo si no está cancelado */}
+              {currentOrder.status !== 'CANCELLED' && (
+                <>
+                  {/* Botón para editar - solo PENDING o READY */}
+                  {(currentOrder.status === 'PENDING' || currentOrder.status === 'READY') && onEdit && (
+                    <Button
+                      onClick={() => onEdit(currentOrder)}
+                      variant="outline"
+                      size="sm"
+                    >
+                      Editar
+                    </Button>
+                  )}
+                  
+                  {/* Botón para cobrar en POS - READY o DELIVERED sin pago */}
+                  {(currentOrder.status === 'READY' || 
+                    (currentOrder.status === 'DELIVERED' && !currentOrder.saleId)) && (
+                    <Button
+                      onClick={handleChargeOrder}
+                      variant="primary"
+                      size="sm"
+                    >
+                      <CreditCard className="w-4 h-4 mr-1" />
+                      Cobrar en POS
+                    </Button>
+                  )}
+                  
+                  {/* Botón para nota de venta - READY o DELIVERED (con o sin pago) */}
+                  {(currentOrder.status === 'READY' || currentOrder.status === 'DELIVERED') && (
+                    <Button
+                      onClick={handlePrintInvoice}
+                      variant="outline"
+                      size="sm"
+                      className="text-primary-600 border-primary-600 hover:bg-primary-50"
+                    >
+                      <FileText className="w-4 h-4 mr-1" />
+                      Nota de Venta
+                    </Button>
+                  )}
+                  
+                  {/* Botón marcar como listo */}
+                  {currentOrder.status === 'PENDING' && (
+                    <Button
+                      onClick={() => handleStatusChange('READY')}
+                      variant="primary"
+                      size="sm"
+                    >
+                      Marcar como Listo
+                    </Button>
+                  )}
+                  
+                  {/* Botón marcar como entregado - solo si no está entregado */}
+                  {currentOrder.status === 'READY' && (
+                    <Button
+                      onClick={() => handleStatusChange('DELIVERED')}
+                      variant="outline"
+                      size="sm"
+                    >
+                      Marcar como Entregado
+                    </Button>
+                  )}
+                  
+                  {/* Botón cancelar - solo si no está entregado ni cancelado */}
+                  {currentOrder.status !== 'DELIVERED' && (
+                    <Button
+                      onClick={() => setShowCancelModal(true)}
+                      variant="outline"
+                      size="sm"
+                      className="text-red-600 border-red-600 hover:bg-red-50"
+                    >
+                      Cancelar Pedido
+                    </Button>
+                  )}
+                </>
+              )}
+              
+              {/* Botón eliminar - disponible SIEMPRE si cumple condiciones (incluso cancelados) */}
+              {canDelete && (
+                <Button
+                  onClick={() => setShowDeleteModal(true)}
+                  variant="outline"
+                  size="sm"
+                  className="text-red-700 border-red-700 hover:bg-red-50"
+                >
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  Eliminar Pedido
+                </Button>
+              )}
+            </div>
             {/* Mostrar ID de venta si existe */}
             {currentOrder.saleId && (
               <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-md text-sm">
