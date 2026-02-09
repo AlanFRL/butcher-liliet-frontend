@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, CheckCircle, XCircle, Trash2, Tag, Package } from 'lucide-react';
+import { Plus, Edit, Trash2, Tag, Package, XCircle, CheckCircle } from 'lucide-react';
 import { categoriesApi } from '../../services/api';
+import { useProductStore } from '../../store';
 
 interface Category {
   id: string;
@@ -17,6 +18,7 @@ interface CategoryFormData {
 }
 
 export const CategoriesTab: React.FC = () => {
+  const { loadCategories: reloadStoreCategories } = useProductStore();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -59,6 +61,7 @@ export const CategoriesTab: React.FC = () => {
       setIsCreateModalOpen(false);
       resetForm();
       await loadCategories();
+      await reloadStoreCategories(); // Actualizar store compartido
     } catch (error: any) {
       alert(error.message || 'Error al crear categoría');
     } finally {
@@ -84,6 +87,7 @@ export const CategoriesTab: React.FC = () => {
       setEditingCategory(null);
       resetForm();
       await loadCategories();
+      await reloadStoreCategories(); // Actualizar store compartido
     } catch (error: any) {
       alert(error.message || 'Error al actualizar categoría');
     } finally {
@@ -101,6 +105,7 @@ export const CategoriesTab: React.FC = () => {
         isActive: !category.isActive,
       });
       await loadCategories();
+      await reloadStoreCategories(); // Actualizar store compartido
     } catch (error: any) {
       alert(error.message || 'Error al cambiar estado de categoría');
     } finally {
@@ -129,6 +134,7 @@ export const CategoriesTab: React.FC = () => {
       await categoriesApi.delete(deletingCategory.id);
       setDeletingCategory(null);
       await loadCategories();
+      await reloadStoreCategories(); // Actualizar store compartido
       alert('Categoría eliminada correctamente');
     } catch (error: any) {
       console.error('Error al eliminar categoría:', error);

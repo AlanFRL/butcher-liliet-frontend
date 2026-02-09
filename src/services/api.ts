@@ -936,6 +936,7 @@ export const ordersApi = {
    * Crear pedido
    */
   create: async (data: {
+    customerId: string; // Add customer ID requirement
     customerName: string;
     customerPhone?: string;
     customerEmail?: string;
@@ -1068,6 +1069,84 @@ export const ordersApi = {
     const query = queryParams.toString();
     return apiFetch<any>(`/orders/statistics${query ? `?${query}` : ''}`, {
       method: 'GET',
+    });
+  },
+};
+
+// ============= CUSTOMERS API =============
+
+export interface CustomerResponse {
+  id: string;
+  name?: string;
+  company?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const customersApi = {
+  /**
+   * Crear cliente
+   */
+  create: async (data: {
+    name?: string;
+    company?: string;
+    phone?: string;
+    email?: string;
+    address?: string;
+    notes?: string;
+  }): Promise<CustomerResponse> => {
+    return apiFetch<CustomerResponse>('/customers', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Listar clientes con búsqueda opcional
+   */
+  getAll: async (search?: string): Promise<CustomerResponse[]> => {
+    const query = search ? `?search=${encodeURIComponent(search)}` : '';
+    return apiFetch<CustomerResponse[]>(`/customers${query}`, {
+      method: 'GET',
+    });
+  },
+
+  /**
+   * Obtener cliente por ID
+   */
+  getById: async (id: string): Promise<CustomerResponse> => {
+    return apiFetch<CustomerResponse>(`/customers/${id}`, {
+      method: 'GET',
+    });
+  },
+
+  /**
+   * Actualizar cliente
+   */
+  update: async (id: string, data: {
+    name?: string;
+    company?: string;
+    phone?: string;
+    email?: string;
+    address?: string;
+    notes?: string;
+  }): Promise<CustomerResponse> => {
+    return apiFetch<CustomerResponse>(`/customers/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Eliminar cliente
+   */
+  delete: async (id: string): Promise<void> => {
+    return apiFetch<void>(`/customers/${id}`, {
+      method: 'DELETE',
     });
   },
 };

@@ -14,11 +14,8 @@ export const ItemDiscountModal: React.FC<ItemDiscountModalProps> = ({
   onClose,
   onApplyUnitPrice,
 }) => {
-  // Para productos con lote, calcular precio efectivo por kg
-  const isProductWithBatch = (item.batchId || item.needsBatchCreation) && item.actualWeight;
-  const effectivePricePerKg = isProductWithBatch 
-    ? Math.floor(item.unitPrice / item.actualWeight!)
-    : item.unitPrice;
+  // Precio unitario del producto
+  const effectivePricePerKg = item.unitPrice;
   
   const [newUnitPrice, setNewUnitPrice] = useState(effectivePricePerKg.toFixed(0));
   const [error, setError] = useState('');
@@ -28,14 +25,11 @@ export const ItemDiscountModal: React.FC<ItemDiscountModalProps> = ({
   // Determinar el modo según el tipo de producto
   const isWeightProduct = item.saleType === 'WEIGHT';
   const isUnitProduct = item.saleType === 'UNIT';
-  const isVacuumPacked = item.product.inventoryType === 'VACUUM_PACKED';
 
   useEffect(() => {
-    const priceToShow = isProductWithBatch 
-      ? Math.floor(item.unitPrice / item.actualWeight!)
-      : item.unitPrice;
+    const priceToShow = item.unitPrice;
     setNewUnitPrice(priceToShow.toFixed(0));
-  }, [item.unitPrice, item.actualWeight, isProductWithBatch]);
+  }, [item.unitPrice]);
 
   const handleApply = () => {
     const newPricePerKg = parseInt(newUnitPrice);
@@ -55,27 +49,18 @@ export const ItemDiscountModal: React.FC<ItemDiscountModalProps> = ({
       return;
     }
 
-    // Para productos con lote, convertir precio/kg a precio total del paquete
-    const finalPrice = isProductWithBatch
-      ? Math.round(newPricePerKg * item.actualWeight!)
-      : newPricePerKg;
-
     // Aplicar nuevo precio
-    onApplyUnitPrice(finalPrice);
+    onApplyUnitPrice(newPricePerKg);
     onClose();
   };
 
   // Calcular preview
   const previewPricePerKg = parseInt(newUnitPrice) || 0;
   
-  // Para productos con lote, calcular total del paquete
-  const previewTotal = isProductWithBatch
-    ? Math.round(previewPricePerKg * item.actualWeight!)
-    : Math.round(item.qty * previewPricePerKg);
+  // Calcular total y descuento  
+  const previewTotal = Math.round(item.qty * previewPricePerKg);
     
-  const previewExpected = isProductWithBatch
-    ? Math.round(item.actualWeight! * originalUnitPrice)
-    : Math.round(item.qty * originalUnitPrice);
+  const previewExpected = Math.round(item.qty * originalUnitPrice);
     
   const previewDiscount = previewExpected - previewTotal;
   const previewPercentage = previewExpected > 0 ? ((previewDiscount / previewExpected) * 100) : 0;
@@ -84,7 +69,7 @@ export const ItemDiscountModal: React.FC<ItemDiscountModalProps> = ({
   let priceLabel = '';
   let unitLabel = '';
   
-  if (isWeightProduct || isVacuumPacked) {
+  if (isWeightProduct) {
     priceLabel = 'Precio por Kg';
     unitLabel = 'kg';
   } else if (isUnitProduct) {
@@ -115,7 +100,7 @@ export const ItemDiscountModal: React.FC<ItemDiscountModalProps> = ({
           <p className="font-semibold text-gray-900">{item.productName}</p>
           <div className="flex justify-between items-center mt-2 text-sm">
             <span className="text-gray-600">
-              Cantidad: {isWeightProduct || isVacuumPacked ? item.qty.toFixed(3) : item.qty} {item.unit}
+              Cantidad: {isWeightProduct ? item.qty.toFixed(3) : item.qty} {item.unit}
             </span>
           </div>
           {item.scannedBarcode && (
@@ -171,7 +156,7 @@ export const ItemDiscountModal: React.FC<ItemDiscountModalProps> = ({
             <div className="flex justify-between items-center text-sm">
               <span className="text-gray-600">Cantidad:</span>
               <span className="font-medium text-gray-900">
-                {isWeightProduct || isVacuumPacked ? item.qty.toFixed(3) : item.qty} {item.unit}
+                {isWeightProduct ? item.qty.toFixed(3) : item.qty} {item.unit}
               </span>
             </div>
 

@@ -10,7 +10,8 @@ import {
   LogOut,
   User,
   ClipboardList,
-  Boxes
+  Boxes,
+  Users
 } from 'lucide-react';
 import { useAuthStore } from '../../store';
 
@@ -26,6 +27,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onLogout }) => {
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: ['ADMIN', 'MANAGER', 'CASHIER'] },
     { name: 'POS', path: '/pos', icon: ShoppingCart, roles: ['ADMIN', 'MANAGER', 'CASHIER'] },
     { name: 'Pedidos', path: '/orders', icon: ClipboardList, roles: ['ADMIN', 'MANAGER', 'CASHIER'] },
+    { name: 'Clientes', path: '/customers', icon: Users, roles: ['ADMIN', 'MANAGER', 'CASHIER'] },
     { name: 'Productos', path: '/products', icon: Package, roles: ['ADMIN', 'MANAGER', 'CASHIER'] },
     { name: 'Inventario', path: '/inventory', icon: Boxes, roles: ['ADMIN', 'MANAGER'] },
     { name: 'Caja', path: '/cash', icon: DollarSign, roles: ['ADMIN', 'MANAGER', 'CASHIER'] },

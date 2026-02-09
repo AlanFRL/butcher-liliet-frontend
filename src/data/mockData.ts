@@ -81,7 +81,6 @@ export const mockProducts: Product[] = [
     taxRate: 0,
     isActive: true,
     isFavorite: true,
-    inventoryType: 'WEIGHT_MANUAL', // Corte manual, sin stock
     barcodeType: 'STANDARD',
   },
   {
@@ -95,7 +94,6 @@ export const mockProducts: Product[] = [
     taxRate: 0,
     isActive: true,
     isFavorite: true,
-    inventoryType: 'WEIGHT_MANUAL',
     barcodeType: 'STANDARD',
   },
   {

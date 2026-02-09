@@ -160,7 +160,7 @@ export const PrintableSaleReceipt: React.FC<PrintableSaleReceiptProps> = ({ data
             <h1 className="text-lg font-bold mb-1">BUTCHER LILIETH</h1>
             <p className="text-xs">3er Anillo Interno</p>
             <p className="text-xs">Entre Av. Centenario y C/Urubó</p>
-            <p className="text-xs">Tel: 62409387</p>
+            <p className="text-xs">Tel: 62409387 - 76276838</p>
             <p className="text-xs mt-1">
               {data.date} - {data.time}
             </p>

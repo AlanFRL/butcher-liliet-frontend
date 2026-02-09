@@ -74,8 +74,15 @@ export const OrdersPage: React.FC = () => {
 
     // Ordenar por fecha de entrega (más próximos primero)
     return filtered.sort((a, b) => {
-      const dateA = new Date(`${a.deliveryDate}T${a.deliveryTime}`);
-      const dateB = new Date(`${b.deliveryDate}T${b.deliveryTime}`);
+      // Parse dates explicitly to avoid timezone issues
+      const [yearA, monthA, dayA] = a.deliveryDate.split('-').map(Number);
+      const [hoursA, minutesA] = a.deliveryTime.split(':').map(Number);
+      const dateA = new Date(yearA, monthA - 1, dayA, hoursA, minutesA, 0);
+      
+      const [yearB, monthB, dayB] = b.deliveryDate.split('-').map(Number);
+      const [hoursB, minutesB] = b.deliveryTime.split(':').map(Number);
+      const dateB = new Date(yearB, monthB - 1, dayB, hoursB, minutesB, 0);
+      
       return dateA.getTime() - dateB.getTime();
     });
   }, [orders, statusFilter, searchQuery]);
@@ -92,8 +99,15 @@ export const OrdersPage: React.FC = () => {
 
   const isOrderOverdue = (order: Order) => {
     if (order.status === 'DELIVERED' || order.status === 'CANCELLED') return false;
-    const deliveryDateTime = new Date(`${order.deliveryDate}T${order.deliveryTime}`);
-    return deliveryDateTime < new Date();
+    
+    // Parse date and time explicitly to avoid timezone issues
+    const [year, month, day] = order.deliveryDate.split('-').map(Number);
+    const [hours, minutes] = order.deliveryTime.split(':').map(Number);
+    
+    const deliveryDateTime = new Date(year, month - 1, day, hours, minutes, 0);
+    const now = new Date();
+    
+    return deliveryDateTime < now;
   };
 
   const handleViewOrder = (order: Order) => {
@@ -304,7 +318,11 @@ export const OrdersPage: React.FC = () => {
                       <div className="flex items-center text-gray-600">
                         <Calendar className="w-4 h-4 mr-2" />
                         <span>
-                          {new Date(order.deliveryDate).toLocaleDateString('es-BO')} - {order.deliveryTime}
+                          {(() => {
+                            const [year, month, day] = order.deliveryDate.split('-').map(Number);
+                            const date = new Date(year, month - 1, day);
+                            return date.toLocaleDateString('es-BO');
+                          })()} - {order.deliveryTime}
                         </span>
                       </div>
                     </div>

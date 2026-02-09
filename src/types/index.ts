@@ -22,17 +22,6 @@ export type CashMovementType = 'DEPOSIT' | 'WITHDRAWAL' | 'ADJUSTMENT';
 
 export type OrderStatus = 'PENDING' | 'READY' | 'DELIVERED' | 'CANCELLED';
 
-export type InventoryType = 
-  | 'UNIT'            // Productos por unidad con control de stock (latas, carbón, etc.)
-  | 'WEIGHT'          // Carnes de corte - peso manual sin control de stock
-  | 'VACUUM_PACKED'   // Carnes al vacío - unidades con precio variable (requiere lotes)
-  | 'UNIT_STOCK'      // Legacy: Productos por unidad con control de stock
-  | 'UNIT_VARIABLE'   // Legacy: Carnes al vacío - unidades con precio variable en código de barras
-  | 'BATCH'           // Productos con lotes
-  | 'REGULAR'         // Productos regulares sin lotes
-  | 'WEIGHT_MANUAL'   // Legacy: Carnes de corte - peso manual sin control de stock
-  | 'NO_STOCK';       // Legacy: Productos sin control de inventario
-
 export type BarcodeType =
   | 'STANDARD'        // Código de barras estándar (EAN-13, UPC, etc.)
   | 'WEIGHT_EMBEDDED' // Código con peso embebido (6 dígitos del segmento W de balanza)
@@ -74,8 +63,7 @@ export interface Product {
   isActive: boolean;
   isFavorite?: boolean; // Para el prototipo
   
-  // Sistema de inventario híbrido
-  inventoryType?: InventoryType;
+  // Sistema de inventario
   barcodeType?: BarcodeType; // Required for real products, optional for mock data
   barcode?: string; // Required for real products - código de barras del producto
   barcodePrefix?: string; // Prefijo para identificar en scanner (ej: "20" para precios embebidos)
@@ -133,15 +121,11 @@ export interface SaleItem {
   unitPrice: number;
   discount: number;
   total: number;
-  // Para productos al vacío (VACUUM_PACKED)
-  batchId?: string; // ID del lote
-  batchNumber?: string; // Número de lote para mostrar
-  actualWeight?: number; // Peso real del lote
+  // Para productos de peso (WEIGHT, VACUUM_PACKED)
+  actualWeight?: number; // Peso real (en kg)
   // Para productos de balanza escaneados
   scannedBarcode?: string; // Código completo de 18 dígitos de la etiqueta
   scannedSubtotal?: number; // Precio total fijo extraído de la etiqueta
-  // Para lotes fantasma (productos al vacío sin registro previo)
-  needsBatchCreation?: boolean; // Indica que el lote debe crearse al completar la venta
 }
 
 export interface Sale {
@@ -200,28 +184,6 @@ export interface CartItem extends SaleItem {
   originalUnitPrice?: number; // Precio original del sistema (antes del descuento)
   effectiveUnitPrice?: number; // Precio efectivo por unidad (después del descuento) - usado para cálculos proporcionales
   discountAutoDetected?: boolean; // Indica si el descuento fue detectado automáticamente por la balanza
-  batchId?: string; // ID del lote (para productos VACUUM_PACKED)
-  batchNumber?: string; // Número de lote para mostrar
-  actualWeight?: number; // Peso real del lote (para productos VACUUM_PACKED)
-  needsBatchCreation?: boolean; // Para lotes fantasma
-}
-
-export interface ProductBatch {
-  id: string;
-  productId: string;
-  batchNumber: string;
-  actualWeight: number | string;
-  unitPrice: number | string;
-  unitCost: number | string;
-  isSold: boolean;
-  packedAt: string;
-  expiryDate: string | null;
-  notes?: string;
-  product?: {
-    id: string;
-    name: string;
-    sku: string;
-  };
 }
 
 export interface DailySummary {
@@ -245,12 +207,14 @@ export interface ProductSalesSummary {
 
 export interface Customer {
   id: string;
-  name: string;
-  phone: string;
+  name?: string; // Optional if company is provided
+  company?: string; // Optional if name is provided
+  phone?: string;
   email?: string;
   address?: string;
   notes?: string;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface Order {
@@ -281,7 +245,6 @@ export interface OrderItem {
   id: string;
   orderId: string;
   productId: string;
-  batchId?: string; // ID del lote específico (para productos VACUUM_PACKED)
   productName: string; // Snapshot
   productSku: string; // Snapshot
   saleType: SaleType;
@@ -291,5 +254,4 @@ export interface OrderItem {
   total: number;
   discount?: number; // Descuento aplicado al item
   notes?: string; // Notas específicas del item (ej: "corte fino", "sin grasa")
-  batch?: ProductBatch; // Información del lote (si aplica)
 }

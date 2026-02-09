@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { CreditCard } from 'lucide-react';
+import { createRoot } from 'react-dom/client';
+import { CreditCard, FileText } from 'lucide-react';
 import { Button, Modal } from '../ui';
 import { useOrderStore, useCartStore } from '../../store';
 import type { Order, OrderStatus } from '../../types';
 import { useNavigate } from 'react-router-dom';
+import { PrintableInvoiceNote } from './PrintableInvoiceNote';
 
 interface OrderDetailModalProps {
   order: Order;
@@ -29,6 +31,41 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order: initi
     // Navegar al POS con el orderId en el state
     navigate('/pos', { state: { orderId: currentOrder.id } });
     onClose();
+  };
+
+  const handlePrintInvoice = () => {
+    // Crear iframe oculto para impresión
+    const printIframe = document.createElement('iframe');
+    printIframe.style.position = 'fixed';
+    printIframe.style.right = '0';
+    printIframe.style.bottom = '0';
+    printIframe.style.width = '0';
+    printIframe.style.height = '0';
+    printIframe.style.border = 'none';
+    document.body.appendChild(printIframe);
+
+    const iframeDoc = printIframe.contentDocument || printIframe.contentWindow?.document;
+    if (!iframeDoc) return;
+
+    iframeDoc.open();
+    iframeDoc.write('<!DOCTYPE html><html><head><title>Nota de Venta</title></head><body><div id="root"></div></body></html>');
+    iframeDoc.close();
+
+    const rootElement = iframeDoc.getElementById('root');
+    if (rootElement) {
+      const root = createRoot(rootElement);
+      root.render(<PrintableInvoiceNote order={currentOrder} />);
+
+      // Esperar a que se renderice y luego imprimir
+      setTimeout(() => {
+        printIframe.contentWindow?.print();
+
+        // Limpiar después de imprimir
+        setTimeout(() => {
+          document.body.removeChild(printIframe);
+        }, 100);
+      }, 500);
+    }
   };
 
   const statusBadge = {
@@ -87,8 +124,9 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order: initi
                 </span>
               )}
             </div>
-            {currentOrder.status !== 'DELIVERED' && currentOrder.status !== 'CANCELLED' && (
-              <div className="flex gap-2">
+            {currentOrder.status !== 'CANCELLED' && (
+              <div className="flex flex-wrap gap-2">
+                {/* Botón para editar - solo PENDING o READY */}
                 {(currentOrder.status === 'PENDING' || currentOrder.status === 'READY') && onEdit && (
                   <Button
                     onClick={() => onEdit(currentOrder)}
@@ -98,7 +136,10 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order: initi
                     Editar
                   </Button>
                 )}
-                {currentOrder.status === 'READY' && (
+                
+                {/* Botón para cobrar en POS - READY o DELIVERED sin pago */}
+                {(currentOrder.status === 'READY' || 
+                  (currentOrder.status === 'DELIVERED' && !currentOrder.saleId)) && (
                   <Button
                     onClick={handleChargeOrder}
                     variant="primary"
@@ -108,6 +149,21 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order: initi
                     Cobrar en POS
                   </Button>
                 )}
+                
+                {/* Botón para nota de venta - READY o DELIVERED (con o sin pago) */}
+                {(currentOrder.status === 'READY' || currentOrder.status === 'DELIVERED') && (
+                  <Button
+                    onClick={handlePrintInvoice}
+                    variant="outline"
+                    size="sm"
+                    className="text-primary-600 border-primary-600 hover:bg-primary-50"
+                  >
+                    <FileText className="w-4 h-4 mr-1" />
+                    Nota de Venta
+                  </Button>
+                )}
+                
+                {/* Botón marcar como listo */}
                 {currentOrder.status === 'PENDING' && (
                   <Button
                     onClick={() => handleStatusChange('READY')}
@@ -117,6 +173,8 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order: initi
                     Marcar como Listo
                   </Button>
                 )}
+                
+                {/* Botón marcar como entregado - solo si no está entregado */}
                 {currentOrder.status === 'READY' && (
                   <Button
                     onClick={() => handleStatusChange('DELIVERED')}
@@ -126,30 +184,26 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order: initi
                     Marcar como Entregado
                   </Button>
                 )}
-                <Button
-                  onClick={() => setShowCancelModal(true)}
-                  variant="outline"
-                  size="sm"
-                  className="text-red-600 border-red-600 hover:bg-red-50"
-                >
-                  Cancelar Pedido
-                </Button>
+                
+                {/* Botón cancelar - solo si no está entregado ni cancelado */}
+                {currentOrder.status !== 'DELIVERED' && (
+                  <Button
+                    onClick={() => setShowCancelModal(true)}
+                    variant="outline"
+                    size="sm"
+                    className="text-red-600 border-red-600 hover:bg-red-50"
+                  >
+                    Cancelar Pedido
+                  </Button>
+                )}
               </div>
             )}
-            {/* Botón para ver venta si existe */}
+            {/* Mostrar ID de venta si existe */}
             {currentOrder.saleId && (
-              <Button
-                onClick={() => {
-                  showToast('info', `Venta asociada - Funcionalidad próximamente`);
-                  // TODO: Navegar a página de detalles de venta cuando exista
-                  // navigate('/sales/' + currentOrder.saleId);
-                }}
-                variant="outline"
-                size="sm"
-                className="text-blue-600 border-blue-600 hover:bg-blue-50"
-              >
-                📄 Ver Venta
-              </Button>
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-md text-sm">
+                <span className="text-blue-700 font-medium">ID Venta:</span>
+                <span className="text-blue-900 font-mono">{currentOrder.saleId.slice(-8)}</span>
+              </div>
             )}
           </div>
 
@@ -175,12 +229,16 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order: initi
               <div>
                 <p className="text-gray-600">Fecha</p>
                 <p className="font-medium text-gray-900">
-                  {new Date(currentOrder.deliveryDate).toLocaleDateString('es-BO', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                  })}
+                  {(() => {
+                    const [year, month, day] = currentOrder.deliveryDate.split('-').map(Number);
+                    const date = new Date(year, month - 1, day);
+                    return date.toLocaleDateString('es-BO', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                    });
+                  })()}
                 </p>
               </div>
               <div>
@@ -204,39 +262,66 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order: initi
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {currentOrder.items.map((item) => (
-                    <tr key={item.id}>
-                      <td className="px-4 py-3">
-                        <p className="font-medium text-gray-900">{item.productName}</p>
-                        <p className="text-xs text-gray-500">{item.productSku}</p>
-                        {item.batchId && item.batch && (
-                          <p className="text-xs text-blue-600 mt-1">
-                            📦 Lote: {item.batch.batchNumber} ({typeof item.batch.actualWeight === 'string' ? parseFloat(item.batch.actualWeight).toFixed(3) : item.batch.actualWeight.toFixed(3)} kg)
-                          </p>
-                        )}
-                        {item.notes && (
-                          <p className="text-xs text-gray-600 italic mt-1">Nota: {item.notes}</p>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-center text-gray-900">
-                        {item.batchId ? `1 paquete` : `${item.qty} ${item.unit}`}
-                      </td>
-                      <td className="px-4 py-3 text-right text-gray-900">
-                        Bs {item.unitPrice.toFixed(2)}
-                      </td>
-                      <td className="px-4 py-3 text-right font-semibold text-gray-900">
-                        Bs {Math.round(item.total)}
-                      </td>
-                    </tr>
-                  ))}
+                  {currentOrder.items.map((item) => {
+                    const itemDiscount = item.discount || 0;
+                    const itemSubtotalBeforeDiscount = Math.round(item.qty * item.unitPrice);
+                    const itemFinalTotal = Math.round(item.total);
+                    
+                    return (
+                      <tr key={item.id}>
+                        <td className="px-4 py-3">
+                          <p className="font-medium text-gray-900">{item.productName}</p>
+                          <p className="text-xs text-gray-500">{item.productSku}</p>
+                          {item.notes && (
+                            <p className="text-xs text-gray-600 italic mt-1">Nota: {item.notes}</p>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-center text-gray-900">
+                          {`${item.qty} ${item.unit}`}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <p className="text-gray-900">Bs {Math.round(item.unitPrice)}</p>
+                          {itemDiscount > 0 && (
+                            <>
+                              <p className="text-xs text-gray-500">Subtotal: Bs {itemSubtotalBeforeDiscount}</p>
+                              <p className="text-xs text-red-600">Descuento: -Bs {Math.round(itemDiscount)}</p>
+                            </>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right font-semibold text-gray-900">
+                          Bs {itemFinalTotal}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
                 <tfoot className="bg-gray-50">
-                  <tr>
+                  {currentOrder.discount && currentOrder.discount > 0 ? (
+                    <>
+                      <tr className="border-t border-gray-200">
+                        <td colSpan={3} className="px-4 py-2 text-right text-sm text-gray-600">
+                          Subtotal:
+                        </td>
+                        <td className="px-4 py-2 text-right text-sm font-semibold text-gray-900">
+                          Bs {Math.round(currentOrder.subtotal || currentOrder.total)}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td colSpan={3} className="px-4 py-2 text-right text-sm text-red-600">
+                          Descuento Global:
+                        </td>
+                        <td className="px-4 py-2 text-right text-sm font-semibold text-red-600">
+                          -Bs {Math.round(currentOrder.discount)}
+                        </td>
+                      </tr>
+                    </>
+                  ) : null}
+                  <tr className="border-t-2 border-gray-300">
                     <td colSpan={3} className="px-4 py-3 text-right font-semibold text-gray-900">
                       Total:
                     </td>
                     <td className="px-4 py-3 text-right text-lg font-bold text-primary-700">
-                      Bs {Math.round(currentOrder.total)}
+                      Bs&nbsp;{Math.round(currentOrder.total)}
                     </td>
                   </tr>
                 </tfoot>

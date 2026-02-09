@@ -19,9 +19,6 @@ import type {
 import { mockProducts, mockCategories, mockTerminals } from '../data/mockData';
 import * as storage from '../utils/localStorage';
 
-// API Base URL
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
-
 // API imports
 import {
   authApi,
@@ -81,7 +78,6 @@ interface CartState {
   cartItems: CartItem[];
   globalDiscount: number; // Descuento adicional sobre el subtotal
   addToCart: (product: Product, qty: number, scannedData?: { barcode: string; subtotal: number }) => void;
-  addBatchToCart: (product: Product, batch: { id?: string; batchNumber?: string; actualWeight: number; unitPrice: number; needsCreation?: boolean }) => void;
   updateCartItem: (itemId: string, qty: number) => void;
   setItemDiscount: (itemId: string, discount: number) => void;
   setItemUnitPrice: (itemId: string, newUnitPrice: number) => void; // Cambiar precio/kg
@@ -97,7 +93,7 @@ interface CartState {
 interface SalesState {
   sales: Sale[];
   saleCounter: number;
-  completeSale: (paymentMethod: 'CASH' | 'CARD' | 'TRANSFER' | 'MIXED', cashPaid?: number, orderId?: string) => Promise<Sale | null>;
+  completeSale: (paymentMethod: 'CASH' | 'CARD' | 'TRANSFER' | 'MIXED', cashPaid?: number, orderId?: string, customerId?: string) => Promise<Sale | null>;
   getSalesByDateRange: (from: string, to: string) => Sale[];
   getTodaysSales: () => Sale[];
 }
@@ -553,11 +549,9 @@ export const useProductStore = create<ProductState>((set, get) => ({
         description: (product as any).description,
         categoryId: product.categoryId || '',
         saleType: product.saleType,
-        inventoryType: (product as any).inventoryType || (product.saleType === 'WEIGHT' ? 'WEIGHT' : 'UNIT'),
         price: product.price,
         costPrice: 0,
         unit: product.unit,
-        trackInventory: (product as any).inventoryType !== 'VACUUM_PACKED',
         stockQuantity: (product as any).stockQuantity || 0,
         minStock: (product as any).minStock || 0,
       };
@@ -592,7 +586,6 @@ export const useProductStore = create<ProductState>((set, get) => ({
       if ((updates as any).description !== undefined) updateData.description = (updates as any).description;
       if (updates.categoryId !== undefined) updateData.categoryId = updates.categoryId;
       if (updates.saleType !== undefined) updateData.saleType = updates.saleType;
-      if ((updates as any).inventoryType !== undefined) updateData.inventoryType = (updates as any).inventoryType;
       if (updates.price !== undefined) updateData.price = updates.price;
       if (updates.unit !== undefined) updateData.unit = updates.unit;
       if (updates.isActive !== undefined) updateData.isActive = updates.isActive;
@@ -793,39 +786,6 @@ export const useCartStore = create<CartState>((set, get) => ({
       set({ cartItems: [...cartItems, newItem] });
     }
   },
-
-  addBatchToCart: (product, batch) => {
-    const { cartItems } = get();
-    
-    // Calcular total esperado basado en peso y precio del sistema
-    const expectedTotal = Math.round(batch.actualWeight * product.price);
-    const actualTotal = batch.unitPrice;
-    const discount = expectedTotal - actualTotal;
-    const hasDiscount = Math.abs(discount) >= 1; // Tolerancia de 1 Bs
-    
-    // Para lotes, siempre agregamos un item nuevo (no acumulamos)
-    const newItem: CartItem = {
-      id: uuidv4(),
-      productId: product.id,
-      productName: product.name,
-      saleType: 'UNIT', // Los lotes siempre se venden como unidades
-      unit: product.unit,
-      qty: 1, // Siempre 1 unidad (1 paquete)
-      unitPrice: batch.unitPrice,
-      originalUnitPrice: product.price, // Precio/kg del sistema para referencia
-      effectiveUnitPrice: hasDiscount ? batch.unitPrice : undefined,
-      discount: hasDiscount && discount > 0 ? discount : 0,
-      discountAutoDetected: hasDiscount && discount > 0,
-      total: batch.unitPrice,
-      product,
-      batchId: batch.id,
-      batchNumber: batch.batchNumber || (batch.needsCreation ? '⚠️ Por registrar' : undefined),
-      actualWeight: batch.actualWeight,
-      needsBatchCreation: batch.needsCreation || false,
-    };
-    
-    set({ cartItems: [...cartItems, newItem] });
-  },
   
   updateCartItem: (itemId, qty) => {
     // Permitir 0 temporalmente (mientras escribe), pero no negativos
@@ -948,8 +908,6 @@ export const useCartStore = create<CartState>((set, get) => ({
       // Si el producto ya no existe, crear uno temporal con los datos guardados
       const productData: Product = product ? {
         ...product,
-        // Asegurar que el inventoryType sea correcto (del producto real)
-        inventoryType: product.inventoryType,
       } : {
         id: orderItem.productId,
         categoryId: null,
@@ -958,7 +916,6 @@ export const useCartStore = create<CartState>((set, get) => ({
         barcode: undefined, // No disponible en datos históricos
         barcodeType: 'NONE',
         saleType: orderItem.saleType,
-        inventoryType: orderItem.batchId ? 'VACUUM_PACKED' : 'REGULAR', // Inferir tipo de inventario
         unit: orderItem.unit,
         price: orderItem.unitPrice,
         taxRate: 0,
@@ -983,18 +940,6 @@ export const useCartStore = create<CartState>((set, get) => ({
       if (orderItem.discount && orderItem.discount > 0) {
         const subtotal = orderItem.qty * orderItem.unitPrice;
         cartItem.effectiveUnitPrice = (subtotal - orderItem.discount) / orderItem.qty;
-      }
-
-      // Si el pedido tiene un batch asociado, incluir información del lote
-      if (orderItem.batchId && orderItem.batch) {
-        cartItem.batchId = orderItem.batchId;
-        cartItem.batchNumber = orderItem.batch.batchNumber;
-        cartItem.actualWeight = typeof orderItem.batch.actualWeight === 'string' 
-          ? parseDecimal(orderItem.batch.actualWeight)
-          : orderItem.batch.actualWeight;
-        // Para productos con batch, el unitPrice es el precio del paquete,
-        // pero necesitamos originalUnitPrice (precio por kg del sistema) para displays
-        cartItem.originalUnitPrice = product?.price || orderItem.unitPrice;
       }
 
       return cartItem;
@@ -1031,7 +976,7 @@ export const useSalesStore = create<SalesState>((set, get) => ({
   sales: storage.getSales(),
   saleCounter: storage.getSaleCounter(),
   
-  completeSale: async (paymentMethod, cashPaid, orderId) => {
+  completeSale: async (paymentMethod, cashPaid, orderId, customerId) => {
     const cashState = useCashStore.getState();
     const cartState = useCartStore.getState();
     const authState = useAuthStore.getState();
@@ -1047,79 +992,17 @@ export const useSalesStore = create<SalesState>((set, get) => ({
     }
     
     try {
-      // PASO 1: Crear lotes fantasma antes de completar la venta
-      const itemsWithBatches = [...cartState.cartItems];
-      
-      for (let i = 0; i < itemsWithBatches.length; i++) {
-        const item = itemsWithBatches[i];
-        
-        if (item.needsBatchCreation && item.actualWeight && item.unitPrice) {
-          console.log(`📦 Creando lote fantasma para: ${item.productName}`);
-          
-          try {
-            // Generar batchNumber automático
-            const now = new Date();
-            const today = now.getFullYear() + 
-              String(now.getMonth() + 1).padStart(2, '0') + 
-              String(now.getDate()).padStart(2, '0');
-            
-            const product = item.product;
-            const batchNumber = `${product.sku}-${today}-AUTO-${Date.now().toString().slice(-4)}`;
-            
-            // Crear lote en backend
-            const response = await fetch(`${API_BASE_URL}/product-batches`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('butcher_auth_token')}`
-              },
-              body: JSON.stringify({
-                productId: item.productId,
-                batchNumber,
-                actualWeight: item.actualWeight,
-                unitCost: 0,
-                unitPrice: item.unitPrice,
-                packedAt: new Date().toISOString(),
-                expiryDate: null,
-                notes: 'Creado automáticamente en venta'
-              })
-            });
-            
-            if (response.ok) {
-              const createdBatch = await response.json();
-              // Actualizar item con el batchId real
-              itemsWithBatches[i] = {
-                ...item,
-                batchId: createdBatch.id,
-                batchNumber: createdBatch.batchNumber,
-                needsBatchCreation: false
-              };
-              console.log(`✅ Lote creado: ${createdBatch.batchNumber}`);
-            } else {
-              console.error('❌ Error creando lote fantasma:', await response.text());
-              throw new Error('Error al crear lote necesario');
-            }
-          } catch (error) {
-            console.error('❌ Error creando lote fantasma:', error);
-            throw error;
-          }
-        }
-      }
-      
-      // PASO 2: Crear la venta con los lotes ya existentes
+      // PASO 1: Crear la venta
       const cartTotal = Math.round(cartState.getCartTotal());
       const cashPaidRounded = cashPaid ? Math.round(cashPaid) : 0;
       
       const saleData = {
         sessionId: cashState.currentSession.id,
-        items: itemsWithBatches.map((item) => ({
+        items: cartState.cartItems.map((item) => ({
           productId: item.productId,
           quantity: Math.round(item.qty * 1000) / 1000, // Redondear a 3 decimales para peso
-          unitPrice: Math.round(item.unitPrice), // Precio del paquete (para lotes) o precio unitario (para otros)
+          unitPrice: Math.round(item.unitPrice),
           discount: Math.round(item.discount || 0), // Redondear descuento
-          batchId: item.batchId,
-          batchNumber: item.batchNumber,
-          actualWeight: item.actualWeight ? Math.round(item.actualWeight * 1000) / 1000 : undefined, // Redondear peso
         })),
         discount: Math.round(cartState.globalDiscount || 0), // Redondear descuento global
         paymentMethod,
@@ -1127,34 +1010,13 @@ export const useSalesStore = create<SalesState>((set, get) => ({
         cardAmount: paymentMethod === 'CARD' ? cartTotal : undefined,
         transferAmount: paymentMethod === 'TRANSFER' ? cartTotal : undefined,
         notes: undefined,
-        customerName: undefined,
+        customerId: customerId,
         orderId: orderId,
       };
 
       console.log('📤 Enviando venta al backend...', saleData);
       const backendSale = await salesApi.create(saleData);
       console.log('✅ Venta creada en backend:', backendSale);
-
-      // PASO 3: Marcar lotes como vendidos
-      const batchUpdates = itemsWithBatches
-        .filter(item => item.batchId)
-        .map(item => item.batchId!);
-
-      if (batchUpdates.length > 0) {
-        console.log(`📦 Marcando ${batchUpdates.length} lote(s) como vendido(s)...`);
-        for (const batchId of batchUpdates) {
-          try {
-            await fetch(`${API_BASE_URL}/product-batches/${batchId}/mark-sold`, {
-              method: 'PATCH',
-              headers: {
-                'Authorization': `Bearer ${localStorage.getItem('butcher_auth_token')}`
-              }
-            });
-          } catch (err) {
-            console.error(`❌ Error marcando lote ${batchId} como vendido:`, err);
-          }
-        }
-      }
 
       // Convertir respuesta del backend a formato local
       const localSale: Sale = {
@@ -1176,10 +1038,6 @@ export const useSalesStore = create<SalesState>((set, get) => ({
             discount: parseDecimal(item.discount),
             total: parseDecimal(item.subtotal),
             originalUnitPrice: product?.price, // Buscar directamente del store de productos
-            // Incluir información de lote si existe
-            batchId: item.batchId || cartItem?.batchId,
-            batchNumber: item.batchNumber || cartItem?.batchNumber,
-            actualWeight: item.actualWeight ? parseDecimal(item.actualWeight) : cartItem?.actualWeight,
           };
         }),
         subtotal: parseDecimal(backendSale.subtotal),
@@ -1288,6 +1146,7 @@ interface OrderState {
   error: string | null;
   loadOrders: () => Promise<void>;
   createOrder: (data: {
+    customerId: string; // Add customerId
     customerName: string;
     customerPhone?: string;
     items: Array<{
@@ -1344,7 +1203,6 @@ export const useOrderStore = create<OrderState>((set, get) => ({
           id: item.id,
           orderId: order.id,
           productId: item.productId,
-          batchId: item.batchId,
           productName: item.productName,
           productSku: item.productSku,
           saleType: 'UNIT' as SaleType,
@@ -1354,17 +1212,6 @@ export const useOrderStore = create<OrderState>((set, get) => ({
           total: parseDecimal(item.subtotal),
           discount: parseDecimal(item.discount || 0), // Cargar descuento del item
           notes: item.notes,
-          batch: item.batch ? {
-            id: item.batch.id,
-            productId: item.productId,
-            batchNumber: item.batch.batchNumber,
-            actualWeight: parseDecimal(item.batch.actualWeight),
-            unitCost: 0,
-            unitPrice: parseDecimal(item.batch.unitPrice),
-            isSold: item.batch.isSold,
-            packedAt: new Date().toISOString(),
-            expiryDate: null,
-          } : undefined,
         })) || [],
         subtotal: parseDecimal(order.subtotal),
         discount: parseDecimal(order.discount),
@@ -1397,19 +1244,20 @@ export const useOrderStore = create<OrderState>((set, get) => ({
       }
 
       // Map frontend items to backend format
+      // IMPORTANTE: Redondear valores igual que en POS para evitar decimales inconsistentes
       const backendItems = data.items.map(item => ({
         productId: item.productId,
-        batchId: item.batchId,
-        quantity: item.qty,
-        discount: item.discount || 0, // Incluir descuento por item
+        quantity: Math.round(item.qty * 1000) / 1000, // Redondear a 3 decimales para peso
+        discount: Math.round(item.discount || 0), // Redondear descuento a entero
         notes: item.notes,
       }));
 
       const response = await ordersApi.create({
+        customerId: data.customerId, // Add customer ID
         customerName: data.customerName,
         customerPhone: data.customerPhone,
         items: backendItems,
-        discount: data.discount || 0, // Incluir descuento global
+        discount: Math.round(data.discount || 0), // Redondear descuento global a entero
         deliveryDate: data.deliveryDate,
         deliveryTime: data.deliveryTime,
         notes: data.notes,
@@ -1419,7 +1267,7 @@ export const useOrderStore = create<OrderState>((set, get) => ({
       const newOrder: Order = {
         id: response.id,
         orderNumber: parseInt(response.orderNumber.replace(/\D/g, '')),
-        customerId: '',
+        customerId: data.customerId || '',
         customerName: response.customerName,
         customerPhone: response.customerPhone || '',
         status: response.status as OrderStatus,
@@ -1529,14 +1377,19 @@ export const useOrderStore = create<OrderState>((set, get) => ({
         deliveryTime: updates.deliveryTime,
         notes: updates.notes,
       };
+      
+      // Agregar descuento global si viene en updates (redondeado)
+      if (updates.discount !== undefined) {
+        updateData.discount = Math.round(updates.discount);
+      }
 
       // Add items if provided
+      // IMPORTANTE: Redondear valores igual que en POS para evitar decimales inconsistentes
       if (updates.items) {
         updateData.items = updates.items.map(item => ({
           productId: item.productId,
-          batchId: item.batchId,
-          quantity: item.qty,
-          discount: item.discount || 0,
+          quantity: Math.round(item.qty * 1000) / 1000, // Redondear a 3 decimales para peso
+          discount: Math.round(item.discount || 0), // Redondear descuento a entero
           notes: item.notes,
         }));
       }
@@ -1637,8 +1490,8 @@ export const useOrderStore = create<OrderState>((set, get) => ({
     const lowerQuery = query.toLowerCase();
     return get().customers.filter(
       (c) =>
-        c.name.toLowerCase().includes(lowerQuery) ||
-        c.phone.includes(query)
+        c.name?.toLowerCase().includes(lowerQuery) ||
+        c.phone?.includes(query)
     );
   },
 }));

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Plus, Edit2, Star, Search, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Package, Plus, Edit2, Star, Search, Trash2, ToggleLeft, ToggleRight, Printer } from 'lucide-react';
 import { Button, Modal, Input, useToast } from '../components/ui';
 import { useProductStore, useAuthStore } from '../store';
 import type { Product, SaleType } from '../types';
+import { PrintablePLUList } from '../components/PrintablePLUList';
+import { createRoot } from 'react-dom/client';
 
 export const ProductsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -10,6 +12,7 @@ export const ProductsPage: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{[key: string]: string}>({});
+  const [isPrinting, setIsPrinting] = useState(false);
   const { showToast, ToastComponent } = useToast();
   
   const { products, categories, addProduct, updateProduct, toggleProductFavorite, loadProducts, loadCategories, isLoading } = useProductStore();
@@ -33,7 +36,6 @@ export const ProductsPage: React.FC = () => {
     barcodeType: 'STANDARD' as 'STANDARD' | 'WEIGHT_EMBEDDED' | 'NONE',
     categoryId: '',
     saleType: 'WEIGHT' as SaleType,
-    inventoryType: 'WEIGHT' as 'UNIT' | 'WEIGHT' | 'VACUUM_PACKED',
     price: '',
     stockQuantity: '',
     minStock: '',
@@ -43,14 +45,12 @@ export const ProductsPage: React.FC = () => {
     setFieldErrors({});
     if (product) {
       setEditingProduct(product);
-      const invType = (product.inventoryType as any) || (product.saleType === 'WEIGHT' ? 'WEIGHT' : 'UNIT');
       setFormData({
         name: product.name,
         barcode: product.barcode || '',
         barcodeType: (product.barcodeType as any) || 'STANDARD',
         categoryId: product.categoryId || '',
         saleType: product.saleType,
-        inventoryType: invType,
         price: product.price.toString(),
         stockQuantity: product.stockUnits?.toString() || '',
         minStock: product.minStockAlert?.toString() || '',
@@ -63,7 +63,6 @@ export const ProductsPage: React.FC = () => {
         barcodeType: 'STANDARD',
         categoryId: '',
         saleType: 'WEIGHT',
-        inventoryType: 'WEIGHT',
         price: '',
         stockQuantity: '',
         minStock: '',
@@ -123,16 +122,13 @@ export const ProductsPage: React.FC = () => {
     }
     
     // Validar precio
-    // VACUUM_PACKED: precio/kg para detectar descuentos (no se usa en venta directa)
-    // WEIGHT: precio/kg para venta
-    // UNIT: precio por unidad
     const price = parseFloat(formData.price);
     if (!formData.price || isNaN(price) || price <= 0) {
       errors.price = 'El precio debe ser mayor a 0';
     }
     
-    // Validar stock solo para productos que NO son por peso y NO son al vacío
-    if (formData.inventoryType === 'UNIT') {
+    // Validar stock solo para productos por unidad (UNIT)
+    if (formData.saleType === 'UNIT') {
       if (formData.stockQuantity && parseFloat(formData.stockQuantity) < 0) {
         errors.stockQuantity = 'El stock no puede ser negativo';
       }
@@ -156,12 +152,12 @@ export const ProductsPage: React.FC = () => {
       return;
     }
     
-    // Stock solo aplica para productos UNIT normales (no WEIGHT ni VACUUM_PACKED)
-    const stockQuantity = formData.inventoryType === 'UNIT' && formData.stockQuantity ? parseFloat(formData.stockQuantity) : undefined;
-    const minStock = formData.inventoryType === 'UNIT' && formData.minStock ? parseFloat(formData.minStock) : undefined;
+    // Stock solo aplica para productos por unidad (UNIT)
+    const stockQuantity = formData.saleType === 'UNIT' && formData.stockQuantity ? parseFloat(formData.stockQuantity) : undefined;
+    const minStock = formData.saleType === 'UNIT' && formData.minStock ? parseFloat(formData.minStock) : undefined;
     
     // Determinar unidad automáticamente
-    const unit = formData.saleType === 'WEIGHT' ? 'kg' : (formData.inventoryType === 'VACUUM_PACKED' ? 'paquete' : 'unidad');
+    const unit = formData.saleType === 'WEIGHT' ? 'kg' : 'unidad';
     
     try {
       if (editingProduct) {
@@ -171,7 +167,6 @@ export const ProductsPage: React.FC = () => {
           barcodeType: formData.barcodeType,
           categoryId: formData.categoryId || null,
           saleType: formData.saleType,
-          inventoryType: formData.inventoryType,
           unit,
           price,
           stockUnits: stockQuantity,
@@ -184,7 +179,6 @@ export const ProductsPage: React.FC = () => {
           barcodeType: formData.barcodeType,
           categoryId: formData.categoryId || null,
           saleType: formData.saleType,
-          inventoryType: formData.inventoryType,
           unit,
           price,
           taxRate: 0,
@@ -263,6 +257,65 @@ export const ProductsPage: React.FC = () => {
       console.error('Error toggling product status:', error);
     }
   };
+
+  const handlePrintPLU = () => {
+    const pluProducts = products.filter(
+      p => p.barcodeType === 'WEIGHT_EMBEDDED' && p.barcode
+    );
+
+    if (pluProducts.length === 0) {
+      showToast('warning', 'No hay productos con código de balanza para imprimir');
+      return;
+    }
+
+    setIsPrinting(true);
+
+    // Crear iframe oculto para impresión
+    const printIframe = document.createElement('iframe');
+    printIframe.style.position = 'fixed';
+    printIframe.style.right = '0';
+    printIframe.style.bottom = '0';
+    printIframe.style.width = '0';
+    printIframe.style.height = '0';
+    printIframe.style.border = 'none';
+    document.body.appendChild(printIframe);
+
+    const iframeDoc = printIframe.contentDocument || printIframe.contentWindow?.document;
+    if (!iframeDoc) return;
+
+    iframeDoc.open();
+    iframeDoc.write('<!DOCTYPE html><html><head><title>Lista PLU</title></head><body><div id="root"></div></body></html>');
+    iframeDoc.close();
+
+    const rootElement = iframeDoc.getElementById('root');
+    if (rootElement) {
+      const root = createRoot(rootElement);
+      const printDate = new Date().toLocaleDateString('es-BO', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      root.render(
+        <PrintablePLUList products={products} printDate={printDate} />
+      );
+
+      // Esperar a que se renderice y luego imprimir
+      setTimeout(() => {
+        printIframe.contentWindow?.print();
+
+        // Limpiar después de imprimir
+        setTimeout(() => {
+          document.body.removeChild(printIframe);
+          setIsPrinting(false);
+        }, 1000);
+      }, 500);
+    }
+
+    showToast('success', `Lista PLU generada (${pluProducts.length} productos)`);
+  };
   
   // Filtrar productos
   const filteredProducts = products.filter((p) => {
@@ -287,12 +340,23 @@ export const ProductsPage: React.FC = () => {
             {canEdit ? 'Gestiona tu catálogo de productos' : 'Explora y marca tus productos favoritos'}
           </p>
         </div>
-        {canEdit && (
-          <Button onClick={() => handleOpenModal()} variant="primary" size="lg">
-            <Plus className="w-5 h-5 mr-2" />
-            Nuevo Producto
+        <div className="flex items-center gap-3">
+          <Button 
+            onClick={handlePrintPLU} 
+            variant="secondary" 
+            size="lg"
+            disabled={isPrinting}
+          >
+            <Printer className="w-5 h-5 mr-2" />
+            Lista PLU Balanza
           </Button>
-        )}
+          {canEdit && (
+            <Button onClick={() => handleOpenModal()} variant="primary" size="lg">
+              <Plus className="w-5 h-5 mr-2" />
+              Nuevo Producto
+            </Button>
+          )}
+        </div>
       </div>
       
       {/* Filtros */}
@@ -588,7 +652,6 @@ export const ProductsPage: React.FC = () => {
                   setFormData({
                     ...formData,
                     saleType,
-                    inventoryType: saleType === 'WEIGHT' ? 'WEIGHT' : 'UNIT',
                   });
                 }}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -599,27 +662,10 @@ export const ProductsPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Tipo de Inventario - Solo para productos por unidad */}
-          {formData.saleType === 'UNIT' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Tipo de Inventario
-              </label>
-              <select
-                value={formData.inventoryType}
-                onChange={(e) => setFormData({ ...formData, inventoryType: e.target.value as any })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="UNIT">Producto Normal</option>
-                <option value="VACUUM_PACKED">Producto al Vacío (paquetes artesanales)</option>
-              </select>
-            </div>
-          )}
-
           {/* Precio y Stock */}
           <div className="grid grid-cols-3 gap-3">
             <Input
-              label={formData.inventoryType === 'VACUUM_PACKED' ? 'Precio/Kg (Bs)' : 'Precio (Bs)'}
+              label="Precio (Bs)"
               type="number"
               step="0.01"
               min="0"
@@ -627,11 +673,10 @@ export const ProductsPage: React.FC = () => {
               onChange={(e) => setFormData({ ...formData, price: e.target.value })}
               error={fieldErrors.price}
               required
-              helperText={formData.inventoryType === 'VACUUM_PACKED' ? 'Precio por kilo para detectar descuentos' : undefined}
             />
             
-            {/* Stock solo para productos por unidad (no por peso ni al vacío) */}
-            {formData.inventoryType === 'UNIT' && (
+            {/* Stock solo para productos por unidad (UNIT) */}
+            {formData.saleType === 'UNIT' && (
               <>
                 <Input
                   label="Stock Actual"
@@ -657,7 +702,7 @@ export const ProductsPage: React.FC = () => {
             )}
             
             {/* Nota para productos por peso */}
-            {formData.inventoryType === 'WEIGHT' && (
+            {formData.saleType === 'WEIGHT' && (
               <div className="bg-gray-50 px-3 py-2 rounded-lg">
                 <p className="text-xs text-gray-600">
                   ℹ️ Los productos por peso no requieren control de inventario
@@ -665,15 +710,6 @@ export const ProductsPage: React.FC = () => {
               </div>
             )}
           </div>
-
-          {/* Nota para productos al vacío */}
-          {formData.inventoryType === 'VACUUM_PACKED' && (
-            <div className="bg-blue-50 px-3 py-2 rounded-lg">
-              <p className="text-xs text-blue-800">
-                Los paquetes se agregan individualmente en Inventario → Lotes
-              </p>
-            </div>
-          )}
           
           <div className="flex space-x-3 pt-2">
             <Button

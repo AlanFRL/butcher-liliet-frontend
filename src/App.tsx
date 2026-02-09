@@ -15,6 +15,7 @@ import { CashClosePage } from './pages/CashClosePage';
 import { ReportsPage } from './pages/ReportsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { OrdersPage } from './pages/OrdersPage';
+import CustomersPage from './pages/CustomersPage';
 
 // Protected Route Component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -201,6 +202,17 @@ function App() {
             <ProtectedRoute>
               <MainLayout>
                 <OrdersPage />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        
+        <Route
+          path="/customers"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <CustomersPage />
               </MainLayout>
             </ProtectedRoute>
           }
