@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { LogIn, User, Lock } from 'lucide-react';
 import { Button } from '../components/ui';
 import { useAuthStore } from '../store';
+import logo from '../assets/logo.png';
 
 export const LoginPage: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -60,7 +61,7 @@ export const LoginPage: React.FC = () => {
           {/* Logo principal - Reemplaza con tu logo */}
           <div className="inline-flex items-center justify-center mb-4">
             <img 
-              src="/logo.png" 
+              src={logo} 
               alt="Butcher Lilieth" 
               className="w-24 h-24 rounded-2xl shadow-2xl object-cover"
               onError={(e) => {

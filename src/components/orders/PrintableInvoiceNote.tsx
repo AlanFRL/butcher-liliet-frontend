@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Order } from '../../types';
 import { amountToWords } from '../../utils/numberToWords';
+import logoPrint from '../../assets/logo_print.png';
 
 interface PrintableInvoiceNoteProps {
   order: Order;
@@ -43,7 +44,7 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
       }}>
         {/* Logo */}
         <div>
-          <img src="/logo_print.png" alt="Carnicería Lilieth" style={{ maxHeight: '80px', maxWidth: '140px' }} />
+          <img src={logoPrint} alt="Carnicería Lilieth" style={{ maxHeight: '80px', maxWidth: '140px' }} />
         </div>
         
         {/* Información del negocio */}

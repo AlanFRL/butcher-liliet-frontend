@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 // USAR CSS EXTERNO para evitar acumulación de tags <style>
 import "./ThermalReceiptSale.css";
+import logoPrint from "../assets/logo_print.png";
 
 interface PrintableSaleReceiptProps {
   data: {
@@ -146,7 +147,7 @@ export const PrintableSaleReceipt: React.FC<PrintableSaleReceiptProps> = ({ data
             {/* Logo centrado */}
             <div className="flex justify-center items-center mb-2">
               <img 
-                src="/logo_print.png" 
+                src={logoPrint} 
                 alt="Logo" 
                 className="mx-auto"
                 style={{ 

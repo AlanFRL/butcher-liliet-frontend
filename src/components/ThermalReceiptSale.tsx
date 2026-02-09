@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import "./ThermalReceiptSale.css";
+import logoPrint from "../assets/logo_print.png";
 
 interface ThermalReceiptSaleProps {
   data: {
@@ -185,7 +186,7 @@ export const ThermalReceiptSale: React.FC<ThermalReceiptSaleProps> = ({ data, pr
             {/* Logo centrado */}
             <div className="flex justify-center items-center mb-2">
               <img 
-                src="/logo_print.png" 
+                src={logoPrint} 
                 alt="Logo" 
                 className="mx-auto"
                 style={{ 
