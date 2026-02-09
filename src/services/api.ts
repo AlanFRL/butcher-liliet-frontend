@@ -773,6 +773,16 @@ export const cashSessionsApi = {
       method: 'GET',
     });
   },
+
+  /**
+   * Eliminar sesión de caja cerrada (solo ADMIN)
+   * Elimina la sesión, sus ventas, movimientos y restaura inventario
+   */
+  delete: async (sessionId: string): Promise<void> => {
+    return apiFetch<void>(`/cash-sessions/${sessionId}`, {
+      method: 'DELETE',
+    });
+  },
 };
 
 // ============= API: VENTAS =============
@@ -874,6 +884,16 @@ export const salesApi = {
     return apiFetch<SaleResponse>(`/sales/${saleId}/cancel`, {
       method: 'PATCH',
       body: JSON.stringify({ reason }),
+    });
+  },
+
+  /**
+   * Eliminar venta (solo ADMIN)
+   * Restaura inventario, limpia orden asociada y recalcula sesión
+   */
+  delete: async (saleId: string): Promise<void> => {
+    return apiFetch<void>(`/sales/${saleId}`, {
+      method: 'DELETE',
     });
   },
 };
@@ -1052,6 +1072,16 @@ export const ordersApi = {
     return apiFetch<OrderResponse>(`/orders/${id}/cancel`, {
       method: 'PATCH',
       body: JSON.stringify({ reason }),
+    });
+  },
+
+  /**
+   * Eliminar pedido (solo ADMIN)
+   * Solo pedidos sin venta asociada y de la sesión actual
+   */
+  delete: async (id: string): Promise<void> => {
+    return apiFetch<void>(`/orders/${id}`, {
+      method: 'DELETE',
     });
   },
 

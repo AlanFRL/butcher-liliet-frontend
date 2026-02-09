@@ -56,6 +56,7 @@ interface CashState {
   loadCurrentSession: () => Promise<void>;
   loadCashMovements: (sessionId: string) => Promise<void>;
   clearSession: () => void;
+  deleteSession: (sessionId: string) => Promise<boolean>;
 }
 
 interface ProductState {
@@ -96,6 +97,7 @@ interface SalesState {
   completeSale: (paymentMethod: 'CASH' | 'CARD' | 'TRANSFER' | 'MIXED', cashPaid?: number, orderId?: string, customerId?: string) => Promise<Sale | null>;
   getSalesByDateRange: (from: string, to: string) => Sale[];
   getTodaysSales: () => Sale[];
+  deleteSale: (saleId: string) => Promise<boolean>;
 }
 
 interface AppState {
@@ -521,6 +523,38 @@ export const useCashStore = create<CashState>((set, get) => ({
       cashMovements: [],
       error: null 
     });
+  },
+
+  deleteSession: async (sessionId: string): Promise<boolean> => {
+    set({ isLoading: true, error: null });
+    
+    try {
+      console.log('⚠️ Deleting session:', sessionId);
+      
+      await cashSessionsApi.delete(sessionId);
+      
+      console.log('✅ Session deleted successfully');
+      
+      set({ 
+        isLoading: false,
+        error: null 
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('❌ Error deleting session:', error);
+      
+      const errorMessage = error instanceof ApiError 
+        ? error.message 
+        : 'Error al eliminar sesión de caja';
+      
+      set({ 
+        isLoading: false,
+        error: errorMessage 
+      });
+      
+      return false;
+    }
   },
 }));
 
@@ -1105,6 +1139,44 @@ export const useSalesStore = create<SalesState>((set, get) => ({
       return saleDate >= today && saleDate < tomorrow && s.status === 'COMPLETED';
     });
   },
+
+  deleteSale: async (saleId: string): Promise<boolean> => {
+    try {
+      console.log('⚠️ Deleting sale:', saleId);
+      
+      await salesApi.delete(saleId);
+      
+      console.log('✅ Sale deleted successfully');
+      
+      // Actualizar estado local: eliminar la venta
+      set((state) => ({
+        sales: state.sales.filter(s => s.id !== saleId),
+      }));
+      
+      // Persistir en localStorage
+      const updatedState = get();
+      storage.saveSales(updatedState.sales);
+      
+      // Recargar productos para actualizar stock restaurado
+      const productState = useProductStore.getState();
+      productState.loadProducts();
+      
+      // Recargar pedidos por si se limpió alguna referencia
+      const orderState = useOrderStore.getState();
+      orderState.loadOrders();
+      
+      // Recargar sesión actual si está abierta (para actualizar expectedAmount)
+      const cashState = useCashStore.getState();
+      if (cashState.currentSession) {
+        cashState.loadCurrentSession();
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('❌ Error deleting sale:', error);
+      return false;
+    }
+  },
 }));
 
 // ============= STORE DE APP =============
@@ -1165,6 +1237,7 @@ interface OrderState {
   updateOrder: (orderId: string, updates: Partial<Order>) => Promise<boolean>;
   cancelOrder: (orderId: string, reason: string) => Promise<boolean>;
   markAsDelivered: (orderId: string) => Promise<boolean>;
+  deleteOrder: (orderId: string) => Promise<boolean>;
   getOrderById: (id: string) => Order | undefined;
   getOrdersByStatus: (status: OrderStatus) => Order[];
   getPendingOrders: () => Order[];
@@ -1419,6 +1492,40 @@ export const useOrderStore = create<OrderState>((set, get) => ({
 
   markAsDelivered: async (orderId) => {
     return get().updateOrderStatus(orderId, 'DELIVERED');
+  },
+
+  deleteOrder: async (orderId: string): Promise<boolean> => {
+    set({ isLoading: true, error: null });
+    
+    try {
+      console.log('⚠️ Deleting order:', orderId);
+      
+      await ordersApi.delete(orderId);
+      
+      console.log('✅ Order deleted successfully');
+      
+      // Actualizar estado local: eliminar la orden
+      set((state) => ({
+        orders: state.orders.filter(o => o.id !== orderId),
+        isLoading: false,
+        error: null,
+      }));
+      
+      return true;
+    } catch (error) {
+      console.error('❌ Error deleting order:', error);
+      
+      const errorMessage = error instanceof ApiError 
+        ? error.message 
+        : 'Error al eliminar pedido';
+      
+      set({ 
+        isLoading: false,
+        error: errorMessage 
+      });
+      
+      return false;
+    }
   },
 
   getOrderById: (id) => {

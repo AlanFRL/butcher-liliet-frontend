@@ -192,7 +192,7 @@ export const PrintablePLUList: React.FC<PrintablePLUListProps> = ({ products, pr
         textAlign: 'center'
       }}>
         <p style={{ margin: '0' }}>
-          Sistema de Gestión - Carnicería Lilieth
+          Sistema de Gestión - Butcher Lilieth
         </p>
         <p style={{ margin: '5px 0 0 0' }}>
           Los códigos PLU corresponden a los botones de la balanza

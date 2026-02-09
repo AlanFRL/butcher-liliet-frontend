@@ -44,7 +44,7 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
       }}>
         {/* Logo */}
         <div>
-          <img src={logoPrint} alt="Carnicería Lilieth" style={{ maxHeight: '80px', maxWidth: '140px' }} />
+          <img src={logoPrint} alt="Butcher Lilieth" style={{ maxHeight: '80px', maxWidth: '140px' }} />
         </div>
         
         {/* Información del negocio */}
@@ -55,7 +55,7 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
             margin: '0 0 6px 0',
             color: '#0f3460'
           }}>
-            Carnicería Lilieth
+            Butcher Lilieth
           </h1>
           <p style={{ margin: '3px 0', fontSize: '13px', color: '#0f3460' }}>
             3er Anillo Interno, entre Av. Centenario y C/Urubó, Santa Cruz, Bolivia

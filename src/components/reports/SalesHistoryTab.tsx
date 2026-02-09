@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { Receipt, Eye, Printer } from 'lucide-react';
+import { Receipt, Eye, Printer, Trash2 } from 'lucide-react';
 import { Button } from '../ui';
 import Pagination from '../ui/Pagination';
 import { PrintableSaleReceipt } from '../PrintableSaleReceipt';
 import { formatDateBolivia, formatTimeBolivia } from '../../utils/timezone';
+import { usePermissions } from '../../hooks/usePermissions';
+import { useSalesStore, useCashStore } from '../../store';
 
 interface SalesHistoryTabProps {
   sales: any[];
@@ -208,12 +210,23 @@ const SaleDetailModal: React.FC<{
   onClose: () => void;
   onPrint: () => void;
 }> = ({ sale, orders, navigate, isOpen, onClose, onPrint }) => {
+  const { canDeleteSales } = usePermissions();
+  const { deleteSale } = useSalesStore();
+  const { currentSession } = useCashStore();
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  
   const subtotal = typeof sale.subtotal === 'string' ? parseFloat(sale.subtotal) : sale.subtotal;
   const discount = typeof sale.discount === 'string' ? parseFloat(sale.discount) : sale.discount;
   const total = typeof sale.total === 'string' ? parseFloat(sale.total) : sale.total;
   const changeAmount = sale.changeAmount ? (typeof sale.changeAmount === 'string' ? parseFloat(sale.changeAmount) : sale.changeAmount) : 0;
   
   const relatedOrder = sale.orderId ? orders.find(o => o.id === sale.orderId) : null;
+  
+  // Verificar si la venta puede ser eliminada (solo si pertenece a la sesión actual)
+  const canDelete = canDeleteSales && 
+    currentSession?.status === 'OPEN' &&
+    sale.sessionId === currentSession.id;
   
   const getCashierName = () => {
     if (sale.cashier?.fullName) return sale.cashier.fullName;
@@ -232,6 +245,24 @@ const SaleDetailModal: React.FC<{
   const handlePrint = () => {
     console.log('🖨️ [SaleDetailModal] handlePrint clicked');
     onPrint();
+  };
+  
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const success = await deleteSale(sale.id);
+      if (success) {
+        setShowDeleteModal(false);
+        onClose();
+        alert('Venta eliminada correctamente. El inventario ha sido restaurado.');
+      } else {
+        alert('No se pudo eliminar la venta. Verifica los permisos.');
+      }
+    } catch (error) {
+      alert('Error al eliminar la venta');
+    } finally {
+      setIsDeleting(false);
+    }
   };
   
   if (!isOpen) return null;
@@ -392,6 +423,16 @@ const SaleDetailModal: React.FC<{
                 <Printer className="w-4 h-4 mr-2" />
                 Imprimir
               </Button>
+              {canDelete && (
+                <Button 
+                  onClick={() => setShowDeleteModal(true)} 
+                  variant="outline"
+                  className="text-red-600 border-red-600 hover:bg-red-50 flex items-center"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Eliminar
+                </Button>
+              )}
               <Button onClick={onClose} variant="outline">
                 Cerrar
               </Button>
@@ -450,8 +491,64 @@ const SaleDetailModal: React.FC<{
             }}
           />
         </div>
-      </div>
-    </div>
+      </div>      
+      {/* Modal de confirmación para eliminar venta */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">🗑️ Eliminar Venta</h3>
+            
+            <div className="space-y-4">
+              <p className="text-gray-600">
+                ¿Estás seguro que deseas eliminar esta venta?
+              </p>
+              
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                <p className="text-orange-800 font-medium mb-2">
+                  ⚠️ IMPACTO DE LA ELIMINACIÓN
+                </p>
+                <ul className="text-orange-700 text-sm space-y-1">
+                  <li>• Se restaurará el inventario de productos vendidos</li>
+                  <li>• Se recalculará el monto esperado de la sesión</li>
+                  <li>• Si había un pedido asociado, volverá a estado LISTO</li>
+                  <li>• Esta acción es <strong>permanente</strong></li>
+                </ul>
+              </div>
+
+              <div className="bg-gray-50 rounded-lg p-3 space-y-1">
+                <p className="text-sm text-gray-700">
+                  <strong>Venta:</strong> #{sale.id.slice(-8).toUpperCase()}
+                </p>
+                <p className="text-sm text-gray-700">
+                  <strong>Total:</strong> Bs {total.toFixed(2)}
+                </p>
+                <p className="text-sm text-gray-700">
+                  <strong>Productos:</strong> {sale.items?.length || 0} items
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <Button 
+                  onClick={() => setShowDeleteModal(false)} 
+                  variant="outline" 
+                  className="flex-1"
+                  disabled={isDeleting}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleDelete}
+                  variant="danger"
+                  className="flex-1"
+                  isLoading={isDeleting}
+                >
+                  Sí, Eliminar Venta
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}    </div>
   );
 };
 

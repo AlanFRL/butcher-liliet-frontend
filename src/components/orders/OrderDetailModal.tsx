@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { CreditCard, FileText } from 'lucide-react';
+import { CreditCard, FileText, Trash2 } from 'lucide-react';
 import { Button, Modal } from '../ui';
-import { useOrderStore, useCartStore } from '../../store';
+import { useOrderStore, useCartStore, useCashStore } from '../../store';
 import type { Order, OrderStatus } from '../../types';
 import { useNavigate } from 'react-router-dom';
 import { PrintableInvoiceNote } from './PrintableInvoiceNote';
+import { usePermissions } from '../../hooks/usePermissions';
 
 interface OrderDetailModalProps {
   order: Order;
@@ -16,14 +17,24 @@ interface OrderDetailModalProps {
 
 export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order: initialOrder, onClose, onEdit, showToast }) => {
   const navigate = useNavigate();
-  const { updateOrderStatus, cancelOrder, getOrderById } = useOrderStore();
+  const { updateOrderStatus, cancelOrder, deleteOrder, getOrderById } = useOrderStore();
   const { loadOrderToCart } = useCartStore();
+  const { currentSession } = useCashStore();
+  const { canDeleteOrders } = usePermissions();
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showDeliverModal, setShowDeliverModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [cancellationReason, setCancellationReason] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
   
   // Estado local para reflejar cambios en tiempo real
   const currentOrder = getOrderById(initialOrder.id) || initialOrder;
+  
+  // Verificar si la orden puede ser eliminada
+  const canDelete = canDeleteOrders && 
+    !currentOrder.saleId && 
+    currentSession?.status === 'OPEN' &&
+    new Date(currentOrder.createdAt) >= new Date(currentSession.openedAt);
 
   const handleChargeOrder = () => {
     // Pre-cargar items del pedido al carrito
@@ -100,6 +111,24 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order: initi
     showToast('success', 'Pedido cancelado');
     setShowCancelModal(false);
     onClose();
+  };
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const success = await deleteOrder(currentOrder.id);
+      if (success) {
+        showToast('success', 'Pedido eliminado correctamente');
+        setShowDeleteModal(false);
+        onClose();
+      } else {
+        showToast('error', 'No se pudo eliminar el pedido. Verifica que no tenga venta asociada.');
+      }
+    } catch (error) {
+      showToast('error', 'Error al eliminar el pedido');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -433,6 +462,63 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order: initi
                 className="flex-1"
               >
                 Sí, Marcar como Entregado
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Modal de confirmación para eliminar pedido */}
+      {showDeleteModal && (
+        <Modal
+          isOpen={true}
+          onClose={() => !isDeleting && setShowDeleteModal(false)}
+          title="🗑️ Eliminar Pedido"
+          size="md"
+        >
+          <div className="space-y-4">
+            <p className="text-gray-600">
+              ¿Estás seguro que deseas eliminar este pedido?
+            </p>
+            
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <p className="text-red-800 font-medium mb-2">
+                ⚠️ ADVERTENCIA
+              </p>
+              <p className="text-red-700 text-sm">
+                Esta acción es <strong>permanente</strong> y no se puede deshacer.
+                El pedido y sus items serán eliminados completamente del sistema.
+              </p>
+            </div>
+
+            <div className="bg-gray-50 rounded-lg p-3 space-y-1">
+              <p className="text-sm text-gray-700">
+                <strong>Pedido:</strong> #{currentOrder.orderNumber.toString().padStart(4, '0')}
+              </p>
+              <p className="text-sm text-gray-700">
+                <strong>Cliente:</strong> {currentOrder.customerName}
+              </p>
+              <p className="text-sm text-gray-700">
+                <strong>Total:</strong> Bs {Math.round(currentOrder.total)}
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <Button 
+                onClick={() => setShowDeleteModal(false)} 
+                variant="outline" 
+                className="flex-1"
+                disabled={isDeleting}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleDelete}
+                variant="danger"
+                className="flex-1"
+                isLoading={isDeleting}
+              >
+                Sí, Eliminar Pedido
               </Button>
             </div>
           </div>
