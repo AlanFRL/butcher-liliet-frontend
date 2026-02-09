@@ -225,6 +225,19 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order: initi
                     Cancelar Pedido
                   </Button>
                 )}
+                
+                {/* Botón eliminar - solo para ADMIN y si cumple las condiciones */}
+                {canDelete && (
+                  <Button
+                    onClick={() => setShowDeleteModal(true)}
+                    variant="outline"
+                    size="sm"
+                    className="text-red-700 border-red-700 hover:bg-red-50"
+                  >
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    Eliminar Pedido
+                  </Button>
+                )}
               </div>
             )}
             {/* Mostrar ID de venta si existe */}

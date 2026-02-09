@@ -18,6 +18,7 @@ interface SalesHistoryTabProps {
   pageSize: number;
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
+  onSaleDeleted?: () => void; // Callback para refrescar después de eliminar
 }
 
 export const SalesHistoryTab: React.FC<SalesHistoryTabProps> = ({
@@ -30,6 +31,7 @@ export const SalesHistoryTab: React.FC<SalesHistoryTabProps> = ({
   pageSize,
   onPageChange,
   onPageSizeChange,
+  onSaleDeleted,
 }) => {
   const [selectedSale, setSelectedSale] = useState<any | null>(null);
   const [showSaleDetailModal, setShowSaleDetailModal] = useState(false);
@@ -179,6 +181,7 @@ export const SalesHistoryTab: React.FC<SalesHistoryTabProps> = ({
               console.log('🖨️ [SalesHistoryTab] onPrint triggered');
               window.print();
             }}
+            onSaleDeleted={onSaleDeleted} // Pasar callback de refresco
           />
           
           {showPrintPreviewModal && (
@@ -209,7 +212,8 @@ const SaleDetailModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   onPrint: () => void;
-}> = ({ sale, orders, navigate, isOpen, onClose, onPrint }) => {
+  onSaleDeleted?: () => void; // Callback para refrescar lista
+}> = ({ sale, orders, navigate, isOpen, onClose, onPrint, onSaleDeleted }) => {
   const { canDeleteSales } = usePermissions();
   const { deleteSale } = useSalesStore();
   const { currentSession } = useCashStore();
@@ -254,6 +258,10 @@ const SaleDetailModal: React.FC<{
       if (success) {
         setShowDeleteModal(false);
         onClose();
+        // Recargar lista de ventas
+        if (onSaleDeleted) {
+          onSaleDeleted();
+        }
         alert('Venta eliminada correctamente. El inventario ha sido restaurado.');
       } else {
         alert('No se pudo eliminar la venta. Verifica los permisos.');

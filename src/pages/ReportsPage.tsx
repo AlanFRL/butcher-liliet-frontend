@@ -300,6 +300,7 @@ export const ReportsPage: React.FC = () => {
             setSalesPageSize(size);
             setSalesPage(1); // Resetear a página 1 al cambiar tamaño
           }}
+          onSaleDeleted={loadSales} // Recargar ventas después de eliminar
         />
       )}
       
