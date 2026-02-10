@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Plus, Edit2, Star, Search, Trash2, ToggleLeft, ToggleRight, Printer } from 'lucide-react';
+import { Package, Plus, Edit2, Star, Search, Trash2, ToggleLeft, ToggleRight, Printer, Tag } from 'lucide-react';
 import { Button, Modal, Input, useToast } from '../components/ui';
 import { useProductStore, useAuthStore } from '../store';
 import type { Product, SaleType } from '../types';
 import { PrintablePLUList } from '../components/PrintablePLUList';
+import { DiscountEditModal } from '../components/products/DiscountEditModal';
 import { createRoot } from 'react-dom/client';
 
 export const ProductsPage: React.FC = () => {
@@ -13,6 +14,8 @@ export const ProductsPage: React.FC = () => {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{[key: string]: string}>({});
   const [isPrinting, setIsPrinting] = useState(false);
+  const [showDiscountModal, setShowDiscountModal] = useState(false);
+  const [discountProduct, setDiscountProduct] = useState<Product | null>(null);
   const { showToast, ToastComponent } = useToast();
   
   const { products, categories, addProduct, updateProduct, toggleProductFavorite, loadProducts, loadCategories, isLoading } = useProductStore();
@@ -256,6 +259,16 @@ export const ProductsPage: React.FC = () => {
     } catch (error) {
       console.error('Error toggling product status:', error);
     }
+  };
+
+  const handleOpenDiscountModal = (product: Product) => {
+    setDiscountProduct(product);
+    setShowDiscountModal(true);
+  };
+
+  const handleDiscountSuccess = async () => {
+    await loadProducts();
+    showToast('success', 'Descuento actualizado exitosamente');
   };
 
   const handlePrintPLU = () => {
@@ -514,6 +527,13 @@ export const ProductsPage: React.FC = () => {
                       {canEdit && (
                         <>
                           <button
+                            onClick={() => handleOpenDiscountModal(product)}
+                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-all"
+                            title="Configurar descuento"
+                          >
+                            <Tag className="w-4 h-4" />
+                          </button>
+                          <button
                             onClick={() => handleOpenModal(product)}
                             className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
                             title="Editar"
@@ -727,6 +747,14 @@ export const ProductsPage: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Modal de Descuento */}
+      <DiscountEditModal
+        product={discountProduct}
+        isOpen={showDiscountModal}
+        onClose={() => setShowDiscountModal(false)}
+        onSuccess={handleDiscountSuccess}
+      />
     </div>
   );
 };

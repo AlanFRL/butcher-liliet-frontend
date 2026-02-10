@@ -467,6 +467,19 @@ export const productsApi = {
       body: JSON.stringify(data),
     });
   },
+
+  /**
+   * Actualizar descuento de producto (solo discountPrice y discountActive)
+   */
+  updateDiscount: async (id: string, data: {
+    discountPrice?: number;
+    discountActive: boolean;
+  }): Promise<ProductResponse> => {
+    return apiFetch<ProductResponse>(`/products/${id}/discount`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
 };
 
 // ============= API: CATEGORÍAS =============

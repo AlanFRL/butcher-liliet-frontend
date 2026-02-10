@@ -583,6 +583,7 @@ export const useProductStore = create<ProductState>((set, get) => ({
         description: (product as any).description,
         categoryId: product.categoryId || '',
         saleType: product.saleType,
+        inventoryType: product.saleType === 'WEIGHT' ? 'WEIGHT' as const : 'UNIT' as const,
         price: product.price,
         costPrice: 0,
         unit: product.unit,

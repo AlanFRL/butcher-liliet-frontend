@@ -74,6 +74,10 @@ export interface Product {
   
   // Para WEIGHT_MANUAL (referencia, no se controla stock)
   estimatedStockKg?: number; // Solo informativo
+  
+  // Descuentos (para impresión PLU y futuras funcionalidades)
+  discountPrice?: number;   // Precio con descuento
+  discountActive?: boolean; // Si el descuento está activo
 }
 
 export interface CashSession {

@@ -76,6 +76,17 @@ export const PrintablePLUList: React.FC<PrintablePLUListProps> = ({ products, pr
           }}>
             Bs/KG
           </th>
+          <th style={{
+            border: '1px solid #003366',
+            padding: '5px 8px',
+            textAlign: 'right',
+            fontWeight: 'bold',
+            width: '70px',
+            fontSize: '10pt',
+            color: '#003366'
+          }}>
+            PRECIO DESC.
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -111,6 +122,18 @@ export const PrintablePLUList: React.FC<PrintablePLUListProps> = ({ products, pr
               color: '#003366'
             }}>
               {product.price.toFixed(2)}
+            </td>
+            <td style={{
+              border: '1px solid #003366',
+              padding: '4px 8px',
+              textAlign: 'right',
+              fontWeight: 'bold',
+              fontSize: '11pt',
+              color: product.discountActive && product.discountPrice ? '#006600' : '#999'
+            }}>
+              {product.discountActive && product.discountPrice 
+                ? product.discountPrice.toFixed(2) 
+                : '-'}
             </td>
           </tr>
         ))}

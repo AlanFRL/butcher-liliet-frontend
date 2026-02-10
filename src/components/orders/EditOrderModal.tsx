@@ -608,7 +608,7 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, onClose, 
             setShowDiscountModal(false);
             setSelectedItemForDiscount(null);
           }}
-          onApplyDiscount={handleApplyDiscount}
+          onApplyUnitPrice={handleApplyDiscount}
         />
       )}
     </>
