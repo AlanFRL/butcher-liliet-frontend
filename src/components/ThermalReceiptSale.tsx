@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import "./ThermalReceiptSale.css";
-import logoPrint from "../assets/logo_print.png";
+
+const logoPrint = new URL('../assets/logo_print.png', import.meta.url).href;
 
 interface ThermalReceiptSaleProps {
   data: {

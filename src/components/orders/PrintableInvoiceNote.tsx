@@ -1,7 +1,8 @@
 import React from 'react';
 import type { Order } from '../../types';
 import { amountToWords } from '../../utils/numberToWords';
-import logoPrint from '../../assets/logo_print.png';
+
+const logoPrint = new URL('../../assets/logo_print.png', import.meta.url).href;
 
 interface PrintableInvoiceNoteProps {
   order: Order;
@@ -61,7 +62,7 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
             3er Anillo Interno, entre Av. Centenario y C/Urubó, Santa Cruz, Bolivia
           </p>
           <p style={{ margin: '3px 0', fontSize: '13px', color: '#0f3460' }}>
-            Cel: 62409387 | 76276838
+            Cel: 76276838
           </p>
         </div>
 

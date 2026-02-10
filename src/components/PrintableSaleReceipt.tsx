@@ -1,7 +1,8 @@
 import React, { useEffect } from "react";
 // USAR CSS EXTERNO para evitar acumulación de tags <style>
 import "./ThermalReceiptSale.css";
-import logoPrint from "../assets/logo_print.png";
+
+const logoPrint = new URL('../assets/logo_print.png', import.meta.url).href;
 
 interface PrintableSaleReceiptProps {
   data: {
