@@ -700,6 +700,9 @@ export const useProductStore = create<ProductState>((set, get) => ({
         isFavorite: false, // Se puede agregar al backend más adelante
         stockUnits: parseDecimal(p.stockQuantity),
         minStockAlert: parseDecimal(p.minStock),
+        // Campos de descuento (ya vienen como number desde backend gracias al transformer)
+        discountPrice: p.discountPrice ?? undefined,
+        discountActive: p.discountActive ?? false,
       }));
       
       console.log('✅ Products loaded from backend:', products.length);

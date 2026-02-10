@@ -52,14 +52,23 @@ export const DiscountEditModal: React.FC<DiscountEditModalProps> = ({
     setIsLoading(true);
 
     try {
-      await productsApi.updateDiscount(product.id, {
+      console.log('🏷️ Actualizando descuento:', {
+        productId: product.id,
+        discountPrice: discountActive ? discountValue : undefined,
+        discountActive
+      });
+
+      const result = await productsApi.updateDiscount(product.id, {
         discountPrice: discountActive ? discountValue : undefined,
         discountActive,
       });
 
+      console.log('✅ Descuento actualizado:', result);
+
       onSuccess();
       onClose();
     } catch (err: any) {
+      console.error('❌ Error actualizando descuento:', err);
       setError(err.message || 'Error al actualizar el descuento');
     } finally {
       setIsLoading(false);

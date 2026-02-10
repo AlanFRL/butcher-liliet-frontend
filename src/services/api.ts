@@ -183,6 +183,9 @@ export interface ProductResponse {
   categoryId: string;
   createdAt: string;
   updatedAt: string;
+  // Campos de descuento
+  discountPrice?: number | null;
+  discountActive?: boolean;
   category?: {
     id: string;
     name: string;
