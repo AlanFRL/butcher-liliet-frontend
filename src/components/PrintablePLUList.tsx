@@ -172,15 +172,7 @@ export const PrintablePLUList: React.FC<PrintablePLUListProps> = ({ products, pr
           margin: '0',
           color: '#003366'
         }}>
-          Fecha de impresión: {printDate}
-        </p>
-        <p style={{
-          fontSize: '9pt',
-          margin: '4px 0 0 0',
-          color: '#003366',
-          fontStyle: 'italic'
-        }}>
-          Total de productos: {pluProducts.length}
+          Fecha de impresión: {printDate} | Total: {pluProducts.length} productos
         </p>
       </div>
 
@@ -211,23 +203,6 @@ export const PrintablePLUList: React.FC<PrintablePLUListProps> = ({ products, pr
           No hay productos con código de balanza registrados
         </div>
       )}
-
-      {/* Footer */}
-      <div style={{
-        marginTop: '30px',
-        paddingTop: '15px',
-        borderTop: '1px solid #003366',
-        fontSize: '9pt',
-        color: '#003366',
-        textAlign: 'center'
-      }}>
-        <p style={{ margin: '0' }}>
-          Sistema de Gestión - Butcher Lilieth
-        </p>
-        <p style={{ margin: '5px 0 0 0' }}>
-          Los códigos PLU corresponden a los botones de la balanza
-        </p>
-      </div>
 
       {/* Print styles */}
       <style>{`
