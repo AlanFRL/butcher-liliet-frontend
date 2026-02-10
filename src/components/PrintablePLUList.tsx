@@ -37,39 +37,42 @@ export const PrintablePLUList: React.FC<PrintablePLUListProps> = ({ products, pr
     <table style={{
       width: '100%',
       borderCollapse: 'collapse',
-      border: '1px solid #000'
+      border: '2px solid #003366'
     }}>
       <thead>
         <tr style={{
           backgroundColor: '#e0e0e0',
-          borderBottom: '2px solid #000'
+          borderBottom: '2px solid #003366'
         }}>
           <th style={{
-            border: '1px solid #000',
-            padding: '4px 6px',
+            border: '1px solid #003366',
+            padding: '5px 8px',
             textAlign: 'center',
             fontWeight: 'bold',
             width: '50px',
-            fontSize: '8pt'
+            fontSize: '10pt',
+            color: '#003366'
           }}>
             PLU
           </th>
           <th style={{
-            border: '1px solid #000',
-            padding: '4px 6px',
+            border: '1px solid #003366',
+            padding: '5px 8px',
             textAlign: 'left',
             fontWeight: 'bold',
-            fontSize: '8pt'
+            fontSize: '10pt',
+            color: '#003366'
           }}>
             PRODUCTO
           </th>
           <th style={{
-            border: '1px solid #000',
-            padding: '4px 6px',
+            border: '1px solid #003366',
+            padding: '5px 8px',
             textAlign: 'right',
             fontWeight: 'bold',
             width: '70px',
-            fontSize: '8pt'
+            fontSize: '10pt',
+            color: '#003366'
           }}>
             Bs/KG
           </th>
@@ -81,28 +84,31 @@ export const PrintablePLUList: React.FC<PrintablePLUListProps> = ({ products, pr
             backgroundColor: (startIndex + index) % 2 === 0 ? '#fff' : '#f9f9f9'
           }}>
             <td style={{
-              border: '1px solid #000',
-              padding: '3px 6px',
+              border: '1px solid #003366',
+              padding: '4px 8px',
               textAlign: 'center',
               fontWeight: 'bold',
-              fontSize: '9pt'
+              fontSize: '11pt',
+              color: '#003366'
             }}>
               {getPLUNumber(product.barcode || '')}
             </td>
             <td style={{
-              border: '1px solid #000',
-              padding: '3px 6px',
+              border: '1px solid #003366',
+              padding: '4px 8px',
               textAlign: 'left',
-              fontSize: '8pt'
+              fontSize: '10pt',
+              color: '#003366'
             }}>
               {product.name}
             </td>
             <td style={{
-              border: '1px solid #000',
-              padding: '3px 6px',
+              border: '1px solid #003366',
+              padding: '4px 8px',
               textAlign: 'right',
               fontWeight: 'bold',
-              fontSize: '9pt'
+              fontSize: '11pt',
+              color: '#003366'
             }}>
               {product.price.toFixed(2)}
             </td>
@@ -119,35 +125,36 @@ export const PrintablePLUList: React.FC<PrintablePLUListProps> = ({ products, pr
       margin: '0 auto',
       padding: '0.4in',
       fontFamily: 'Arial, sans-serif',
-      fontSize: '8pt',
-      color: '#000',
+      fontSize: '10pt',
+      color: '#003366',
       backgroundColor: '#fff'
     }}>
       {/* Header */}
       <div style={{
         textAlign: 'center',
         marginBottom: '15px',
-        borderBottom: '2px solid #000',
-        paddingBottom: '8px'
+        borderBottom: '2px solid #003366',
+        paddingBottom: '10px'
       }}>
         <h1 style={{
-          fontSize: '14pt',
+          fontSize: '16pt',
           fontWeight: 'bold',
-          margin: '0 0 4px 0'
+          margin: '0 0 5px 0',
+          color: '#003366'
         }}>
           LISTA DE PRODUCTOS - BALANZA
         </h1>
         <p style={{
-          fontSize: '8pt',
+          fontSize: '10pt',
           margin: '0',
-          color: '#555'
+          color: '#003366'
         }}>
           Fecha de impresión: {printDate}
         </p>
         <p style={{
-          fontSize: '7pt',
-          margin: '3px 0 0 0',
-          color: '#666',
+          fontSize: '9pt',
+          margin: '4px 0 0 0',
+          color: '#003366',
           fontStyle: 'italic'
         }}>
           Total de productos: {pluProducts.length}
@@ -175,8 +182,8 @@ export const PrintablePLUList: React.FC<PrintablePLUListProps> = ({ products, pr
         <div style={{
           textAlign: 'center',
           padding: '40px',
-          color: '#999',
-          fontSize: '11pt'
+          color: '#003366',
+          fontSize: '12pt'
         }}>
           No hay productos con código de balanza registrados
         </div>
@@ -186,9 +193,9 @@ export const PrintablePLUList: React.FC<PrintablePLUListProps> = ({ products, pr
       <div style={{
         marginTop: '30px',
         paddingTop: '15px',
-        borderTop: '1px solid #ccc',
-        fontSize: '7pt',
-        color: '#666',
+        borderTop: '1px solid #003366',
+        fontSize: '9pt',
+        color: '#003366',
         textAlign: 'center'
       }}>
         <p style={{ margin: '0' }}>

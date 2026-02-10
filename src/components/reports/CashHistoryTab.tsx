@@ -44,6 +44,14 @@ export const CashHistoryTab: React.FC<CashHistoryTabProps> = ({
   const { currentUser } = useAuthStore();
   const { currentSession, deleteSession } = useCashStore();
   const { canDeleteSessions } = usePermissions();
+  
+  // Debug log
+  console.log('🔐 Delete permissions:', {
+    isAdmin: currentUser?.role === 'ADMIN',
+    canDeleteSessions,
+    currentUserRole: currentUser?.role,
+  });
+  
   const [sessions, setSessions] = useState<CashSession[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -194,6 +202,12 @@ export const CashHistoryTab: React.FC<CashHistoryTabProps> = ({
         cashSessionsApi.getSales(session.id),
       ]);
       
+      console.log('📋 Loaded session details:', {
+        sessionId: session.id,
+        movementsCount: movements.length,
+        salesCount: sales.length,
+        movements: movements,
+      });
       console.log('📋 Loaded', sales.length, 'sales from session');
       sales.forEach((sale, idx) => {
         console.log(`  Sale ${idx + 1} (${sale.id}): ${sale.items?.length || 0} items`);
@@ -459,6 +473,7 @@ export const CashHistoryTab: React.FC<CashHistoryTabProps> = ({
                             onClick={() => handleViewDetail(session)}
                             variant="outline"
                             size="sm"
+                            title="Ver detalle de sesión"
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
@@ -467,20 +482,24 @@ export const CashHistoryTab: React.FC<CashHistoryTabProps> = ({
                               onClick={() => handlePrintSession(session)}
                               variant="outline"
                               size="sm"
+                              title="Imprimir arqueo"
                             >
                               <Printer className="w-4 h-4" />
                             </Button>
                           )}
-                          {canDeleteSessions && session.closedAt && session.id !== currentSession?.id && (
+                          {canDeleteSessions && session.closedAt && session.id !== currentSession?.id ? (
                             <Button
                               onClick={() => handleDeleteClick(session)}
                               variant="outline"
                               size="sm"
                               className="text-red-600 border-red-600 hover:bg-red-50"
+                              title="Eliminar sesión (ADMIN)"
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
-                          )}
+                          ) : !canDeleteSessions ? (
+                            <span className="text-xs text-gray-400 italic" title="Solo ADMIN puede eliminar">🔒</span>
+                          ) : null}
                         </div>
                       </td>
                     </tr>

@@ -50,6 +50,14 @@ export const CashSessionDetail: React.FC<CashSessionDetailProps> = ({
   const [showPrintPreview, setShowPrintPreview] = React.useState(false);
 
   if (!isOpen) return null;
+  
+  // Debug log
+  console.log('📋 CashSessionDetail rendered:', {
+    sessionId: session.id,
+    movementsCount: movements.length,
+    salesCount: sales.length,
+    movements: movements,
+  });
 
   const openingBalance = parseFloat(session.openingAmount);
   const closingBalance = session.closingAmount ? parseFloat(session.closingAmount) : 0;
