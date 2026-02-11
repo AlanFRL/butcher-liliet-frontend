@@ -83,6 +83,18 @@ export const PrintablePLUListWithDiscount: React.FC<PrintablePLUListWithDiscount
 
   const getPLUNumber = (barcode: string) => parseInt(barcode.slice(-5));
 
+  // LOG: Diagnosticar página extra
+  React.useEffect(() => {
+    const container = document.querySelector('[data-plu-container]');
+    if (container) {
+      console.log('=== DIAGNÓSTICO PÁGINA ===');
+      console.log('Altura del contenedor:', container.scrollHeight, 'px');
+      console.log('Altura visible:', container.clientHeight, 'px');
+      console.log('Altura en pulgadas:', (container.scrollHeight / 96).toFixed(2), 'in');
+      console.log('Página carta (sin márgenes 0.25in):', '10.5 in');
+    }
+  }, []);
+
   // Componente de categoría reutilizable
   const CategorySection = ({ category }: { category: string }) => (
     <div style={{ marginBottom: '6px' }}>
@@ -210,16 +222,20 @@ export const PrintablePLUListWithDiscount: React.FC<PrintablePLUListWithDiscount
   );
 
   return (
-    <div style={{
-      width: '100%',
-      maxWidth: '8.5in',
-      margin: '0',
-      padding: '0.1in 0.15in',
-      fontFamily: 'Arial, sans-serif',
-      backgroundColor: '#fff',
-      fontSize: '10pt',
-      boxSizing: 'border-box'
-    }}>      
+    <div 
+      data-plu-container
+      style={{
+        width: '100%',
+        maxWidth: '8.5in',
+        margin: '0',
+        padding: '0.05in 0.15in 0.05in 0.15in',
+        fontFamily: 'Arial, sans-serif',
+        backgroundColor: '#fff',
+        fontSize: '10pt',
+        boxSizing: 'border-box',
+        minHeight: 0,
+        overflow: 'visible'
+      }}>      
       {/* Productos en 2 columnas */}
       <div style={{
         display: 'flex',
@@ -273,8 +289,12 @@ export const PrintablePLUListWithDiscount: React.FC<PrintablePLUListWithDiscount
             margin: 0.25in;
           }
           body {
-            margin: 0;
-            padding: 0;
+            margin: 0 !important;
+            padding: 0 !important;
+            height: auto !important;
+          }
+          html {
+            height: auto !important;
           }
           table {
             page-break-inside: auto;
@@ -285,6 +305,9 @@ export const PrintablePLUListWithDiscount: React.FC<PrintablePLUListWithDiscount
           }
           thead {
             display: table-header-group;
+          }
+          [data-plu-container] {
+            page-break-after: avoid !important;
           }
         }
       `}</style>
