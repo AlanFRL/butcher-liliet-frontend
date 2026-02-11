@@ -3,7 +3,8 @@ import { Package, Plus, Edit2, Star, Search, Trash2, ToggleLeft, ToggleRight, Pr
 import { Button, Modal, Input, useToast } from '../components/ui';
 import { useProductStore, useAuthStore } from '../store';
 import type { Product, SaleType } from '../types';
-import { PrintablePLUList } from '../components/PrintablePLUList';
+import { PrintablePLUListWithDiscount } from '../components/PrintablePLUListWithDiscount';
+import { PrintablePLUListCompact } from '../components/PrintablePLUListCompact';
 import { DiscountEditModal } from '../components/products/DiscountEditModal';
 import { createRoot } from 'react-dom/client';
 
@@ -271,7 +272,7 @@ export const ProductsPage: React.FC = () => {
     showToast('success', 'Descuento actualizado exitosamente');
   };
 
-  const handlePrintPLU = () => {
+  const handlePrintPLU = (includeDiscount: boolean = false) => {
     const pluProducts = products.filter(
       p => p.barcodeType === 'WEIGHT_EMBEDDED' && p.barcode
     );
@@ -312,7 +313,9 @@ export const ProductsPage: React.FC = () => {
       });
 
       root.render(
-        <PrintablePLUList products={products} printDate={printDate} />
+        includeDiscount 
+          ? <PrintablePLUListWithDiscount products={products} categories={categories} printDate={printDate} />
+          : <PrintablePLUListCompact products={products} categories={categories} printDate={printDate} />
       );
 
       // Esperar a que se renderice y luego imprimir
@@ -355,13 +358,22 @@ export const ProductsPage: React.FC = () => {
         </div>
         <div className="flex items-center gap-3">
           <Button 
-            onClick={handlePrintPLU} 
+            onClick={() => handlePrintPLU(false)} 
             variant="secondary" 
             size="lg"
             disabled={isPrinting}
           >
             <Printer className="w-5 h-5 mr-2" />
-            Lista PLU Balanza
+            PLU Compacto
+          </Button>
+          <Button 
+            onClick={() => handlePrintPLU(true)} 
+            variant="secondary" 
+            size="lg"
+            disabled={isPrinting}
+          >
+            <Printer className="w-5 h-5 mr-2" />
+            PLU con Descuentos
           </Button>
           {canEdit && (
             <Button onClick={() => handleOpenModal()} variant="primary" size="lg">
