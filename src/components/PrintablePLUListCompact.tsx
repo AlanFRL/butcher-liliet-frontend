@@ -67,6 +67,9 @@ export const PrintablePLUListCompact: React.FC<PrintablePLUListCompactProps> = (
   
   // LOG: Ver orden final
   console.log('Orden final de categorías:', allCategories);
+  console.log('Columna izquierda:', leftCategories);
+  console.log('Columna derecha:', rightCategories);
+  console.log('Total productos PLU:', pluProducts.length);
 
   // Dividir categorías: izquierda=cortes, derecha=resto
   const leftCategories = allCategories.filter(cat => 
@@ -186,16 +189,17 @@ export const PrintablePLUListCompact: React.FC<PrintablePLUListCompactProps> = (
       width: '100%',
       maxWidth: '8.5in',
       margin: '0',
-      padding: '0.2in',
+      padding: '0.15in',
       fontFamily: 'Arial, sans-serif',
       backgroundColor: '#fff',
-      fontSize: '10pt'
+      fontSize: '10pt',
+      boxSizing: 'border-box'
     }}>
       {/* Header compacto en una línea */}
       <div style={{
         textAlign: 'center',
-        marginBottom: '8px',
-        paddingBottom: '4px'
+        marginBottom: '6px',
+        paddingBottom: '2px'
       }}>
         <div style={{
           fontSize: '12pt',
@@ -238,6 +242,16 @@ export const PrintablePLUListCompact: React.FC<PrintablePLUListCompactProps> = (
           body {
             margin: 0;
             padding: 0;
+          }
+          * {
+            page-break-inside: avoid;
+          }
+          table {
+            page-break-inside: auto;
+          }
+          tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
           }
         }
       `}</style>
