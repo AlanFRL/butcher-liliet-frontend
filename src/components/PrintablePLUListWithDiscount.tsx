@@ -15,7 +15,8 @@ export const PrintablePLUListWithDiscount: React.FC<PrintablePLUListWithDiscount
   // Orden específico de categorías (case-insensitive)
   const categoryOrderMap: Record<string, number> = {
     'CORTES TRADICIONALES': 1,
-    'PARRILLEROS': 2,
+    'CORTES PARRILLEROS': 2,
+    'PARRILLEROS': 2, // Por si acaso existe sin "CORTES"
     'ELABORADOS': 3,
     'POLLO': 4,
     'CERDO': 5,
