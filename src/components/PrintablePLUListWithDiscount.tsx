@@ -67,9 +67,6 @@ export const PrintablePLUListWithDiscount: React.FC<PrintablePLUListWithDiscount
   
   // LOG: Ver orden final
   console.log('Orden final de categorías:', allCategories);
-  console.log('Columna izquierda:', leftCategories);
-  console.log('Columna derecha:', rightCategories);
-  console.log('Total productos PLU:', pluProducts.length);
 
   // Dividir categorías: izquierda=cortes, derecha=resto
   const leftCategories = allCategories.filter(cat => 
@@ -78,6 +75,11 @@ export const PrintablePLUListWithDiscount: React.FC<PrintablePLUListWithDiscount
   const rightCategories = allCategories.filter(cat => 
     cat !== 'CORTES TRADICIONALES' && cat !== 'CORTES PARRILLEROS'
   );
+  
+  // LOG: Ver distribución de columnas
+  console.log('Columna izquierda:', leftCategories);
+  console.log('Columna derecha:', rightCategories);
+  console.log('Total productos PLU:', pluProducts.length);
 
   const getPLUNumber = (barcode: string) => parseInt(barcode.slice(-5));
 
