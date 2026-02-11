@@ -36,12 +36,16 @@ export const PrintablePLUListCompact: React.FC<PrintablePLUListCompactProps> = (
   const groupedProducts: Record<string, Product[]> = {};
   pluProducts.forEach(p => {
     const catName = (p.categoryId ? categoryMap[p.categoryId] : 'SIN CATEGORÍA') || 'SIN CATEGORÍA';
-    const catNameUpper = catName.toUpperCase();
+    const catNameUpper = catName.toUpperCase().trim();
     if (!groupedProducts[catNameUpper]) {
       groupedProducts[catNameUpper] = [];
     }
     groupedProducts[catNameUpper].push(p);
   });
+  
+  // LOG: Ver categorías encontradas
+  console.log('=== PLU COMPACT ===');
+  console.log('Categorías encontradas:', Object.keys(groupedProducts));
 
   // Ordenar productos dentro de cada categoría por PLU
   Object.keys(groupedProducts).forEach(cat => {
@@ -52,9 +56,16 @@ export const PrintablePLUListCompact: React.FC<PrintablePLUListCompactProps> = (
   const allCategories = Object.keys(groupedProducts).sort((a, b) => {
     const orderA = categoryOrderMap[a] || 999;
     const orderB = categoryOrderMap[b] || 999;
+    
+    // LOG: Ver orden asignado
+    console.log(`Comparando "${a}" (orden: ${orderA}) vs "${b}" (orden: ${orderB})`);
+    
     if (orderA !== orderB) return orderA - orderB;
     return a.localeCompare(b);
   });
+  
+  // LOG: Ver orden final
+  console.log('Orden final de categorías:', allCategories);
 
   // Dividir categorías en 2 columnas
   const midPoint = Math.ceil(allCategories.length / 2);
