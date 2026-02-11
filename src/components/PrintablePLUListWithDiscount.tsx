@@ -85,7 +85,7 @@ export const PrintablePLUListWithDiscount: React.FC<PrintablePLUListWithDiscount
 
   // Componente de categoría reutilizable
   const CategorySection = ({ category }: { category: string }) => (
-    <div style={{ marginBottom: '10px' }}>
+    <div style={{ marginBottom: '6px' }}>
       <div style={{
         backgroundColor: '#1a1a1a',
         color: '#fff',
@@ -219,24 +219,7 @@ export const PrintablePLUListWithDiscount: React.FC<PrintablePLUListWithDiscount
       backgroundColor: '#fff',
       fontSize: '10pt',
       boxSizing: 'border-box'
-    }}>
-      {/* Header compacto en una línea */}
-      <div style={{
-        textAlign: 'center',
-        marginBottom: '6px',
-        paddingBottom: '2px',
-        pageBreakAfter: 'avoid'
-      }}>
-        <div style={{
-          fontSize: '12pt',
-          fontWeight: 'bold',
-          color: '#1a1a1a',
-          letterSpacing: '0.5px'
-        }}>
-          LISTA PLU BALANZA - {printDate} - Total: {pluProducts.length} productos
-        </div>
-      </div>
-
+    }}>      
       {/* Productos en 2 columnas */}
       <div style={{
         display: 'flex',
@@ -255,6 +238,30 @@ export const PrintablePLUListWithDiscount: React.FC<PrintablePLUListWithDiscount
           {rightCategories.map(category => (
             <CategorySection key={category} category={category} />
           ))}
+          
+          {/* Título al final de la columna derecha */}
+          <div style={{
+            textAlign: 'center',
+            marginTop: '8px',
+            paddingTop: '6px',
+            borderTop: '2px solid #1a1a1a'
+          }}>
+            <div style={{
+              fontSize: '11pt',
+              fontWeight: 'bold',
+              color: '#1a1a1a',
+              letterSpacing: '0.3px'
+            }}>
+              LISTA PLU BALANZA - {printDate}
+            </div>
+            <div style={{
+              fontSize: '10pt',
+              color: '#1a1a1a',
+              marginTop: '2px'
+            }}>
+              Total: {pluProducts.length} productos
+            </div>
+          </div>
         </div>
       </div>
 
