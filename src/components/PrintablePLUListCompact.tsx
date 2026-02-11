@@ -69,11 +69,13 @@ export const PrintablePLUListCompact: React.FC<PrintablePLUListCompactProps> = (
       <div style={{
         backgroundColor: '#1a1a1a',
         color: '#fff',
-        padding: '3px 6px',
+        padding: '4px 8px',
         fontWeight: 'bold',
-        fontSize: '10pt',
+        fontSize: '12pt',
         marginBottom: '2px',
-        letterSpacing: '0.3px'
+        letterSpacing: '0.5px',
+        WebkitPrintColorAdjust: 'exact',
+        printColorAdjust: 'exact'
       }}>
         {category}
       </div>
@@ -83,32 +85,42 @@ export const PrintablePLUListCompact: React.FC<PrintablePLUListCompactProps> = (
         marginBottom: '4px'
       }}>
         <thead>
-          <tr style={{ backgroundColor: '#2a2a2a' }}>
+          <tr style={{
+            backgroundColor: '#2a2a2a',
+            WebkitPrintColorAdjust: 'exact',
+            printColorAdjust: 'exact'
+          }}>
             <th style={{
-              border: '1px solid #0a0a0a',
-              padding: '2px 4px',
+              border: '2px solid #000',
+              padding: '3px 5px',
               textAlign: 'center',
               fontWeight: 'bold',
-              fontSize: '9pt',
+              fontSize: '11pt',
               color: '#fff',
-              width: '40px'
+              width: '40px',
+              WebkitPrintColorAdjust: 'exact',
+              printColorAdjust: 'exact'
             }}>PLU</th>
             <th style={{
-              border: '1px solid #0a0a0a',
-              padding: '2px 4px',
+              border: '2px solid #000',
+              padding: '3px 5px',
               textAlign: 'left',
               fontWeight: 'bold',
-              fontSize: '9pt',
-              color: '#fff'
+              fontSize: '11pt',
+              color: '#fff',
+              WebkitPrintColorAdjust: 'exact',
+              printColorAdjust: 'exact'
             }}>PRODUCTO</th>
             <th style={{
-              border: '1px solid #0a0a0a',
-              padding: '2px 4px',
+              border: '2px solid #000',
+              padding: '3px 5px',
               textAlign: 'right',
               fontWeight: 'bold',
-              fontSize: '9pt',
+              fontSize: '11pt',
               color: '#fff',
-              width: '50px'
+              width: '50px',
+              WebkitPrintColorAdjust: 'exact',
+              printColorAdjust: 'exact'
             }}>Bs/KG</th>
           </tr>
         </thead>
@@ -118,31 +130,32 @@ export const PrintablePLUListCompact: React.FC<PrintablePLUListCompactProps> = (
               backgroundColor: index % 2 === 0 ? '#fff' : '#f5f5f5'
             }}>
               <td style={{
-                border: '1px solid #0a0a0a',
-                padding: '1px 4px',
+                border: '1px solid #000',
+                padding: '2px 5px',
                 textAlign: 'center',
                 fontWeight: 'bold',
-                fontSize: '11pt',
-                color: '#1a1a1a'
+                fontSize: '12pt',
+                color: '#000'
               }}>
                 {getPLUNumber(product.barcode || '')}
               </td>
               <td style={{
-                border: '1px solid #0a0a0a',
-                padding: '1px 4px',
+                border: '1px solid #000',
+                padding: '2px 5px',
                 textAlign: 'left',
-                fontSize: '10pt',
-                color: '#1a1a1a'
+                fontSize: '11pt',
+                fontWeight: 'bold',
+                color: '#000'
               }}>
                 {product.name}
               </td>
               <td style={{
-                border: '1px solid #0a0a0a',
-                padding: '1px 4px',
+                border: '1px solid #000',
+                padding: '2px 5px',
                 textAlign: 'right',
                 fontWeight: 'bold',
-                fontSize: '11pt',
-                color: '#1a1a1a'
+                fontSize: '12pt',
+                color: '#000'
               }}>
                 {Math.round(product.price)}
               </td>
