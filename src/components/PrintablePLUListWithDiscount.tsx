@@ -214,7 +214,7 @@ export const PrintablePLUListWithDiscount: React.FC<PrintablePLUListWithDiscount
       width: '100%',
       maxWidth: '8.5in',
       margin: '0',
-      padding: '0.15in',
+      padding: '0.1in 0.15in',
       fontFamily: 'Arial, sans-serif',
       backgroundColor: '#fff',
       fontSize: '10pt',
@@ -224,7 +224,8 @@ export const PrintablePLUListWithDiscount: React.FC<PrintablePLUListWithDiscount
       <div style={{
         textAlign: 'center',
         marginBottom: '6px',
-        paddingBottom: '2px'
+        paddingBottom: '2px',
+        pageBreakAfter: 'avoid'
       }}>
         <div style={{
           fontSize: '12pt',
@@ -268,15 +269,15 @@ export const PrintablePLUListWithDiscount: React.FC<PrintablePLUListWithDiscount
             margin: 0;
             padding: 0;
           }
-          * {
-            page-break-inside: avoid;
-          }
           table {
             page-break-inside: auto;
           }
           tr {
             page-break-inside: avoid;
             page-break-after: auto;
+          }
+          thead {
+            display: table-header-group;
           }
         }
       `}</style>
