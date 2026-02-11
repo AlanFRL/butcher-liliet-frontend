@@ -43,10 +43,6 @@ export const PrintablePLUListCompact: React.FC<PrintablePLUListCompactProps> = (
     }
     groupedProducts[catNameUpper].push(p);
   });
-  
-  // LOG: Ver categorías encontradas
-  console.log('=== PLU COMPACT ===');
-  console.log('Categorías encontradas:', Object.keys(groupedProducts));
 
   // Ordenar productos dentro de cada categoría por PLU
   Object.keys(groupedProducts).forEach(cat => {
@@ -58,15 +54,9 @@ export const PrintablePLUListCompact: React.FC<PrintablePLUListCompactProps> = (
     const orderA = categoryOrderMap[a] || 999;
     const orderB = categoryOrderMap[b] || 999;
     
-    // LOG: Ver orden asignado
-    console.log(`Comparando "${a}" (orden: ${orderA}) vs "${b}" (orden: ${orderB})`);
-    
     if (orderA !== orderB) return orderA - orderB;
     return a.localeCompare(b);
   });
-  
-  // LOG: Ver orden final
-  console.log('Orden final de categorías:', allCategories);
 
   // Dividir categorías: izquierda=cortes, derecha=resto
   const leftCategories = allCategories.filter(cat => 
@@ -75,25 +65,8 @@ export const PrintablePLUListCompact: React.FC<PrintablePLUListCompactProps> = (
   const rightCategories = allCategories.filter(cat => 
     cat !== 'CORTES TRADICIONALES' && cat !== 'CORTES PARRILLEROS'
   );
-  
-  // LOG: Ver distribución de columnas
-  console.log('Columna izquierda:', leftCategories);
-  console.log('Columna derecha:', rightCategories);
-  console.log('Total productos PLU:', pluProducts.length);
 
   const getPLUNumber = (barcode: string) => parseInt(barcode.slice(-5));
-
-  // LOG: Diagnosticar página extra
-  React.useEffect(() => {
-    const container = document.querySelector('[data-plu-container]');
-    if (container) {
-      console.log('=== DIAGNÓSTICO PÁGINA ===');
-      console.log('Altura del contenedor:', container.scrollHeight, 'px');
-      console.log('Altura visible:', container.clientHeight, 'px');
-      console.log('Altura en pulgadas:', (container.scrollHeight / 96).toFixed(2), 'in');
-      console.log('Página carta (sin márgenes 0.25in):', '10.5 in');
-    }
-  }, []);
 
   // Componente de categoría reutilizable
   const CategorySection = ({ category }: { category: string }) => (

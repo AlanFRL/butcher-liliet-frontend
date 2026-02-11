@@ -7,6 +7,7 @@ import { ItemDiscountModal } from '../ItemDiscountModal';
 import type { CartItem } from '../../types';
 import CustomerSelector from '../CustomerSelector';
 import { type CustomerResponse } from '../../services/api';
+import { useScanner } from '../../hooks/useScanner';
 
 interface NewOrderModalProps {
   onClose: () => void;
@@ -26,6 +27,8 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
     qty: number;
     notes: string;
     discount?: number; // descuento por item
+    barcode?: string; // código de barras (para productos escaneados)
+    customUnitPrice?: number; // precio unitario real (si difiere del sistema)
   }>>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [globalDiscount, setGlobalDiscount] = useState(0); // descuento global
@@ -43,6 +46,38 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
 
   const { products } = useProductStore();
   const { createOrder } = useOrderStore();
+  
+  // Scanner hook para Paso 2 (productos)
+  const { scannerFeedback } = useScanner({
+    isActive: step === 'products' && !showDiscountModal,
+    onProductScanned: (product, qty, metadata) => {
+      // Validar stock disponible para productos por unidad
+      if (product.saleType === 'UNIT') {
+        const currentInOrder = selectedItems
+          .filter(item => item.product.id === product.id)
+          .reduce((sum, item) => sum + item.qty, 0);
+        const availableStock = (product.stockUnits || 0) - currentInOrder;
+        
+        if (availableStock <= 0) {
+          showToast('warning', `Stock insuficiente. Solo hay ${product.stockUnits || 0} unidades disponibles`);
+          return;
+        }
+      }
+      
+      // Siempre agregar como nuevo item (NO sumar)
+      setSelectedItems(prev => [
+        ...prev,
+        {
+          product,
+          qty,
+          notes: '',
+          discount: 0,
+          barcode: metadata?.barcode,
+          customUnitPrice: metadata?.customUnitPrice
+        }
+      ]);
+    }
+  });
 
   const activeProducts = products.filter((p) => p.isActive);
   const filteredProducts = activeProducts.filter((p) =>
@@ -314,8 +349,19 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
         {/* Paso 2: Productos */}
         {step === 'products' && (
           <div className="flex flex-col" style={{ height: '480px' }}>
+            {/* Feedback de Escaneo */}
+            {scannerFeedback.show && (
+              <div className={`mb-2 px-4 py-2 rounded-lg text-sm font-medium ${
+                scannerFeedback.type === 'success' 
+                  ? 'bg-green-100 text-green-800' 
+                  : 'bg-red-100 text-red-800'
+              }`}>
+                {scannerFeedback.message}
+              </div>
+            )}
+            
             {/* Vista de dos columnas similar al POS */}
-            <div className="grid grid-cols-2 gap-3 overflow-hidden" style={{ height: '410px' }}>
+            <div className="grid grid-cols-2 gap-3 overflow-hidden" style={{ height: scannerFeedback.show ? '380px' : '410px' }}>
               {/* Columna izquierda: Productos disponibles */}
               <div className="flex flex-col border border-gray-200 rounded-lg overflow-hidden">
                 <div className="p-2 bg-gray-50 border-b border-gray-200">

@@ -23,6 +23,53 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
     });
   };
 
+  // Agrupar items por productId para consolidar múltiples escaneos
+  const groupedItems = React.useMemo(() => {
+    const groups: Record<string, {
+      productId: string;
+      productName: string;
+      productSku?: string;
+      unit: string;
+      totalQty: number;
+      totalAmount: number; // Suma de subtotals (qty * unitPrice)
+      totalDiscount: number;
+      finalTotal: number; // Total después de descuentos
+      notes?: string; // Combinar notas si existen
+    }> = {};
+
+    order.items.forEach(item => {
+      const key = item.productId;
+      if (!groups[key]) {
+        groups[key] = {
+          productId: item.productId,
+          productName: item.productName,
+          productSku: item.productSku,
+          unit: item.unit,
+          totalQty: 0,
+          totalAmount: 0,
+          totalDiscount: 0,
+          finalTotal: 0,
+          notes: item.notes
+        };
+      }
+      
+      // Sumar cantidades y montos (respetar redondeos de cada item)
+      groups[key].totalQty += item.qty;
+      groups[key].totalAmount += Math.round(item.qty * item.unitPrice); // Subtotal del item
+      groups[key].totalDiscount += item.discount || 0;
+      groups[key].finalTotal += item.total;
+      
+      // Combinar notas si hay múltiples diferentes
+      if (item.notes && groups[key].notes !== item.notes) {
+        groups[key].notes = groups[key].notes 
+          ? `${groups[key].notes}; ${item.notes}`
+          : item.notes;
+      }
+    });
+
+    return Object.values(groups);
+  }, [order.items]);
+
   return (
     <div style={{
       maxWidth: '21cm',
@@ -202,12 +249,13 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
           </tr>
         </thead>
         <tbody>
-          {order.items.map((item, index) => {
-            const itemSubtotal = Math.round(item.qty * item.unitPrice);
-            const hasItemDiscount = item.discount && item.discount > 0;
+          {groupedItems.map((group, index) => {
+            // Calcular precio unitario promedio ponderado
+            const avgUnitPrice = group.totalAmount / group.totalQty;
+            const hasGroupDiscount = group.totalDiscount > 0;
             
             return (
-              <tr key={index} style={{
+              <tr key={group.productId} style={{
                 borderBottom: '1px solid #e5e7eb',
                 backgroundColor: index % 2 === 0 ? 'white' : '#f9fafb'
               }}>
@@ -217,25 +265,25 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
                   border: '1px solid #e5e7eb'
                 }}>
                   <div style={{ fontWeight: 600, color: '#1a1a1a', fontSize: '14px' }}>
-                    {item.productName}
+                    {group.productName}
                   </div>
-                  {item.productSku && (
+                  {group.productSku && (
                     <div style={{
                       fontSize: '11px',
                       color: '#6b7280',
                       marginTop: '3px'
                     }}>
-                      SKU: {item.productSku}
+                      SKU: {group.productSku}
                     </div>
                   )}
-                  {item.notes && (
+                  {group.notes && (
                     <div style={{
                       fontSize: '11px',
                       color: '#dc2626',
                       fontStyle: 'italic',
                       marginTop: '3px'
                     }}>
-                      {item.notes}
+                      {group.notes}
                     </div>
                   )}
                 </td>
@@ -246,7 +294,7 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
                   border: '1px solid #e5e7eb',
                   fontSize: '14px'
                 }}>
-                  {item.qty} {item.unit}
+                  {group.totalQty} {group.unit}
                 </td>
                 <td style={{
                   padding: '10px',
@@ -255,7 +303,7 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
                   border: '1px solid #e5e7eb',
                   fontSize: '14px'
                 }}>
-                  Bs {item.unitPrice.toFixed(2)}
+                  Bs {avgUnitPrice.toFixed(2)}
                 </td>
                 <td style={{
                   padding: '10px',
@@ -265,20 +313,20 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
                   border: '1px solid #e5e7eb',
                   fontSize: '14px'
                 }}>
-                  {hasItemDiscount ? (
+                  {hasGroupDiscount ? (
                     <div>
                       <div style={{ fontSize: '12px', color: '#6b7280', textDecoration: 'line-through', fontWeight: 400 }}>
-                        Bs {itemSubtotal.toFixed(2)}
+                        Bs {group.totalAmount.toFixed(2)}
                       </div>
                       <div style={{ color: '#dc2626', fontSize: '11px', fontWeight: 400 }}>
-                        -Bs {item.discount!.toFixed(2)}
+                        -Bs {group.totalDiscount.toFixed(2)}
                       </div>
                       <div style={{ color: '#1a1a1a' }}>
-                        Bs {item.total.toFixed(2)}
+                        Bs {group.finalTotal.toFixed(2)}
                       </div>
                     </div>
                   ) : (
-                    <div>Bs {item.total.toFixed(2)}</div>
+                    <div>Bs {group.finalTotal.toFixed(2)}</div>
                   )}
                 </td>
               </tr>

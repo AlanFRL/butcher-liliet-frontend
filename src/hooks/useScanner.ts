@@ -10,11 +10,24 @@ interface ScannerFeedback {
   type: 'success' | 'error';
 }
 
-interface UseScannerProps {
-  isActive: boolean; // Si el scanner debe estar activo (sin modales abiertos)
+interface ScaleMetadata {
+  barcode: string;
+  subtotal: number;
+  customUnitPrice?: number;
+  scaleData?: {
+    weightKg: number;
+    originalPrice: number;
+    systemPrice: number;
+    priceDiff: number;
+  };
 }
 
-export const useScanner = ({ isActive }: UseScannerProps) => {
+interface UseScannerProps {
+  isActive: boolean; // Si el scanner debe estar activo (sin modales abiertos)
+  onProductScanned?: (product: Product, qty: number, metadata?: ScaleMetadata) => void; // Callback personalizado
+}
+
+export const useScanner = ({ isActive, onProductScanned }: UseScannerProps) => {
   const [scannerFeedback, setScannerFeedback] = useState<ScannerFeedback>({
     show: false,
     message: '',
@@ -63,21 +76,42 @@ export const useScanner = ({ isActive }: UseScannerProps) => {
           isFavorite: false,
         } as unknown as Product;
         
-        // VACUUM_PACKED y WEIGHT se tratan IGUAL - agregar al carrito con peso
-        addToCart(product, scaleData.weightKg, {
-          barcode: scaleData.rawBarcode,
-          subtotal: scaleData.totalPrice
-        });
-        
-        // Detectar si hay descuento para informar al usuario
+        // Calcular diferencia de precio (sistema vs balanza)
         const expectedTotal = Math.round(scaleData.weightKg * product.price);
-        const discount = expectedTotal - scaleData.totalPrice;
-        const hasDiscount = discount >= 1;
+        const actualTotal = scaleData.totalPrice;
+        const priceDiff = actualTotal - expectedTotal;
         
+        // Si hay diferencia, calcular unitPrice real (validación silenciosa)
+        let customUnitPrice: number | undefined = undefined;
+        if (Math.abs(priceDiff) >= 1) {
+          customUnitPrice = actualTotal / scaleData.weightKg;
+          
+          // LOG INTERNO para auditoría (no mostrar al cliente)
+          console.log(`⚠️ [AUDIT] Precio balanza difiere. Producto: ${product.name}, Esperado: Bs ${expectedTotal}, Real: Bs ${actualTotal}, Diff: ${priceDiff > 0 ? '+' : ''}${priceDiff}`);
+        }
+        
+        const metadata: ScaleMetadata = {
+          barcode: scaleData.rawBarcode,
+          subtotal: actualTotal,
+          customUnitPrice: customUnitPrice,
+          scaleData: {
+            weightKg: scaleData.weightKg,
+            originalPrice: actualTotal,
+            systemPrice: expectedTotal,
+            priceDiff: priceDiff
+          }
+        };
+        
+        // Usar callback personalizado o addToCart por defecto
+        if (onProductScanned) {
+          onProductScanned(product, scaleData.weightKg, metadata);
+        } else {
+          addToCart(product, scaleData.weightKg, metadata);
+        }
+        
+        // Feedback simple SIN mencionar precios ni diferencias
         showScannerFeedback(
-          hasDiscount 
-            ? `${product.name} - ${scaleData.weightKg.toFixed(3)}kg - Bs ${scaleData.totalPrice.toFixed(2)} (🎉 Descuento: Bs ${discount})`
-            : `${product.name} - ${scaleData.weightKg.toFixed(3)}kg - Bs ${scaleData.totalPrice.toFixed(2)}`,
+          `${product.name} - ${scaleData.weightKg.toFixed(3)}kg agregado`,
           'success'
         );
         return;
@@ -106,8 +140,15 @@ export const useScanner = ({ isActive }: UseScannerProps) => {
       
       // Agregar con cantidad por defecto
       const defaultQty = 1;
-      addToCart(product, defaultQty);
-      showScannerFeedback(`${product.name} agregado al carrito`, 'success');
+      
+      // Usar callback personalizado o addToCart por defecto
+      if (onProductScanned) {
+        onProductScanned(product, defaultQty);
+      } else {
+        addToCart(product, defaultQty);
+      }
+      
+      showScannerFeedback(`${product.name} agregado`, 'success');
     } catch (error) {
       console.error('❌ Error buscando producto:', error);
       showScannerFeedback('Error al buscar producto', 'error');
