@@ -200,16 +200,10 @@ export const PrintableSaleReceipt: React.FC<PrintableSaleReceiptProps> = ({ data
                     <span className="font-bold">Bs {itemSubtotalBeforeDiscount}</span>
                   </div>
                   {itemDiscount > 0 && (
-                    <>
-                      <div className="flex justify-between text-xs text-red-600 ml-2">
-                        <span>Descuento</span>
-                        <span>-Bs {Math.round(itemDiscount)}</span>
-                      </div>
-                      <div className="flex justify-between text-xs font-semibold ml-2">
-                        <span>Subtotal:</span>
-                        <span>Bs {itemFinalTotal}</span>
-                      </div>
-                    </>
+                    <div className="flex justify-between text-xs text-red-600 ml-2">
+                      <span>Descuento</span>
+                      <span>-Bs {Math.round(itemDiscount)}</span>
+                    </div>
                   )}
                 </div>
               );

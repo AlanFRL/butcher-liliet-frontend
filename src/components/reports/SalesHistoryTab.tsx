@@ -225,6 +225,23 @@ const SaleDetailModal: React.FC<{
   const total = typeof sale.total === 'string' ? parseFloat(sale.total) : sale.total;
   const changeAmount = sale.changeAmount ? (typeof sale.changeAmount === 'string' ? parseFloat(sale.changeAmount) : sale.changeAmount) : 0;
   
+  // Calcular subtotal correcto sumando items ANTES de descuentos
+  const calculatedSubtotal = sale.items?.reduce((sum: number, item: any) => {
+    const qty = typeof item.quantity === 'string' ? parseFloat(item.quantity) : (item.qty || item.quantity);
+    const unitPrice = typeof item.unitPrice === 'string' ? parseFloat(item.unitPrice) : item.unitPrice;
+    return sum + Math.round(qty * unitPrice);
+  }, 0) || 0;
+  
+  // Calcular descuento total sumando descuentos de items + descuento global
+  const itemsDiscount = sale.items?.reduce((sum: number, item: any) => {
+    const itemDiscount = item.discount ? (typeof item.discount === 'string' ? parseFloat(item.discount) : item.discount) : 0;
+    return sum + itemDiscount;
+  }, 0) || 0;
+  const calculatedDiscount = itemsDiscount + discount;
+  
+  // Total correcto
+  const calculatedTotal = calculatedSubtotal - calculatedDiscount;
+  
   const relatedOrder = sale.orderId ? orders.find(o => o.id === sale.orderId) : null;
   
   // Verificar si la venta puede ser eliminada (solo si pertenece a la sesión actual)
@@ -381,7 +398,7 @@ const SaleDetailModal: React.FC<{
                               </p>
                               {itemDiscount > 0 && (
                                 <p className="text-xs text-gray-500">
-                                  (Final: Bs {Math.round(itemTotal)})
+                                  (Final: Bs {Math.round(itemSubtotalBeforeDiscount - itemDiscount)})
                                 </p>
                               )}
                             </td>
@@ -397,17 +414,17 @@ const SaleDetailModal: React.FC<{
                 <div className="space-y-2">
                   <div className="flex justify-between text-gray-600">
                     <span>Subtotal:</span>
-                    <span className="font-semibold">Bs {subtotal.toFixed(2)}</span>
+                    <span className="font-semibold">Bs {calculatedSubtotal.toFixed(2)}</span>
                   </div>
-                  {discount > 0 && (
+                  {calculatedDiscount > 0 && (
                     <div className="flex justify-between text-gray-600">
                       <span>Descuento:</span>
-                      <span className="font-semibold text-red-600">-Bs {discount.toFixed(2)}</span>
+                      <span className="font-semibold text-red-600">-Bs {calculatedDiscount.toFixed(2)}</span>
                     </div>
                   )}
                   <div className="flex justify-between text-xl font-bold text-primary-700 pt-2 border-t border-gray-200">
                     <span>TOTAL:</span>
-                    <span>Bs {total.toFixed(2)}</span>
+                    <span>Bs {calculatedTotal.toFixed(2)}</span>
                   </div>
                   {changeAmount > 0 && (
                     <div className="flex justify-between text-gray-600">
