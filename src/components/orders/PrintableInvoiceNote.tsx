@@ -92,7 +92,12 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
       }}>
         {/* Logo */}
         <div>
-          <img src={logoPrint} alt="Butcher Lilieth" style={{ maxHeight: '80px', maxWidth: '140px' }} />
+          <img 
+            src={logoPrint} 
+            alt="Butcher Lilieth" 
+            style={{ maxHeight: '80px', maxWidth: '140px' }} 
+            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+          />
         </div>
         
         {/* Información del negocio */}
@@ -294,7 +299,7 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
                   border: '1px solid #e5e7eb',
                   fontSize: '14px'
                 }}>
-                  {group.totalQty} {group.unit}
+                  {group.unit === 'kg' ? group.totalQty.toFixed(3) : group.totalQty} {group.unit}
                 </td>
                 <td style={{
                   padding: '10px',

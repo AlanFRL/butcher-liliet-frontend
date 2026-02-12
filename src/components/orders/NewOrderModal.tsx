@@ -611,9 +611,9 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
                                 )}
                               </div>
                             </div>
-                            {item.discount && item.discount > 0 && (
+                            {(item.discount ?? 0) > 0 && (
                               <div className="flex items-center justify-end text-xs text-green-600 mt-1">
-                                <span>Descuento: -Bs {Math.round(item.discount)}</span>
+                                <span>Descuento: -Bs {Math.round(item.discount ?? 0)}</span>
                               </div>
                             )}
                             <div className="flex items-center justify-between mt-0.5">
@@ -671,9 +671,9 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
                                 )}
                               </div>
                             </div>
-                            {item.discount && item.discount > 0 && (
+                            {(item.discount ?? 0) > 0 && (
                               <div className="flex items-center justify-end text-xs text-green-600 mt-1">
-                                <span>Descuento: -Bs {Math.round(item.discount)}</span>
+                                <span>Descuento: -Bs {Math.round(item.discount ?? 0)}</span>
                               </div>
                             )}
                             <div className="flex items-center justify-between mt-0.5">
