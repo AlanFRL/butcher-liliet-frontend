@@ -406,7 +406,7 @@ export const POSPage: React.FC = () => {
                     name: item.productName,
                     quantity: item.qty,
                     unit: item.unit,
-                    price: item.originalUnitPrice || item.unitPrice,
+                    price: item.unitPrice, // Ya contiene el precio efectivo desde completeSale
                     subtotal: item.total,
                     discount: item.discount || 0,
                     batchNumber: item.batchNumber,

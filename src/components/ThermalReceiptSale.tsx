@@ -31,69 +31,15 @@ interface ThermalReceiptSaleProps {
 
 export const ThermalReceiptSale: React.FC<ThermalReceiptSaleProps> = ({ data, printable = false }) => {
   const receiptRef = useRef<HTMLDivElement>(null);
-  
-  // Log para depuración
-  console.log('🖨️ [ThermalReceiptSale] Component RENDERED:', {
-    saleId: data.saleId.slice(-8),
-    printable: printable,
-    itemsCount: data.items.length,
-  });
 
-  // Detectar eventos de impresión y capturar estilos
+  // Detectar eventos de impresión
   useEffect(() => {
-    console.log('🟢 [ThermalReceiptSale] Component MOUNTED for sale:', data.saleId.slice(-8), 'printable:', printable);
-    
     const beforePrint = () => {
-      console.log('🎯 [POS PRINT EVENT] beforeprint fired for sale:', data.saleId.slice(-8));
-      
-      // Capturar información del DOM
-      const allReceipts = document.querySelectorAll('.thermal-receipt-sale');
-      const printableReceipts = document.querySelectorAll('.thermal-receipt-sale[data-printable="true"]');
-      
-      console.log('📊 [DEBUG] DOM state:', { 
-        total: allReceipts.length, 
-        printable: printableReceipts.length 
-      });
-      
-      // Capturar estilos computados del recibo printable
-      if (receiptRef.current && printable) {
-        const styles = window.getComputedStyle(receiptRef.current);
-        console.log('🔍 [DEBUG] Computed styles for THIS receipt:', {
-          width: styles.width,
-          maxWidth: styles.maxWidth,
-          fontSize: styles.fontSize,
-          visibility: styles.visibility,
-          display: styles.display,
-          position: styles.position,
-          transform: styles.transform,
-        });
-        
-        // Verificar el inner
-        const inner = receiptRef.current.querySelector('.thermal-receipt-sale__inner');
-        if (inner) {
-          const innerStyles = window.getComputedStyle(inner);
-          console.log('🔍 [DEBUG] Inner styles:', {
-            fontSize: innerStyles.fontSize,
-            fontWeight: innerStyles.fontWeight,
-            padding: innerStyles.padding,
-          });
-        }
-      }
-      
-      // Log de todos los recibos
-      allReceipts.forEach((el, i) => {
-        const styles = window.getComputedStyle(el);
-        console.log(`📋 [DEBUG] Receipt ${i}:`, {
-          printable: el.getAttribute('data-printable'),
-          width: styles.width,
-          visibility: styles.visibility,
-          display: styles.display,
-        });
-      });
+      // Evento beforeprint
     };
 
     const afterPrint = () => {
-      console.log('✅ [POS PRINT EVENT] afterprint fired for sale:', data.saleId.slice(-8));
+      // Evento afterprint
     };
 
     window.addEventListener('beforeprint', beforePrint);
@@ -218,29 +164,12 @@ export const ThermalReceiptSale: React.FC<ThermalReceiptSaleProps> = ({ data, pr
           <div className="mb-2 pb-2 border-b-2 border-gray-900">
             <div className="text-xs font-bold mb-2 pb-1 border-b border-gray-900">PRODUCTOS</div>
             {data.items.map((item, index) => {
-              console.log('🖨️ [ThermalReceipt] Item data:', {
-                name: item.name,
-                price: item.price,
-                quantity: item.quantity,
-                actualWeight: item.actualWeight,
-                unit: item.unit,
-                discount: item.discount,
-                subtotal: item.subtotal,
-              });
-              
               const itemDiscount = item.discount || 0;
               // Para productos con lote, usar actualWeight en lugar de quantity
               const effectiveQuantity = item.actualWeight || item.quantity;
               const effectiveUnit = item.actualWeight ? 'kg' : item.unit;
               const itemSubtotalBeforeDiscount = Math.round(effectiveQuantity * item.price);
               const itemFinalTotal = Math.round(itemSubtotalBeforeDiscount - itemDiscount);
-              
-              console.log('🖨️ [ThermalReceipt] Calculated:', {
-                effectiveQuantity,
-                effectiveUnit,
-                itemSubtotalBeforeDiscount,
-                itemFinalTotal,
-              });
               
               return (
                 <div key={index} className="mb-2">

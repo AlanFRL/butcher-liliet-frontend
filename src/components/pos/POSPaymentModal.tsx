@@ -52,7 +52,10 @@ export const POSPaymentModal: React.FC<POSPaymentModalProps> = ({
           <h3 className="text-sm font-semibold text-gray-700 mb-3">Resumen de Venta</h3>
           <div className="space-y-2">
             {cartItems.map((item) => {
-              const itemSubtotalBeforeDiscount = Math.round(item.qty * item.unitPrice);
+              // Usar effectiveUnitPrice si existe (precio real de balanza o con descuento manual)
+              const displayUnitPrice = item.effectiveUnitPrice || item.unitPrice;
+              const itemSubtotalBeforeDiscount = Math.round(item.qty * item.unitPrice); // Precio esperado (sistema)
+              const itemActualSubtotal = Math.round(item.qty * displayUnitPrice); // Precio real
               const itemDiscount = item.discount || 0;
               
               return (
@@ -62,13 +65,13 @@ export const POSPaymentModal: React.FC<POSPaymentModalProps> = ({
                     <span>
                       {item.product.saleType === 'WEIGHT' ? (
                         // Productos por peso: peso × precio/kg
-                        `${item.qty.toFixed(3)} kg × Bs ${Math.round(item.unitPrice)}/kg`
+                        `${item.qty.toFixed(3)} kg × Bs ${Math.round(displayUnitPrice)}/kg`
                       ) : (
                         // Productos por unidad: qty × precio
-                        `${item.qty} unid × Bs ${Math.round(item.unitPrice)}`
+                        `${item.qty} unid × Bs ${Math.round(displayUnitPrice)}`
                       )}
                     </span>
-                    <span className="font-semibold">Bs {Math.round(itemSubtotalBeforeDiscount)}</span>
+                    <span className="font-semibold">Bs {Math.round(itemActualSubtotal)}</span>
                   </div>
                   {itemDiscount > 0 && (
                     <div className="flex justify-between text-xs text-red-600 mt-1 ml-2">

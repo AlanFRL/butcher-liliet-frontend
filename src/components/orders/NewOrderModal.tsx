@@ -91,11 +91,47 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
         const priceDiff = expectedTotal - actualTotal;
         
         if (Math.abs(priceDiff) >= 1) {
-          // Hay diferencia: calcular precio efectivo (siempre entero)
-          customUnitPrice = Math.round(actualTotal / qty);
+          // Calcular precio efectivo que la balanza usó (considerando redondeo)
+          // La balanza usa precios ENTEROS y redondea el total
+          // Ejemplo: 0.720kg × 80Bs/kg = 57.6 → balanza redondea a 58Bs
+          const approximatePrice = actualTotal / qty; // 58/0.720 = 80.555...
+          const priceFloor = Math.floor(approximatePrice); // 80
+          const priceCeil = Math.ceil(approximatePrice); // 81
+          
+          // Verificar qué precio entero produce el total correcto después de redondear
+          const totalWithFloor = Math.round(qty * priceFloor); // Math.round(57.6) = 58
+          const totalWithCeil = Math.round(qty * priceCeil); // Math.round(58.32) = 58
+          
+          if (totalWithFloor === actualTotal && totalWithCeil === actualTotal) {
+            // AMBIGÜEDAD: Ambos producen el total correcto
+            // Usar contexto para decidir:
+            // - Si es sobrecarga (actualTotal > expectedTotal), preferir ceil (precio mayor)
+            // - Si es descuento (actualTotal < expectedTotal), preferir floor (precio menor)
+            // - Si es igual, preferir el más cercano al precio del sistema
+            if (actualTotal > expectedTotal) {
+              // Sobrecarga: la balanza tenía precio mayor
+              customUnitPrice = priceCeil;
+            } else if (actualTotal < expectedTotal) {
+              // Descuento: la balanza tenía precio menor
+              customUnitPrice = priceFloor;
+            } else {
+              // Igual: usar el que esté más cerca del precio del sistema
+              const diffFloor = Math.abs(priceFloor - product.price);
+              const diffCeil = Math.abs(priceCeil - product.price);
+              customUnitPrice = diffFloor <= diffCeil ? priceFloor : priceCeil;
+            }
+          } else if (totalWithFloor === actualTotal) {
+            customUnitPrice = priceFloor;
+          } else if (totalWithCeil === actualTotal) {
+            customUnitPrice = priceCeil;
+          } else {
+            // Fallback: redondear el aproximado
+            customUnitPrice = Math.round(approximatePrice);
+          }
+          
           discount = priceDiff > 0 ? priceDiff : 0; // Solo si es descuento (no sobrecargo)
           
-          console.log(`🏷️ Descuento auto-detectado: ${product.name}, Sistema: ${product.price} Bs/kg, Balanza: ${customUnitPrice} Bs/kg, Descuento: ${discount} Bs`);
+          console.log(`🏷️ Precio calculado: ${product.name}, Sistema: ${product.price} Bs/kg, Balanza: ${customUnitPrice} Bs/kg, Descuento: ${discount} Bs`);
         }
       }
       

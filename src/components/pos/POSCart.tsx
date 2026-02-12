@@ -127,7 +127,7 @@ export const POSCart: React.FC<POSCartProps> = ({
                       {/* Mostrar precio por kg para productos escaneados */}
                       {item.scannedBarcode && item.product.saleType === 'WEIGHT' && (
                         <span className="text-xs text-gray-500 block mt-1">
-                          Bs {Math.round(item.originalUnitPrice || item.unitPrice)}/{item.product.unit}
+                          Bs {Math.round(item.effectiveUnitPrice || item.unitPrice)}/{item.product.unit}
                         </span>
                       )}
                     </div>
@@ -217,7 +217,7 @@ export const POSCart: React.FC<POSCartProps> = ({
                   
                   <div className="text-right">
                     <p className="text-xs text-gray-500">
-                      Bs {Math.round(item.unitPrice)}/{item.product.unit}
+                      Bs {Math.round(item.effectiveUnitPrice || item.unitPrice)}/{item.product.unit}
                     </p>
                     {item.discount > 0 ? (
                       <>

@@ -754,19 +754,59 @@ export const useCartStore = create<CartState>((set, get) => ({
       const unitPrice = product.price; // Precio original del sistema
       const finalTotal = scannedData ? scannedData.subtotal : Math.round(qty * product.price);
       
-      // Detectar descuento: comparar precio esperado con precio real
+      // Detectar diferencia: comparar precio esperado con precio real
       const expectedTotal = Math.round(qty * unitPrice);
-      const discount = expectedTotal - finalTotal;
+      const priceDiff = finalTotal - expectedTotal; // Positivo = sobrecargo, Negativo = descuento
       
-      // Calcular precio efectivo por kg REDONDEADO (sin decimales)
-      const effectivePricePerKg = qty > 0 ? Math.round(finalTotal / qty) : unitPrice;
-      const priceDiscountPerKg = unitPrice - effectivePricePerKg;
+      // Calcular precio efectivo por kg que la balanza usó (considerando redondeo)
+      // La balanza usa precios ENTEROS y redondea el total
+      // Ejemplo: 0.720kg × 80Bs/kg = 57.6 → balanza redondea a 58Bs
+      // NO podemos hacer Math.round(58/0.720) = 81, debemos encontrar el precio original
+      let effectivePricePerKg: number;
+      if (qty > 0) {
+        const approximatePrice = finalTotal / qty; // 58/0.720 = 80.555...
+        const priceFloor = Math.floor(approximatePrice); // 80
+        const priceCeil = Math.ceil(approximatePrice); // 81
+        
+        // Verificar qué precio entero produce el total correcto después de redondear
+        const totalWithFloor = Math.round(qty * priceFloor); // Math.round(57.6) = 58
+        const totalWithCeil = Math.round(qty * priceCeil); // Math.round(58.32) = 58
+        
+        if (totalWithFloor === finalTotal && totalWithCeil === finalTotal) {
+          // AMBIGÜEDAD: Ambos producen el total correcto
+          // Usar contexto para decidir:
+          // - Si es sobrecarga (finalTotal > expectedTotal), preferir ceil (precio mayor)
+          // - Si es descuento (finalTotal < expectedTotal), preferir floor (precio menor)
+          // - Si es igual, preferir el más cercano al precio del sistema
+          if (finalTotal > expectedTotal) {
+            // Sobrecarga: la balanza tenía precio mayor
+            effectivePricePerKg = priceCeil;
+          } else if (finalTotal < expectedTotal) {
+            // Descuento: la balanza tenía precio menor
+            effectivePricePerKg = priceFloor;
+          } else {
+            // Igual: usar el que esté más cerca del precio del sistema
+            const diffFloor = Math.abs(priceFloor - unitPrice);
+            const diffCeil = Math.abs(priceCeil - unitPrice);
+            effectivePricePerKg = diffFloor <= diffCeil ? priceFloor : priceCeil;
+          }
+        } else if (totalWithFloor === finalTotal) {
+          effectivePricePerKg = priceFloor;
+        } else if (totalWithCeil === finalTotal) {
+          effectivePricePerKg = priceCeil;
+        } else {
+          // Fallback: redondear el aproximado
+          effectivePricePerKg = Math.round(approximatePrice);
+        }
+      } else {
+        effectivePricePerKg = unitPrice;
+      }
       
-      // Detectar descuento: si el precio por kg es diferente (tolerancia 1 Bs/kg)
-      const hasDiscount = Math.abs(priceDiscountPerKg) >= 1;
+      // SIEMPRE guardar effectiveUnitPrice si difiere del sistema (tolerancia 1 Bs)
+      const hasPriceDifference = Math.abs(effectivePricePerKg - unitPrice) >= 1;
       
-      // Precio efectivo es un entero (sin decimales)
-      const effectiveUnitPrice = hasDiscount ? effectivePricePerKg : unitPrice;
+      // Solo aplicar discount si es descuento (priceDiff < 0), NO si es sobrecargo
+      const discount = priceDiff < -1 ? Math.abs(priceDiff) : 0;
       
       const newItem: CartItem = {
         id: uuidv4(),
@@ -777,10 +817,10 @@ export const useCartStore = create<CartState>((set, get) => ({
         qty,
         unitPrice, // Precio ORIGINAL del sistema
         originalUnitPrice: unitPrice,
-        effectiveUnitPrice: hasDiscount ? effectiveUnitPrice : undefined, // Solo guardar si hay descuento
-        discount: hasDiscount ? discount : 0,
-        discountAutoDetected: hasDiscount,
-        total: finalTotal, // Precio FINAL después del descuento
+        effectiveUnitPrice: hasPriceDifference ? effectivePricePerKg : undefined, // Guardar SIEMPRE si difiere
+        discount: discount, // Solo descuentos (nunca positivo)
+        discountAutoDetected: discount > 0,
+        total: finalTotal, // Precio FINAL (puede incluir sobrecargo)
         product,
         scannedBarcode: scannedData?.barcode,
         scannedSubtotal: scannedData?.subtotal,
@@ -1039,7 +1079,7 @@ export const useSalesStore = create<SalesState>((set, get) => ({
         items: cartState.cartItems.map((item) => ({
           productId: item.productId,
           quantity: Math.round(item.qty * 1000) / 1000, // Redondear a 3 decimales para peso
-          unitPrice: Math.round(item.unitPrice),
+          unitPrice: Math.round(item.effectiveUnitPrice || item.unitPrice), // Usar precio efectivo si existe
           discount: Math.round(item.discount || 0), // Redondear descuento
         })),
         discount: Math.round(cartState.globalDiscount || 0), // Redondear descuento global
