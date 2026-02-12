@@ -50,14 +50,33 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
 
   // Helper: Calcular subtotal de un item respetando precio de balanza
   const getItemSubtotal = (item: typeof selectedItems[0]) => {
-    // Si es un producto escaneado con precio de balanza, usar ese precio
-    if (item.scannedSubtotal !== undefined) {
-      return item.scannedSubtotal;
-    }
-    // Si tiene precio unitario personalizado, usarlo
+    // IMPORTANTE: Siempre calcular subtotal ANTES de descuento
+    // Para productos con customUnitPrice (descuento), usar precio del sistema
+    // El descuento se muestra separado en item.discount
+    
+    // Si tiene precio unitario personalizado Y es un descuento, usar precio del sistema
     if (item.customUnitPrice !== undefined) {
+      const isDiscount = item.customUnitPrice < item.product.price;
+      if (isDiscount) {
+        // Es descuento: mostrar subtotal con precio sistema (el descuento se resta después)
+        return Math.round(item.qty * item.product.price);
+      }
+      // Es sobrecarga: usar precio efectivo (sin descuento separado)
       return Math.round(item.qty * item.customUnitPrice);
     }
+    
+    // Si es producto escaneado con subtotal, verificar si es descuento
+    if (item.scannedSubtotal !== undefined) {
+      const expectedTotal = Math.round(item.qty * item.product.price);
+      const isDiscount = item.scannedSubtotal < expectedTotal;
+      if (isDiscount) {
+        // Es descuento: devolver precio del sistema (el descuento se resta después)
+        return expectedTotal;
+      }
+      // Es sobrecarga: usar precio de balanza
+      return item.scannedSubtotal;
+    }
+    
     // Caso normal: usar precio del sistema
     return Math.round(item.qty * item.product.price);
   };

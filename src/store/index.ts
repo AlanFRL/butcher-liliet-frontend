@@ -816,8 +816,8 @@ export const useCartStore = create<CartState>((set, get) => ({
       // SIEMPRE guardar effectiveUnitPrice si difiere del sistema (tolerancia 1 Bs)
       const hasPriceDifference = Math.abs(effectivePricePerKg - unitPrice) >= 1;
       
-      // Solo aplicar discount si es descuento (priceDiff < 0), NO si es sobrecargo
-      const discount = priceDiff < -1 ? Math.abs(priceDiff) : 0;
+      // Solo aplicar discount si es descuento (priceDiff <= -1), NO si es sobrecargo
+      const discount = priceDiff <= -1 ? Math.abs(priceDiff) : 0;
       
       const newItem: CartItem = {
         id: uuidv4(),
@@ -1041,8 +1041,16 @@ export const useCartStore = create<CartState>((set, get) => ({
   },
   
   getCartSubtotal: () => {
-    // Suma de subtotales ANTES de descuentos por item (qty × unitPrice)
-    return get().cartItems.reduce((sum, item) => sum + (item.qty * item.unitPrice), 0);
+    // Para productos escaneados, usar item.total
+    // Para productos manuales, calcular qty × unitPrice
+    return get().cartItems.reduce((sum, item) => {
+      if (item.scannedBarcode) {
+        // Producto escaneado: usar el total guardado (ya incluye precio de balanza)
+        return sum + item.total;
+      }
+      // Producto manual: calcular con precio del sistema
+      return sum + (item.qty * item.unitPrice);
+    }, 0);
   },
   
   getItemDiscountsTotal: () => {
