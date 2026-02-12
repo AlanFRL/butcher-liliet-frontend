@@ -125,11 +125,17 @@ export const POSCart: React.FC<POSCartProps> = ({
                     <div className="text-sm text-gray-600">
                       {`${item.qty.toFixed(3)} ${item.product.unit}`}
                       {/* Mostrar precio por kg para productos escaneados */}
-                      {item.scannedBarcode && item.product.saleType === 'WEIGHT' && (
-                        <span className="text-xs text-gray-500 block mt-1">
-                          Bs {Math.round(item.effectiveUnitPrice || item.unitPrice)}/{item.product.unit}
-                        </span>
-                      )}
+                      {item.scannedBarcode && item.product.saleType === 'WEIGHT' && (() => {
+                        // DESCUENTO: mostrar precio sistema, SOBRECARGA: mostrar precio efectivo
+                        const hasEffectivePrice = item.effectiveUnitPrice !== undefined;
+                        const isDiscount = hasEffectivePrice && item.effectiveUnitPrice! < item.unitPrice;
+                        const displayPrice = isDiscount ? item.unitPrice : (item.effectiveUnitPrice || item.unitPrice);
+                        return (
+                          <span className="text-xs text-gray-500 block mt-1">
+                            Bs {Math.round(displayPrice)}/{item.product.unit}
+                          </span>
+                        );
+                      })()}
                     </div>
                     <div className="text-right">
                       {item.discount > 0 ? (
@@ -217,7 +223,13 @@ export const POSCart: React.FC<POSCartProps> = ({
                   
                   <div className="text-right">
                     <p className="text-xs text-gray-500">
-                      Bs {Math.round(item.effectiveUnitPrice || item.unitPrice)}/{item.product.unit}
+                      {(() => {
+                        // DESCUENTO: mostrar precio sistema, SOBRECARGA: mostrar precio efectivo
+                        const hasEffectivePrice = item.effectiveUnitPrice !== undefined;
+                        const isDiscount = hasEffectivePrice && item.effectiveUnitPrice! < item.unitPrice;
+                        const displayPrice = isDiscount ? item.unitPrice : (item.effectiveUnitPrice || item.unitPrice);
+                        return `Bs ${Math.round(displayPrice)}/${item.product.unit}`;
+                      })()}
                     </p>
                     {item.discount > 0 ? (
                       <>

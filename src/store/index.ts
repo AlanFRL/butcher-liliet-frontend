@@ -760,43 +760,54 @@ export const useCartStore = create<CartState>((set, get) => ({
       
       // Calcular precio efectivo por kg que la balanza usó (considerando redondeo)
       // La balanza usa precios ENTEROS y redondea el total
-      // Ejemplo: 0.720kg × 80Bs/kg = 57.6 → balanza redondea a 58Bs
-      // NO podemos hacer Math.round(58/0.720) = 81, debemos encontrar el precio original
+      // Problema: Múltiples precios consecutivos pueden producir el mismo total redondeado
+      // Ejemplo: 0.140kg con total 11 → precios 75-79 Bs/kg todos redondean a 11
+      // Solución: Probar rango amplio y elegir el más cercano al precio del sistema
       let effectivePricePerKg: number;
       if (qty > 0) {
-        const approximatePrice = finalTotal / qty; // 58/0.720 = 80.555...
-        const priceFloor = Math.floor(approximatePrice); // 80
-        const priceCeil = Math.ceil(approximatePrice); // 81
+        const approximatePrice = finalTotal / qty;
         
-        // Verificar qué precio entero produce el total correcto después de redondear
-        const totalWithFloor = Math.round(qty * priceFloor); // Math.round(57.6) = 58
-        const totalWithCeil = Math.round(qty * priceCeil); // Math.round(58.32) = 58
+        // Probar rango amplio: ±20 del aproximado (más robusto)
+        const minPrice = Math.max(1, Math.floor(approximatePrice) - 20);
+        const maxPrice = Math.ceil(approximatePrice) + 20;
         
-        if (totalWithFloor === finalTotal && totalWithCeil === finalTotal) {
-          // AMBIGÜEDAD: Ambos producen el total correcto
-          // Usar contexto para decidir:
-          // - Si es sobrecarga (finalTotal > expectedTotal), preferir ceil (precio mayor)
-          // - Si es descuento (finalTotal < expectedTotal), preferir floor (precio menor)
-          // - Si es igual, preferir el más cercano al precio del sistema
-          if (finalTotal > expectedTotal) {
-            // Sobrecarga: la balanza tenía precio mayor
-            effectivePricePerKg = priceCeil;
-          } else if (finalTotal < expectedTotal) {
-            // Descuento: la balanza tenía precio menor
-            effectivePricePerKg = priceFloor;
-          } else {
-            // Igual: usar el que esté más cerca del precio del sistema
-            const diffFloor = Math.abs(priceFloor - unitPrice);
-            const diffCeil = Math.abs(priceCeil - unitPrice);
-            effectivePricePerKg = diffFloor <= diffCeil ? priceFloor : priceCeil;
+        const validPrices: number[] = [];
+        for (let price = minPrice; price <= maxPrice; price++) {
+          if (Math.round(qty * price) === finalTotal) {
+            validPrices.push(price);
           }
-        } else if (totalWithFloor === finalTotal) {
-          effectivePricePerKg = priceFloor;
-        } else if (totalWithCeil === finalTotal) {
-          effectivePricePerKg = priceCeil;
-        } else {
+        }
+        
+        if (validPrices.length === 0) {
           // Fallback: redondear el aproximado
           effectivePricePerKg = Math.round(approximatePrice);
+        } else if (validPrices.length === 1) {
+          // Solo un precio válido: usar ese
+          effectivePricePerKg = validPrices[0];
+        } else {
+          // Múltiples precios válidos: elegir el más cercano al precio del sistema
+          // PERO: si todos están muy lejos del sistema (>50 Bs diferencia),
+          // preferir el precio aproximado (centro del rango)
+          const closestToSystem = validPrices.reduce((closest, current) => {
+            const diffCurrent = Math.abs(current - unitPrice);
+            const diffClosest = Math.abs(closest - unitPrice);
+            return diffCurrent < diffClosest ? current : closest;
+          }, validPrices[0]);
+          
+          const distanceToSystem = Math.abs(closestToSystem - unitPrice);
+          
+          if (distanceToSystem > 50) {
+            // Todos están muy lejos del sistema: preferir el aproximado
+            const closestToApproximate = validPrices.reduce((closest, current) => {
+              const diffCurrent = Math.abs(current - approximatePrice);
+              const diffClosest = Math.abs(closest - approximatePrice);
+              return diffCurrent < diffClosest ? current : closest;
+            }, validPrices[0]);
+            effectivePricePerKg = closestToApproximate;
+          } else {
+            // Hay precios cercanos al sistema: usar el más cercano
+            effectivePricePerKg = closestToSystem;
+          }
         }
       } else {
         effectivePricePerKg = unitPrice;

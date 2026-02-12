@@ -93,40 +93,51 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
         if (Math.abs(priceDiff) >= 1) {
           // Calcular precio efectivo que la balanza usó (considerando redondeo)
           // La balanza usa precios ENTEROS y redondea el total
-          // Ejemplo: 0.720kg × 80Bs/kg = 57.6 → balanza redondea a 58Bs
-          const approximatePrice = actualTotal / qty; // 58/0.720 = 80.555...
-          const priceFloor = Math.floor(approximatePrice); // 80
-          const priceCeil = Math.ceil(approximatePrice); // 81
+          // Problema: Múltiples precios consecutivos pueden producir el mismo total redondeado
+          // Solución: Probar rango amplio y elegir el más cercano al precio del sistema
+          const approximatePrice = actualTotal / qty;
           
-          // Verificar qué precio entero produce el total correcto después de redondear
-          const totalWithFloor = Math.round(qty * priceFloor); // Math.round(57.6) = 58
-          const totalWithCeil = Math.round(qty * priceCeil); // Math.round(58.32) = 58
+          // Probar rango amplio: ±20 del aproximado (más robusto)
+          const minPrice = Math.max(1, Math.floor(approximatePrice) - 20);
+          const maxPrice = Math.ceil(approximatePrice) + 20;
           
-          if (totalWithFloor === actualTotal && totalWithCeil === actualTotal) {
-            // AMBIGÜEDAD: Ambos producen el total correcto
-            // Usar contexto para decidir:
-            // - Si es sobrecarga (actualTotal > expectedTotal), preferir ceil (precio mayor)
-            // - Si es descuento (actualTotal < expectedTotal), preferir floor (precio menor)
-            // - Si es igual, preferir el más cercano al precio del sistema
-            if (actualTotal > expectedTotal) {
-              // Sobrecarga: la balanza tenía precio mayor
-              customUnitPrice = priceCeil;
-            } else if (actualTotal < expectedTotal) {
-              // Descuento: la balanza tenía precio menor
-              customUnitPrice = priceFloor;
-            } else {
-              // Igual: usar el que esté más cerca del precio del sistema
-              const diffFloor = Math.abs(priceFloor - product.price);
-              const diffCeil = Math.abs(priceCeil - product.price);
-              customUnitPrice = diffFloor <= diffCeil ? priceFloor : priceCeil;
+          const validPrices: number[] = [];
+          for (let price = minPrice; price <= maxPrice; price++) {
+            if (Math.round(qty * price) === actualTotal) {
+              validPrices.push(price);
             }
-          } else if (totalWithFloor === actualTotal) {
-            customUnitPrice = priceFloor;
-          } else if (totalWithCeil === actualTotal) {
-            customUnitPrice = priceCeil;
-          } else {
+          }
+          
+          if (validPrices.length === 0) {
             // Fallback: redondear el aproximado
             customUnitPrice = Math.round(approximatePrice);
+          } else if (validPrices.length === 1) {
+            // Solo un precio válido: usar ese
+            customUnitPrice = validPrices[0];
+          } else {
+            // Múltiples precios válidos: elegir el más cercano al precio del sistema
+            // PERO: si todos están muy lejos del sistema (>50 Bs diferencia),
+            // preferir el precio aproximado (centro del rango)
+            const closestToSystem = validPrices.reduce((closest, current) => {
+              const diffCurrent = Math.abs(current - product.price);
+              const diffClosest = Math.abs(closest - product.price);
+              return diffCurrent < diffClosest ? current : closest;
+            }, validPrices[0]);
+            
+            const distanceToSystem = Math.abs(closestToSystem - product.price);
+            
+            if (distanceToSystem > 50) {
+              // Todos están muy lejos del sistema: preferir el aproximado
+              const closestToApproximate = validPrices.reduce((closest, current) => {
+                const diffCurrent = Math.abs(current - approximatePrice);
+                const diffClosest = Math.abs(closest - approximatePrice);
+                return diffCurrent < diffClosest ? current : closest;
+              }, validPrices[0]);
+              customUnitPrice = closestToApproximate;
+            } else {
+              // Hay precios cercanos al sistema: usar el más cercano
+              customUnitPrice = closestToSystem;
+            }
           }
           
           discount = priceDiff > 0 ? priceDiff : 0; // Solo si es descuento (no sobrecargo)
@@ -595,7 +606,13 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
                             </div>
                             <div className="flex items-center justify-between mt-0.5">
                               <span className="text-xs text-gray-500">
-                                Bs {item.customUnitPrice ? Math.round(item.customUnitPrice) : Math.round(item.product.price)}/{item.product.unit}
+                                {(() => {
+                                  // DESCUENTO: mostrar precio sistema, SOBRECARGA: mostrar precio efectivo
+                                  const hasCustomPrice = item.customUnitPrice !== undefined;
+                                  const isDiscount = hasCustomPrice && item.customUnitPrice! < item.product.price;
+                                  const displayPrice = isDiscount ? item.product.price : (item.customUnitPrice || item.product.price);
+                                  return `Bs ${Math.round(displayPrice)}/${item.product.unit}`;
+                                })()}
                               </span>
                               <span className="font-semibold text-gray-900 text-sm">
                                 Total: Bs {getItemSubtotal(item)}

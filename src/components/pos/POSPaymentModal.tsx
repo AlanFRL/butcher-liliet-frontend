@@ -52,10 +52,18 @@ export const POSPaymentModal: React.FC<POSPaymentModalProps> = ({
           <h3 className="text-sm font-semibold text-gray-700 mb-3">Resumen de Venta</h3>
           <div className="space-y-2">
             {cartItems.map((item) => {
-              // Usar effectiveUnitPrice si existe (precio real de balanza o con descuento manual)
-              const displayUnitPrice = item.effectiveUnitPrice || item.unitPrice;
-              const itemSubtotalBeforeDiscount = Math.round(item.qty * item.unitPrice); // Precio esperado (sistema)
-              const itemActualSubtotal = Math.round(item.qty * displayUnitPrice); // Precio real
+              // Diferenciar descuento de sobrecarga:
+              // DESCUENTO: effectiveUnitPrice < unitPrice → Mostrar precio sistema + descuento separado
+              // SOBRECARGA: effectiveUnitPrice > unitPrice → Mostrar precio efectivo (sin descuento)
+              const hasEffectivePrice = item.effectiveUnitPrice !== undefined;
+              const isDiscount = hasEffectivePrice && item.effectiveUnitPrice! < item.unitPrice;
+              
+              // Para DESCUENTOS: mostrar precio del sistema
+              // Para SOBRECARGAS: mostrar precio efectivo
+              const displayUnitPrice = isDiscount ? item.unitPrice : (item.effectiveUnitPrice || item.unitPrice);
+              
+              const itemSubtotalBeforeDiscount = Math.round(item.qty * item.unitPrice); // Precio sistema
+              const itemActualSubtotal = Math.round(item.qty * displayUnitPrice);
               const itemDiscount = item.discount || 0;
               
               return (
