@@ -169,7 +169,6 @@ export const ThermalReceiptSale: React.FC<ThermalReceiptSaleProps> = ({ data, pr
               const effectiveQuantity = item.actualWeight || item.quantity;
               const effectiveUnit = item.actualWeight ? 'kg' : item.unit;
               const itemSubtotalBeforeDiscount = Math.round(effectiveQuantity * item.price);
-              const itemFinalTotal = Math.round(itemSubtotalBeforeDiscount - itemDiscount);
               
               return (
                 <div key={index} className="mb-2">

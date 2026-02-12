@@ -365,7 +365,6 @@ const SaleDetailModal: React.FC<{
                       {sale.items?.map((item: any) => {
                         const qty = typeof item.quantity === 'string' ? parseFloat(item.quantity) : (item.qty || item.quantity);
                         const unitPrice = typeof item.unitPrice === 'string' ? parseFloat(item.unitPrice) : item.unitPrice;
-                        const itemTotal = typeof item.subtotal === 'string' ? parseFloat(item.subtotal) : (item.total || item.subtotal);
                         const itemDiscount = item.discount ? (typeof item.discount === 'string' ? parseFloat(item.discount) : item.discount) : 0;
                         const actualWeight = item.actualWeight ? (typeof item.actualWeight === 'string' ? parseFloat(item.actualWeight) : item.actualWeight) : null;
                         const itemSubtotalBeforeDiscount = Math.round(qty * unitPrice);

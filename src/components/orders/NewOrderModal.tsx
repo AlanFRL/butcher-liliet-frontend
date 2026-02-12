@@ -34,7 +34,8 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
   const [searchQuery, setSearchQuery] = useState('');
   const [globalDiscount, setGlobalDiscount] = useState(0); // descuento global
   // Estado local para los inputs de cantidad (permite edición libre)
-  const [qtyInputs, setQtyInputs] = useState<{ [key: string]: string }>({});
+  // CLAVE: usa index del item en selectedItems como key
+  const [qtyInputs, setQtyInputs] = useState<{ [itemIndex: number]: string }>({});
   // Estados para modal de descuento
   const [showDiscountModal, setShowDiscountModal] = useState(false);
   const [selectedItemForDiscount, setSelectedItemForDiscount] = useState<{
@@ -202,22 +203,38 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
       }
     }
 
-    // Para todos los productos, agregar directamente
-    const existing = selectedItems.find((item) => item.product.id === product.id);
-    if (existing) {
-      setSelectedItems(
-        selectedItems.map((item) =>
-          item.product.id === product.id
-            ? { ...item, qty: item.qty + (product.saleType === 'WEIGHT' ? 1 : 1) }
-            : item
-        )
-      );
+    // LÓGICA DIFERENCIADA:
+    // - Productos UNIT: Sumar cantidad si ya existe
+    // - Productos WEIGHT: SIEMPRE crear nueva fila (cada uno es independiente)
+    
+    if (product.saleType === 'UNIT') {
+      // UNIT: Buscar existente y sumar
+      const existing = selectedItems.find((item) => item.product.id === product.id);
+      if (existing) {
+        setSelectedItems(
+          selectedItems.map((item) =>
+            item.product.id === product.id
+              ? { ...item, qty: item.qty + 1 }
+              : item
+          )
+        );
+      } else {
+        setSelectedItems([
+          ...selectedItems,
+          {
+            product,
+            qty: 1,
+            notes: '',
+          },
+        ]);
+      }
     } else {
+      // WEIGHT: SIEMPRE crear nueva fila (no sumar)
       setSelectedItems([
         ...selectedItems,
         {
           product,
-          qty: product.saleType === 'WEIGHT' ? 1 : 1,
+          qty: 1,
           notes: '',
         },
       ]);
@@ -228,15 +245,15 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
     setSelectedItems(selectedItems.filter((_, i) => i !== index));
   };
 
-  const handleUpdateQty = (productId: string, qty: number) => {
+  const handleUpdateQty = (itemIndex: number, qty: number) => {
     // Permitir 0 temporalmente mientras escribe, pero no negativos
     if (qty < 0) {
       return;
     }
     
     setSelectedItems(
-      selectedItems.map((item) => {
-        if (item.product.id !== productId) return item;
+      selectedItems.map((item, index) => {
+        if (index !== itemIndex) return item;
         
         // Si hay descuento aplicado, recalcularlo proporcionalmente
         if (item.discount && item.discount > 0) {
@@ -261,22 +278,22 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
   };
   
   // Obtener valor del input (local o del item)
-  const getInputValue = (productId: string, qty: number, saleType: 'UNIT' | 'WEIGHT') => {
-    if (qtyInputs[productId] !== undefined) {
-      return qtyInputs[productId];
+  const getInputValue = (itemIndex: number, qty: number, saleType: 'UNIT' | 'WEIGHT') => {
+    if (qtyInputs[itemIndex] !== undefined) {
+      return qtyInputs[itemIndex];
     }
     return saleType === 'WEIGHT' ? qty.toFixed(3) : qty.toString();
   };
   
   // Manejar cambio en input
-  const handleQtyInputChange = (productId: string, value: string) => {
+  const handleQtyInputChange = (itemIndex: number, value: string) => {
     // Guardar en estado local
-    setQtyInputs(prev => ({ ...prev, [productId]: value }));
+    setQtyInputs(prev => ({ ...prev, [itemIndex]: value }));
   };
   
   // Manejar blur (cuando pierde foco)
-  const handleQtyInputBlur = (productId: string, saleType: 'UNIT' | 'WEIGHT') => {
-    const inputValue = qtyInputs[productId] || '';
+  const handleQtyInputBlur = (itemIndex: number, saleType: 'UNIT' | 'WEIGHT') => {
+    const inputValue = qtyInputs[itemIndex] || '';
     const normalizedValue = inputValue.replace(',', '.');
     
     let finalQty: number;
@@ -297,10 +314,10 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
     }
     
     // Actualizar item y limpiar estado local
-    handleUpdateQty(productId, finalQty);
+    handleUpdateQty(itemIndex, finalQty);
     setQtyInputs(prev => {
       const newInputs = { ...prev };
-      delete newInputs[productId];
+      delete newInputs[itemIndex];
       return newInputs;
     });
   };
@@ -557,7 +574,7 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
                                 <button
                                   onClick={() => {
                                     const newQty = item.qty - 1;
-                                    if (newQty > 0) handleUpdateQty(item.product.id, newQty);
+                                    if (newQty > 0) handleUpdateQty(index, newQty);
                                   }}
                                   className="w-6 h-6 bg-white border border-gray-300 rounded flex items-center justify-center hover:bg-gray-100"
                                 >
@@ -568,7 +585,7 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
                                   onClick={() => {
                                     const newQty = item.qty + 1;
                                     if (newQty <= (item.product.stockUnits || 0)) {
-                                      handleUpdateQty(item.product.id, newQty);
+                                      handleUpdateQty(index, newQty);
                                     } else {
                                       showToast('warning', `Stock insuficiente. Solo hay ${item.product.stockUnits} unidades`);
                                     }
@@ -617,9 +634,9 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
                             <div className="flex items-center gap-2 mb-0.5">
                               <input
                                 type="text"
-                                value={getInputValue(item.product.id, item.qty, item.product.saleType)}
-                                onChange={(e) => handleQtyInputChange(item.product.id, e.target.value)}
-                                onBlur={() => handleQtyInputBlur(item.product.id, item.product.saleType)}
+                                value={getInputValue(index, item.qty, item.product.saleType)}
+                                onChange={(e) => handleQtyInputChange(index, e.target.value)}
+                                onBlur={() => handleQtyInputBlur(index, item.product.saleType)}
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter') {
                                     e.currentTarget.blur();
