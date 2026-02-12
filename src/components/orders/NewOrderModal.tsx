@@ -29,6 +29,7 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
     discount?: number; // descuento por item
     barcode?: string; // código de barras (para productos escaneados)
     customUnitPrice?: number; // precio unitario real (si difiere del sistema)
+    scannedSubtotal?: number; // precio total del código de barras (para respetar redondeo de balanza)
   }>>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [globalDiscount, setGlobalDiscount] = useState(0); // descuento global
@@ -46,6 +47,20 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
 
   const { products } = useProductStore();
   const { createOrder } = useOrderStore();
+
+  // Helper: Calcular subtotal de un item respetando precio de balanza
+  const getItemSubtotal = (item: typeof selectedItems[0]) => {
+    // Si es un producto escaneado con precio de balanza, usar ese precio
+    if (item.scannedSubtotal !== undefined) {
+      return item.scannedSubtotal;
+    }
+    // Si tiene precio unitario personalizado, usarlo
+    if (item.customUnitPrice !== undefined) {
+      return Math.round(item.qty * item.customUnitPrice);
+    }
+    // Caso normal: usar precio del sistema
+    return Math.round(item.qty * item.product.price);
+  };
   
   // Scanner hook para Paso 2 (productos)
   const { scannerFeedback } = useScanner({
@@ -65,15 +80,35 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
       }
       
       // Siempre agregar como nuevo item (NO sumar)
+      // IMPORTANTE: Detectar descuento automático (igual que POS)
+      let discount = 0;
+      let customUnitPrice = metadata?.customUnitPrice;
+      
+      if (metadata?.subtotal !== undefined) {
+        // Producto escaneado con balanza
+        const expectedTotal = Math.round(qty * product.price);
+        const actualTotal = metadata.subtotal;
+        const priceDiff = expectedTotal - actualTotal;
+        
+        if (Math.abs(priceDiff) >= 1) {
+          // Hay diferencia: calcular precio efectivo (siempre entero)
+          customUnitPrice = Math.round(actualTotal / qty);
+          discount = priceDiff > 0 ? priceDiff : 0; // Solo si es descuento (no sobrecargo)
+          
+          console.log(`🏷️ Descuento auto-detectado: ${product.name}, Sistema: ${product.price} Bs/kg, Balanza: ${customUnitPrice} Bs/kg, Descuento: ${discount} Bs`);
+        }
+      }
+      
       setSelectedItems(prev => [
         ...prev,
         {
           product,
           qty,
           notes: '',
-          discount: 0,
+          discount, // Descuento auto-detectado o 0
           barcode: metadata?.barcode,
-          customUnitPrice: metadata?.customUnitPrice
+          customUnitPrice, // Precio unitario (siempre entero)
+          scannedSubtotal: metadata?.subtotal
         }
       ]);
     }
@@ -219,12 +254,18 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
     
     try {
       // Crear el pedido directamente - sin lógica de lotes
-      const orderItems = selectedItems.map((item) => ({
-        productId: item.product.id,
-        qty: item.qty,
-        discount: item.discount || 0, // Incluir descuento por item
-        notes: item.notes || undefined,
-      }));
+      const orderItems = selectedItems.map((item) => {
+        // IMPORTANTE: customUnitPrice tiene prioridad (puede venir de balanza O descuento manual)
+        const unitPrice = item.customUnitPrice || item.product.price;
+        
+        return {
+          productId: item.product.id,
+          qty: item.qty,
+          unitPrice: Math.round(unitPrice), // Precio unitario (siempre entero)
+          discount: item.discount || 0, // Descuento (si existe)
+          notes: item.notes || undefined,
+        };
+      });
 
       // Limpiar teléfono para que solo tenga caracteres válidos
       const cleanPhone = (customerPhone || '')?.replace(/[^0-9\s+\-()]/g, '').trim();
@@ -473,7 +514,7 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
                                 <span className="text-xs text-gray-500">{item.product.unit}</span>
                               </div>
                               <span className="font-semibold text-gray-900 text-sm">
-                                Bs {Math.round(item.qty * item.product.price)}
+                                Bs {getItemSubtotal(item)}
                               </span>
                             </div>
                             {item.discount && item.discount > 0 && (
@@ -484,7 +525,7 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
                                 </div>
                                 <div className="flex items-center justify-between text-xs font-semibold text-gray-900">
                                   <span>Total:</span>
-                                  <span>Bs {Math.round(item.qty * item.product.price - item.discount)}</span>
+                                  <span>Bs {Math.round(getItemSubtotal(item) - item.discount)}</span>
                                 </div>
                               </>
                             )}
@@ -518,10 +559,10 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
                             </div>
                             <div className="flex items-center justify-between mt-0.5">
                               <span className="text-xs text-gray-500">
-                                Bs {Math.round(item.product.price)}/{item.product.unit}
+                                Bs {item.customUnitPrice ? Math.round(item.customUnitPrice) : Math.round(item.product.price)}/{item.product.unit}
                               </span>
                               <span className="font-semibold text-gray-900 text-sm">
-                                Total: Bs {Math.round(item.qty * item.product.price)}
+                                Total: Bs {getItemSubtotal(item)}
                               </span>
                             </div>
                             {item.discount && item.discount > 0 && (
@@ -532,7 +573,7 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
                                 </div>
                                 <div className="flex items-center justify-between text-xs font-semibold text-gray-900">
                                   <span>Total:</span>
-                                  <span>Bs {Math.round(item.qty * item.product.price - item.discount)}</span>
+                                  <span>Bs {Math.round(getItemSubtotal(item) - item.discount)}</span>
                                 </div>
                               </>
                             )}
@@ -556,10 +597,7 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-gray-600">Subtotal:</span>
                     <span className="font-semibold text-gray-900">
-                      Bs {Math.round(selectedItems.reduce((sum, item) => {
-                        const price = item.product.price;
-                        return sum + Math.round(item.qty * price);
-                      }, 0))}
+                      Bs {Math.round(selectedItems.reduce((sum, item) => sum + getItemSubtotal(item), 0))}
                     </span>
                   </div>
                   {selectedItems.some(item => item.discount && item.discount > 0) && (
@@ -741,9 +779,15 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
                 const expectedTotal = Math.round(item.qty * originalPrice);
                 const newDiscount = Math.round(expectedTotal - newTotal);
                 
+                // IMPORTANTE: Actualizar TANTO discount COMO customUnitPrice
                 setSelectedItems(selectedItems.map((i, idx) => 
                   idx === selectedItemForDiscount.index
-                    ? { ...i, discount: newDiscount }
+                    ? { 
+                        ...i, 
+                        customUnitPrice: Math.round(newUnitPrice), // Precio unitario (entero)
+                        discount: newDiscount,
+                        scannedSubtotal: undefined // Limpiar para que use customUnitPrice
+                      }
                     : i
                 ));
               }

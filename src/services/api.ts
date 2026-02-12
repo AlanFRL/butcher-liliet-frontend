@@ -980,6 +980,7 @@ export const ordersApi = {
       productId: string;
       batchId?: string;
       quantity: number;
+      unitPrice?: number; // Precio unitario (puede ser de balanza)
       discount?: number;
       notes?: string;
     }>;

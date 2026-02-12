@@ -82,12 +82,13 @@ export const useScanner = ({ isActive, onProductScanned }: UseScannerProps) => {
         const priceDiff = actualTotal - expectedTotal;
         
         // Si hay diferencia, calcular unitPrice real (validación silenciosa)
+        // IMPORTANTE: precio por kilo SIEMPRE es entero (redondear)
         let customUnitPrice: number | undefined = undefined;
         if (Math.abs(priceDiff) >= 1) {
-          customUnitPrice = actualTotal / scaleData.weightKg;
+          customUnitPrice = Math.round(actualTotal / scaleData.weightKg);
           
           // LOG INTERNO para auditoría (no mostrar al cliente)
-          console.log(`⚠️ [AUDIT] Precio balanza difiere. Producto: ${product.name}, Esperado: Bs ${expectedTotal}, Real: Bs ${actualTotal}, Diff: ${priceDiff > 0 ? '+' : ''}${priceDiff}`);
+          console.log(`⚠️ [AUDIT] Precio balanza difiere. Producto: ${product.name}, Esperado: Bs ${expectedTotal}, Real: Bs ${actualTotal}, Diff: ${priceDiff > 0 ? '+' : ''}${priceDiff}, Precio/kg: ${customUnitPrice} Bs/kg`);
         }
         
         const metadata: ScaleMetadata = {

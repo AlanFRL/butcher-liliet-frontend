@@ -974,9 +974,10 @@ export const useCartStore = create<CartState>((set, get) => ({
       };
 
       // Si hay descuento, calcular effectiveUnitPrice para mantenerlo al cambiar cantidad
+      // IMPORTANTE: effectiveUnitPrice siempre debe ser entero
       if (orderItem.discount && orderItem.discount > 0) {
         const subtotal = orderItem.qty * orderItem.unitPrice;
-        cartItem.effectiveUnitPrice = (subtotal - orderItem.discount) / orderItem.qty;
+        cartItem.effectiveUnitPrice = Math.round((subtotal - orderItem.discount) / orderItem.qty);
       }
 
       return cartItem;
@@ -1324,6 +1325,7 @@ export const useOrderStore = create<OrderState>((set, get) => ({
       const backendItems = data.items.map(item => ({
         productId: item.productId,
         quantity: Math.round(item.qty * 1000) / 1000, // Redondear a 3 decimales para peso
+        unitPrice: Math.round(item.unitPrice || 0), // Incluir precio unitario (puede venir de balanza)
         discount: Math.round(item.discount || 0), // Redondear descuento a entero
         notes: item.notes,
       }));
