@@ -579,21 +579,27 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
                                 </button>
                                 <span className="text-xs text-gray-500">{item.product.unit}</span>
                               </div>
-                              <span className="font-semibold text-gray-900 text-sm">
-                                Bs {getItemSubtotal(item)}
-                              </span>
+                              <div className="text-right">
+                                {(item.discount || 0) > 0 ? (
+                                  <>
+                                    <p className="text-xs text-gray-400 line-through">
+                                      Bs {Math.round(getItemSubtotal(item))}
+                                    </p>
+                                    <p className="text-sm font-bold text-primary-700">
+                                      Bs {Math.round(getItemSubtotal(item) - (item.discount || 0))}
+                                    </p>
+                                  </>
+                                ) : (
+                                  <p className="text-sm font-bold text-primary-700">
+                                    Bs {Math.round(getItemSubtotal(item))}
+                                  </p>
+                                )}
+                              </div>
                             </div>
                             {item.discount && item.discount > 0 && (
-                              <>
-                                <div className="flex items-center justify-between text-xs text-green-600">
-                                  <span>Descuento:</span>
-                                  <span>-Bs {Math.round(item.discount)}</span>
-                                </div>
-                                <div className="flex items-center justify-between text-xs font-semibold text-gray-900">
-                                  <span>Total:</span>
-                                  <span>Bs {Math.round(getItemSubtotal(item) - item.discount)}</span>
-                                </div>
-                              </>
+                              <div className="flex items-center justify-end text-xs text-green-600 mt-1">
+                                <span>Descuento: -Bs {Math.round(item.discount)}</span>
+                              </div>
                             )}
                             <div className="flex items-center justify-between mt-0.5">
                               <button
@@ -633,21 +639,27 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
                                   return `Bs ${Math.round(displayPrice)}/${item.product.unit}`;
                                 })()}
                               </span>
-                              <span className="font-semibold text-gray-900 text-sm">
-                                Total: Bs {getItemSubtotal(item)}
-                              </span>
+                              <div className="text-right">
+                                {(item.discount || 0) > 0 ? (
+                                  <>
+                                    <p className="text-xs text-gray-400 line-through">
+                                      Bs {Math.round(getItemSubtotal(item))}
+                                    </p>
+                                    <p className="text-sm font-bold text-primary-700">
+                                      Bs {Math.round(getItemSubtotal(item) - (item.discount || 0))}
+                                    </p>
+                                  </>
+                                ) : (
+                                  <p className="text-sm font-bold text-primary-700">
+                                    Bs {Math.round(getItemSubtotal(item))}
+                                  </p>
+                                )}
+                              </div>
                             </div>
                             {item.discount && item.discount > 0 && (
-                              <>
-                                <div className="flex items-center justify-between text-xs text-green-600">
-                                  <span>Descuento:</span>
-                                  <span>-Bs {Math.round(item.discount)}</span>
-                                </div>
-                                <div className="flex items-center justify-between text-xs font-semibold text-gray-900">
-                                  <span>Total:</span>
-                                  <span>Bs {Math.round(getItemSubtotal(item) - item.discount)}</span>
-                                </div>
-                              </>
+                              <div className="flex items-center justify-end text-xs text-green-600 mt-1">
+                                <span>Descuento: -Bs {Math.round(item.discount)}</span>
+                              </div>
                             )}
                             <div className="flex items-center justify-between mt-0.5">
                               <button

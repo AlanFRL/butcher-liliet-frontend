@@ -1041,15 +1041,25 @@ export const useCartStore = create<CartState>((set, get) => ({
   },
   
   getCartSubtotal: () => {
-    // Para productos escaneados, usar item.total
-    // Para productos manuales, calcular qty × unitPrice
+    // IMPORTANTE: Subtotal siempre es ANTES de descuentos
+    // Así el flujo es: Subtotal - Descuentos = Total
     return get().cartItems.reduce((sum, item) => {
-      if (item.scannedBarcode) {
-        // Producto escaneado: usar el total guardado (ya incluye precio de balanza)
-        return sum + item.total;
+      const hasEffectivePrice = item.effectiveUnitPrice !== undefined;
+      
+      if (hasEffectivePrice) {
+        const isDiscount = item.effectiveUnitPrice < item.unitPrice;
+        
+        if (isDiscount) {
+          // DESCUENTO: usar precio sistema (el descuento se resta después)
+          return sum + Math.round(item.qty * item.unitPrice);
+        } else {
+          // SOBRECARGA: usar precio efectivo (no hay descuento que restar)
+          return sum + Math.round(item.qty * item.effectiveUnitPrice);
+        }
       }
-      // Producto manual: calcular con precio del sistema
-      return sum + (item.qty * item.unitPrice);
+      
+      // Sin precio efectivo: usar precio normal
+      return sum + Math.round(item.qty * item.unitPrice);
     }, 0);
   },
   
