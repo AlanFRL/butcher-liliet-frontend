@@ -338,14 +338,12 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
     try {
       // Crear el pedido directamente - sin lógica de lotes
       const orderItems = selectedItems.map((item) => {
-        // IMPORTANTE: customUnitPrice tiene prioridad (puede venir de balanza O descuento manual)
-        const unitPrice = item.customUnitPrice || item.product.price;
-        
+        // IMPORTANTE: Backend calcula precio automáticamente desde producto
+        // Solo enviamos descuento para ajustar (incluyendo diferencias de balanza)
         return {
           productId: item.product.id,
           qty: item.qty,
-          unitPrice: Math.round(unitPrice), // Precio unitario (siempre entero)
-          discount: item.discount || 0, // Descuento (si existe)
+          discount: item.discount || 0, // Descuento (incluye ajustes de balanza)
           notes: item.notes || undefined,
         };
       });

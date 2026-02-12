@@ -993,6 +993,9 @@ export const useCartStore = create<CartState>((set, get) => ({
     const cartItems: CartItem[] = order.items.map((orderItem) => {
       const product = productState.products.find(p => p.id === orderItem.productId);
       
+      // Fallback: if unitPrice not in response, use current product price
+      const unitPrice = orderItem.unitPrice ?? product?.price ?? 0;
+      
       // Si el producto ya no existe, crear uno temporal con los datos guardados
       const productData: Product = product ? {
         ...product,
@@ -1005,7 +1008,7 @@ export const useCartStore = create<CartState>((set, get) => ({
         barcodeType: 'NONE',
         saleType: orderItem.saleType,
         unit: orderItem.unit,
-        price: orderItem.unitPrice,
+        price: unitPrice,
         taxRate: 0,
         isActive: false, // Marcado como inactivo si ya no existe
         isFavorite: false,
@@ -1018,16 +1021,16 @@ export const useCartStore = create<CartState>((set, get) => ({
         saleType: orderItem.saleType,
         unit: orderItem.unit,
         qty: orderItem.qty,
-        unitPrice: orderItem.unitPrice,
+        unitPrice,
         discount: orderItem.discount || 0, // Cargar descuento del pedido
-        total: Math.round(orderItem.qty * orderItem.unitPrice - (orderItem.discount || 0)),
+        total: Math.round(orderItem.qty * unitPrice - (orderItem.discount || 0)),
         product: productData,
       };
 
       // Si hay descuento, calcular effectiveUnitPrice para mantenerlo al cambiar cantidad
       // IMPORTANTE: effectiveUnitPrice siempre debe ser entero
       if (orderItem.discount && orderItem.discount > 0) {
-        const subtotal = orderItem.qty * orderItem.unitPrice;
+        const subtotal = orderItem.qty * unitPrice;
         cartItem.effectiveUnitPrice = Math.round((subtotal - orderItem.discount) / orderItem.qty);
       }
 
@@ -1399,11 +1402,11 @@ export const useOrderStore = create<OrderState>((set, get) => ({
 
       // Map frontend items to backend format
       // IMPORTANTE: Redondear valores igual que en POS para evitar decimales inconsistentes
+      // NOTA: Backend NO acepta unitPrice en pedidos, solo en ventas
       const backendItems = data.items.map(item => ({
         productId: item.productId,
         quantity: Math.round(item.qty * 1000) / 1000, // Redondear a 3 decimales para peso
-        unitPrice: Math.round(item.unitPrice || 0), // Incluir precio unitario (puede venir de balanza)
-        discount: Math.round(item.discount || 0), // Redondear descuento a entero
+        discount: Math.round(item.discount || 0), // Descuento (incluye ajustes de balanza)
         notes: item.notes,
       }));
 
