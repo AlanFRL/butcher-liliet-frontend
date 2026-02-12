@@ -23,6 +23,9 @@ export const InventoryPage: React.FC = () => {
 
   const handleStockAdjustment = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (isLoading) return;
+    
     setIsLoading(true);
 
     try {
@@ -35,7 +38,6 @@ export const InventoryPage: React.FC = () => {
       const newStock = (product.stockUnits || 0) + adjustment;
       if (newStock < 0) {
         alert('El stock no puede ser negativo');
-        setIsLoading(false);
         return;
       }
 
@@ -285,14 +287,15 @@ export const InventoryPage: React.FC = () => {
                         setShowStockModal(false);
                         resetStockForm();
                       }}
-                      className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300"
+                      disabled={isLoading}
+                      className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Cancelar
                     </button>
                     <button
                       type="submit"
                       disabled={isLoading}
-                      className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                      className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isLoading ? 'Guardando...' : 'Guardar'}
                     </button>

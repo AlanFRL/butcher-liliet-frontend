@@ -17,6 +17,8 @@ export const ProductsPage: React.FC = () => {
   const [isPrinting, setIsPrinting] = useState(false);
   const [showDiscountModal, setShowDiscountModal] = useState(false);
   const [discountProduct, setDiscountProduct] = useState<Product | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
   const { showToast, ToastComponent } = useToast();
   
   const { products, categories, addProduct, updateProduct, toggleProductFavorite, loadProducts, loadCategories, isLoading } = useProductStore();
@@ -77,6 +79,9 @@ export const ProductsPage: React.FC = () => {
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (isSubmitting) return;
+    
     const errors: {[key: string]: string} = {};
     
     // Validar nombre
@@ -163,6 +168,7 @@ export const ProductsPage: React.FC = () => {
     // Determinar unidad automáticamente
     const unit = formData.saleType === 'WEIGHT' ? 'kg' : 'unidad';
     
+    setIsSubmitting(true);
     try {
       if (editingProduct) {
         await updateProduct(editingProduct.id, {
@@ -210,14 +216,19 @@ export const ProductsPage: React.FC = () => {
       }
       
       showToast('error', errorMessage);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleDelete = async (product: Product) => {
+    if (deletingProductId) return;
+    
     if (!confirm(`¿Estás seguro de eliminar "${product.name}"? Esta acción no se puede deshacer.`)) {
       return;
     }
 
+    setDeletingProductId(product.id);
     try {
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
       const response = await fetch(`${API_BASE_URL}/products/${product.id}`, {
@@ -237,6 +248,8 @@ export const ProductsPage: React.FC = () => {
     } catch (error) {
       console.error('Error deleting product:', error);
       showToast('error', 'Error al eliminar el producto');
+    } finally {
+      setDeletingProductId(null);
     }
   };
 
@@ -554,7 +567,8 @@ export const ProductsPage: React.FC = () => {
                           </button>
                           <button
                             onClick={() => handleDelete(product)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                            disabled={deletingProductId === product.id}
+                            className={`p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all ${deletingProductId === product.id ? 'opacity-50 cursor-not-allowed' : ''}`}
                             title="Eliminar"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -605,23 +619,22 @@ export const ProductsPage: React.FC = () => {
             )}
             
             {/* Barcode Type */}
-            {!editingProduct && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  ¿Cómo se identifica? *
-                </label>
-                <select
-                  value={formData.barcodeType}
-                  onChange={(e) => setFormData({ ...formData, barcodeType: e.target.value as any, barcode: '' })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  required
-                >
-                  <option value="STANDARD">Código del proveedor (productos empacados)</option>
-                  <option value="WEIGHT_EMBEDDED">Código de balanza (carnes pesadas)</option>
-                  <option value="NONE">Sin código de barras</option>
-                </select>
-              </div>
-            )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                ¿Cómo se identifica? *
+              </label>
+              <select
+                value={formData.barcodeType}
+                onChange={(e) => setFormData({ ...formData, barcodeType: e.target.value as any, barcode: '' })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                disabled={isSubmitting}
+                required
+              >
+                <option value="STANDARD">Código del proveedor (productos empacados)</option>
+                <option value="WEIGHT_EMBEDDED">Código de balanza (carnes pesadas)</option>
+                <option value="NONE">Sin código de barras</option>
+              </select>
+            </div>
           </div>
           
           {/* Barcode Input - Solo mostrar si NO es NONE */}
@@ -750,11 +763,12 @@ export const ProductsPage: React.FC = () => {
               variant="outline"
               size="lg"
               className="flex-1"
+              disabled={isSubmitting}
             >
               Cancelar
             </Button>
-            <Button type="submit" variant="primary" size="lg" className="flex-1">
-              {editingProduct ? 'Guardar' : 'Crear'}
+            <Button type="submit" variant="primary" size="lg" className="flex-1" disabled={isSubmitting}>
+              {isSubmitting ? (editingProduct ? 'Guardando...' : 'Creando...') : (editingProduct ? 'Guardar' : 'Crear')}
             </Button>
           </div>
         </form>

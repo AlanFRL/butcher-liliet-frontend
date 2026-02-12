@@ -8,6 +8,8 @@ export default function CustomersPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<CustomerResponse | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deletingCustomerId, setDeletingCustomerId] = useState<string | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -81,6 +83,8 @@ export default function CustomersPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (isSubmitting) return;
+
     // Validate: at least name or company must be provided
     if (!formData.name.trim() && !formData.company.trim()) {
       alert('Debe proporcionar al menos un nombre o empresa');
@@ -96,6 +100,7 @@ export default function CustomersPage() {
       }
     }
 
+    setIsSubmitting(true);
     try {
       // Prepare data: remove empty email to avoid backend validation error
       const dataToSend = { ...formData };
@@ -116,21 +121,28 @@ export default function CustomersPage() {
     } catch (error: any) {
       console.error('Error saving customer:', error);
       alert(error.message || 'Error al guardar cliente');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleDelete = async (customer: CustomerResponse) => {
+    if (deletingCustomerId) return;
+    
     const displayName = customer.company || customer.name || 'este cliente';
     if (!confirm(`¿Está seguro que desea eliminar a ${displayName}?`)) {
       return;
     }
 
+    setDeletingCustomerId(customer.id);
     try {
       await customersApi.delete(customer.id);
       loadCustomers(searchQuery);
     } catch (error: any) {
       console.error('Error deleting customer:', error);
       alert(error.message || 'Error al eliminar cliente. Puede que tenga pedidos o ventas asociadas.');
+    } finally {
+      setDeletingCustomerId(null);
     }
   };
 
@@ -206,7 +218,8 @@ export default function CustomersPage() {
                   </button>
                   <button
                     onClick={() => handleDelete(customer)}
-                    className="p-1 text-red-600 hover:bg-red-50 rounded"
+                    disabled={deletingCustomerId === customer.id}
+                    className={`p-1 text-red-600 hover:bg-red-50 rounded ${deletingCustomerId === customer.id ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     <Trash2 size={16} />
                   </button>
@@ -346,15 +359,17 @@ export default function CustomersPage() {
                   <button
                     type="button"
                     onClick={handleCloseModal}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                    disabled={isSubmitting}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    disabled={isSubmitting}
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {editingCustomer ? 'Guardar Cambios' : 'Crear Cliente'}
+                    {isSubmitting ? (editingCustomer ? 'Guardando...' : 'Creando...') : (editingCustomer ? 'Guardar Cambios' : 'Crear Cliente')}
                   </button>
                 </div>
               </form>
