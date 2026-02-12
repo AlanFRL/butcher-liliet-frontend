@@ -14,6 +14,7 @@ interface POSPaymentModalProps {
   change: number;
   cashPaidNum: number;
   canCompleteSale: boolean;
+  isProcessing?: boolean;
   onClose: () => void;
   onSetGlobalDiscount: (value: number) => void;
   onSetPaymentMethod: (method: 'CASH' | 'TRANSFER' | 'CARD') => void;
@@ -33,6 +34,7 @@ export const POSPaymentModal: React.FC<POSPaymentModalProps> = ({
   change,
   cashPaidNum,
   canCompleteSale,
+  isProcessing = false,
   onClose,
   onSetGlobalDiscount,
   onSetPaymentMethod,
@@ -231,12 +233,12 @@ export const POSPaymentModal: React.FC<POSPaymentModalProps> = ({
           </Button>
           <Button
             onClick={onConfirm}
-            disabled={!canCompleteSale}
+            disabled={!canCompleteSale || isProcessing}
             variant="success"
             size="lg"
             className="flex-1"
           >
-            Confirmar Venta
+            {isProcessing ? 'Procesando...' : 'Confirmar Venta'}
           </Button>
         </div>
       </div>

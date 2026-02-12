@@ -78,6 +78,7 @@ interface ProductState {
 interface CartState {
   cartItems: CartItem[];
   globalDiscount: number; // Descuento adicional sobre el subtotal
+  orderCustomerId: string | null; // ID del cliente asociado al pedido cargado
   addToCart: (product: Product, qty: number, scannedData?: { barcode: string; subtotal: number }) => void;
   updateCartItem: (itemId: string, qty: number) => void;
   setItemDiscount: (itemId: string, discount: number) => void;
@@ -745,6 +746,7 @@ export const useProductStore = create<ProductState>((set, get) => ({
 export const useCartStore = create<CartState>((set, get) => ({
   cartItems: [],
   globalDiscount: 0,
+  orderCustomerId: null,
   
   addToCart: (product, qty, scannedData) => {
     const { cartItems } = get();
@@ -984,6 +986,7 @@ export const useCartStore = create<CartState>((set, get) => ({
   
   clearCart: () => {
     set({ cartItems: [], globalDiscount: 0 });
+    // orderCustomerId se mantiene para que el cliente persista al limpiar
   },
   
   loadOrderToCart: (order) => {
@@ -1039,7 +1042,8 @@ export const useCartStore = create<CartState>((set, get) => ({
     
     set({ 
       cartItems,
-      globalDiscount: order.discount || 0 // Cargar descuento global del pedido
+      globalDiscount: order.discount || 0, // Cargar descuento global del pedido
+      orderCustomerId: order.customerId || null // Cargar ID del cliente del pedido
     });
   },
   

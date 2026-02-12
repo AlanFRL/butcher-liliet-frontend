@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../components/ui';
-import { useProductStore, useCartStore, useCashStore, useSalesStore, useAuthStore, useOrderStore } from '../store';
+import { useProductStore, useCartStore, useCashStore, useSalesStore, useAuthStore } from '../store';
 import { PrintableSaleReceipt } from '../components/PrintableSaleReceipt';
 import { ItemDiscountModal } from '../components/ItemDiscountModal';
 import { POSProductList } from '../components/pos/POSProductList';
@@ -24,15 +24,15 @@ export const POSPage: React.FC = () => {
   const [showDiscountModal, setShowDiscountModal] = useState(false);
   const [selectedItemForDiscount, setSelectedItemForDiscount] = useState<CartItem | null>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerResponse | null>(null);
+  const [isProcessingSale, setIsProcessingSale] = useState(false);
   
   const navigate = useNavigate();
   const location = useLocation();
   const { currentSession } = useCashStore();
   const { currentUser } = useAuthStore();
   const { products, categories, getFavoriteProducts, toggleProductFavorite } = useProductStore();
-  const { orders } = useOrderStore();
   const cartStore = useCartStore();
-  const { cartItems, addToCart, updateCartItem, removeFromCart, clearCart, getCartTotal, getCartSubtotal, getItemDiscountsTotal, setItemUnitPrice, globalDiscount, setGlobalDiscount } = cartStore;
+  const { cartItems, addToCart, updateCartItem, removeFromCart, clearCart, getCartTotal, getCartSubtotal, getItemDiscountsTotal, setItemUnitPrice, globalDiscount, setGlobalDiscount, orderCustomerId } = cartStore;
   const { completeSale } = useSalesStore();
   
   const orderId = location.state?.orderId as string | undefined;
@@ -42,26 +42,27 @@ export const POSPage: React.FC = () => {
     isActive: !showPaymentModal && !showSuccessModal && !showDiscountModal
   });
   
-  // Heredar customer del order si viene desde pedidos
+  // Cargar customer del pedido (del store, persiste después de refresh)
   useEffect(() => {
     const loadOrderCustomer = async () => {
-      if (orderId && orders.length > 0) {
-        const order = orders.find(o => o.id === orderId);
-        if (order && order.customerId) {
-          console.log('📦 Order has customerId, loading customer...', order.customerId);
-          try {
-            const customer = await customersApi.getById(order.customerId);
-            setSelectedCustomer(customer);
-            console.log('✅ Customer loaded from order:', customer.company || customer.name);
-          } catch (error) {
-            console.error('❌ Error loading customer from order:', error);
-          }
+      if (orderCustomerId) {
+        console.log('📦 Loading customer from cart store:', orderCustomerId);
+        try {
+          const customer = await customersApi.getById(orderCustomerId);
+          setSelectedCustomer(customer);
+          console.log('✅ Customer loaded:', customer.company || customer.name);
+        } catch (error) {
+          console.error('❌ Error loading customer:', error);
         }
+      } else {
+        // Si orderCustomerId es null, limpiar el cliente seleccionado
+        console.log('🧹 Clearing selected customer (orderCustomerId is null)');
+        setSelectedCustomer(null);
       }
     };
     
     loadOrderCustomer();
-  }, [orderId, orders]);
+  }, [orderCustomerId]);
   
   // Verificar si hay caja abierta
   if (!currentSession || currentSession.status !== 'OPEN') {
@@ -167,14 +168,18 @@ export const POSPage: React.FC = () => {
   };
   
   const handleCompleteSale = async () => {
-    const sale = await completeSale(
-      paymentMethod,
-      paymentMethod === 'CASH' ? Math.round(parseFloat(cashPaid)) : undefined,
-      orderId,
-      selectedCustomer?.id
-    );
+    if (isProcessingSale) return; // Prevenir doble click
     
-    if (sale) {
+    setIsProcessingSale(true);
+    try {
+      const sale = await completeSale(
+        paymentMethod,
+        paymentMethod === 'CASH' ? Math.round(parseFloat(cashPaid)) : undefined,
+        orderId,
+        selectedCustomer?.id
+      );
+      
+      if (sale) {
       console.log('✅ [POS] Sale completed, opening success modal:', {
         saleId: sale.id.slice(-8),
         itemsCount: sale.items.length,
@@ -185,12 +190,15 @@ export const POSPage: React.FC = () => {
       setShowSuccessModal(true);
       setCashPaid('');
       
-      if (orderId) {
-        setTimeout(() => {
-          setShowSuccessModal(false);
-          navigate('/orders', { replace: true });
-        }, 2000);
+        if (orderId) {
+          setTimeout(() => {
+            setShowSuccessModal(false);
+            navigate('/orders', { replace: true });
+          }, 2000);
+        }
       }
+    } finally {
+      setIsProcessingSale(false);
     }
   };
   
@@ -363,6 +371,7 @@ export const POSPage: React.FC = () => {
         change={change}
         cashPaidNum={cashPaidNum}
         canCompleteSale={canCompleteSale}
+        isProcessing={isProcessingSale}
         onClose={() => setShowPaymentModal(false)}
         onSetGlobalDiscount={setGlobalDiscount}
         onSetPaymentMethod={setPaymentMethod}

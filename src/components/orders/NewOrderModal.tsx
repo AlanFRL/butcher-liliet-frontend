@@ -22,6 +22,7 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
   const [deliveryDate, setDeliveryDate] = useState('');
   const [deliveryTime, setDeliveryTime] = useState('');
   const [notes, setNotes] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Array<{
     product: Product;
     qty: number;
@@ -323,6 +324,8 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
   };
 
   const handleSubmit = async () => {
+    if (isSubmitting) return; // Prevenir doble click
+    
     if (!selectedCustomer || !deliveryDate || !deliveryTime || selectedItems.length === 0) {
       showToast('warning', 'Por favor completa todos los campos requeridos');
       return;
@@ -335,6 +338,7 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
       return;
     }
     
+    setIsSubmitting(true);
     try {
       // Crear el pedido directamente - sin lógica de lotes
       const orderItems = selectedItems.map((item) => {
@@ -371,6 +375,8 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
     } catch (error) {
       console.error('❌ Error en handleSubmit:', error);
       showToast('error', 'Error al crear el pedido. Por favor intenta nuevamente.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
   
@@ -838,11 +844,11 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
             </div>
 
             <div className="flex gap-3">
-              <Button onClick={() => setStep('products')} variant="outline" className="flex-1">
+              <Button onClick={() => setStep('products')} variant="outline" className="flex-1" disabled={isSubmitting}>
                 Atrás
               </Button>
-              <Button onClick={handleSubmit} variant="primary" className="flex-1">
-                Crear Pedido
+              <Button onClick={handleSubmit} variant="primary" className="flex-1" disabled={isSubmitting}>
+                {isSubmitting ? 'Creando...' : 'Crear Pedido'}
               </Button>
             </div>
           </div>

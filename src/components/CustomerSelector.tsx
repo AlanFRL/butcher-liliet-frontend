@@ -22,6 +22,7 @@ export default function CustomerSelector({
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showQuickCreateModal, setShowQuickCreateModal] = useState(false);
+  const [isCreatingCustomer, setIsCreatingCustomer] = useState(false);
   const [quickFormData, setQuickFormData] = useState({
     name: '',
     company: '',
@@ -68,11 +69,14 @@ export default function CustomerSelector({
   const handleQuickCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (isCreatingCustomer) return; // Prevenir doble click
+    
     if (!quickFormData.name.trim() && !quickFormData.company.trim()) {
       alert('Debe proporcionar al menos un nombre o empresa');
       return;
     }
 
+    setIsCreatingCustomer(true);
     try {
       const newCustomer = await customersApi.create(quickFormData);
       onChange(newCustomer);
@@ -83,6 +87,8 @@ export default function CustomerSelector({
     } catch (error: any) {
       console.error('Error creating customer:', error);
       alert(error.message || 'Error al crear cliente');
+    } finally {
+      setIsCreatingCustomer(false);
     }
   };
 
@@ -290,15 +296,17 @@ export default function CustomerSelector({
                       setShowQuickCreateModal(false);
                       setQuickFormData({ name: '', company: '', phone: '' });
                     }}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                    disabled={isCreatingCustomer}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    disabled={isCreatingCustomer}
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Crear Cliente
+                    {isCreatingCustomer ? 'Creando...' : 'Crear Cliente'}
                   </button>
                 </div>
               </form>

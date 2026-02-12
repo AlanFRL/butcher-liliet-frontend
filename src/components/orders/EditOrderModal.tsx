@@ -12,6 +12,7 @@ interface EditOrderModalProps {
 }
 
 export const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, onClose, showToast }) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [customerName, setCustomerName] = useState(order.customerName);
   const [customerPhone, setCustomerPhone] = useState(order.customerPhone);
   const [deliveryDate, setDeliveryDate] = useState(order.deliveryDate);
@@ -221,6 +222,8 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, onClose, 
   };
 
   const handleSubmit = async () => {
+    if (isSubmitting) return; // Prevenir doble click
+    
     if (!customerName.trim()) {
       showToast('warning', 'Ingresa el nombre del cliente');
       return;
@@ -246,6 +249,7 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, onClose, 
       return;
     }
 
+    setIsSubmitting(true);
     // Actualizar pedido con nueva firma (async)
     const orderItems = selectedItems.map((item) => ({
       productId: item.product.id,
@@ -254,21 +258,25 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, onClose, 
       notes: item.notes || undefined,
     }));
 
-    const result = await updateOrder(order.id, {
-      customerName: customerName.trim(),
-      customerPhone: customerPhone.trim(),
-      deliveryDate,
-      deliveryTime,
-      discount: globalDiscount, // Incluir descuento global
-      notes: notes.trim() || undefined,
-      items: orderItems as any,
-    });
+    try {
+      const result = await updateOrder(order.id, {
+        customerName: customerName.trim(),
+        customerPhone: customerPhone.trim(),
+        deliveryDate,
+        deliveryTime,
+        discount: globalDiscount, // Incluir descuento global
+        notes: notes.trim() || undefined,
+        items: orderItems as any,
+      });
 
-    if (result) {
-      showToast('success', 'Pedido actualizado correctamente');
-      onClose();
-    } else {
-      showToast('error', 'Error al actualizar el pedido. Por favor intenta nuevamente.');
+      if (result) {
+        showToast('success', 'Pedido actualizado correctamente');
+        onClose();
+      } else {
+        showToast('error', 'Error al actualizar el pedido. Por favor intenta nuevamente.');
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -576,11 +584,11 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, onClose, 
             </div>
 
             <div className="flex gap-3">
-              <Button onClick={() => setStep('products')} variant="outline" className="flex-1">
+              <Button onClick={() => setStep('products')} variant="outline" className="flex-1" disabled={isSubmitting}>
                 Atrás
               </Button>
-              <Button onClick={handleSubmit} variant="primary" className="flex-1">
-                Guardar Cambios
+              <Button onClick={handleSubmit} variant="primary" className="flex-1" disabled={isSubmitting}>
+                {isSubmitting ? 'Guardando...' : 'Guardar Cambios'}
               </Button>
             </div>
           </div>
