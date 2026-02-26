@@ -5,7 +5,6 @@ import { useColorScheme } from './hooks/useColorScheme';
 import { Navbar } from './components/layout/Navbar';
 import { LoginPage } from './pages/LoginPage';
 import { TerminalSelectPage } from './pages/TerminalSelectPage';
-import { DashboardPage } from './pages/DashboardPage';
 import { POSPage } from './pages/POSPage';
 import { ProductsPage } from './pages/ProductsPage';
 import { InventoryPage } from './pages/InventoryPage';
@@ -97,17 +96,6 @@ function App() {
         />
         
         {/* Protected Routes */}
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <MainLayout>
-                <DashboardPage />
-              </MainLayout>
-            </ProtectedRoute>
-          }
-        />
-        
         <Route
           path="/pos"
           element={
@@ -221,8 +209,8 @@ function App() {
         {/* Redirect root to login */}
         <Route path="/" element={<Navigate to="/login" replace />} />
         
-        {/* 404 - Redirect to dashboard */}
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        {/* 404 - Redirect to cash */}
+        <Route path="*" element={<Navigate to="/cash" replace />} />
       </Routes>
     </BrowserRouter>
   );

@@ -115,7 +115,14 @@ export const CashPage: React.FC = () => {
                     Caja Abierta
                   </h2>
                   <p className="text-green-700">
-                    Sesión iniciada a las {new Date(currentSession.openedAt).toLocaleTimeString()}
+                    Sesión iniciada el {new Date(currentSession.openedAt).toLocaleDateString('es-BO', { 
+                      day: '2-digit', 
+                      month: '2-digit', 
+                      year: 'numeric' 
+                    })} a las {new Date(currentSession.openedAt).toLocaleTimeString('es-BO', {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
                   </p>
                 </div>
               </div>

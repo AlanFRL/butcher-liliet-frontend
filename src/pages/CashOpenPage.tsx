@@ -16,7 +16,7 @@ export const CashOpenPage: React.FC = () => {
   
   // Si ya hay caja abierta, redirigir
   if (currentSession?.status === 'OPEN') {
-    navigate('/dashboard');
+    navigate('/cash');
     return null;
   }
   
@@ -39,7 +39,7 @@ export const CashOpenPage: React.FC = () => {
     const success = await openCashSession(currentTerminal.id, amount, note);
     
     if (success) {
-      navigate('/dashboard');
+      navigate('/cash');
     }
   };
   
@@ -132,7 +132,7 @@ export const CashOpenPage: React.FC = () => {
           <div className="flex space-x-3 pt-2">
             <Button
               type="button"
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate('/cash')}
               variant="outline"
               size="lg"
               className="flex-1"

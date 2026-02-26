@@ -96,8 +96,8 @@ export const CashClosePage: React.FC = () => {
           <p className="text-yellow-700 mb-4">
             No puedes cerrar una caja que no está abierta
           </p>
-          <Button onClick={() => navigate('/dashboard')} variant="primary">
-            Volver al Dashboard
+          <Button onClick={() => navigate('/cash')} variant="primary">
+            Volver a Caja
           </Button>
         </div>
       </div>
@@ -444,7 +444,7 @@ export const CashClosePage: React.FC = () => {
         {/* Botones */}
         <div className="flex space-x-3 pt-5 border-t border-gray-200 mt-5">
           <Button
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate('/cash')}
             variant="outline"
             size="lg"
             className="flex-1"
@@ -598,7 +598,7 @@ export const CashClosePage: React.FC = () => {
                 ¡Cierre de Caja Exitoso!
               </h3>
               <button
-                onClick={() => { setShowReceipt(false); navigate('/dashboard'); }}
+                onClick={() => { setShowReceipt(false); navigate('/cash'); }}
                 className="text-gray-500 hover:text-gray-700"
               >
                 ✕
@@ -661,12 +661,12 @@ export const CashClosePage: React.FC = () => {
                 Imprimir
               </Button>
               <Button
-                onClick={() => { setShowReceipt(false); navigate('/dashboard'); }}
+                onClick={() => { setShowReceipt(false); navigate('/cash'); }}
                 variant="primary"
                 size="lg"
                 className="flex-1"
               >
-                Ir al Dashboard
+                Ir a Caja
               </Button>
             </div>
           </div>

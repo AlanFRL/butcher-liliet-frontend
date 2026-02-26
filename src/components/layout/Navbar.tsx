@@ -24,13 +24,12 @@ export const Navbar: React.FC<NavbarProps> = ({ onLogout }) => {
   const { currentUser } = useAuthStore();
   
   const navigation = [
-    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: ['ADMIN', 'MANAGER', 'CASHIER'] },
+    { name: 'Caja', path: '/cash', icon: DollarSign, roles: ['ADMIN', 'MANAGER', 'CASHIER'] },
     { name: 'POS', path: '/pos', icon: ShoppingCart, roles: ['ADMIN', 'MANAGER', 'CASHIER'] },
     { name: 'Pedidos', path: '/orders', icon: ClipboardList, roles: ['ADMIN', 'MANAGER', 'CASHIER'] },
     { name: 'Clientes', path: '/customers', icon: Users, roles: ['ADMIN', 'MANAGER', 'CASHIER'] },
     { name: 'Productos', path: '/products', icon: Package, roles: ['ADMIN', 'MANAGER', 'CASHIER'] },
     { name: 'Inventario', path: '/inventory', icon: Boxes, roles: ['ADMIN', 'MANAGER'] },
-    { name: 'Caja', path: '/cash', icon: DollarSign, roles: ['ADMIN', 'MANAGER', 'CASHIER'] },
     { name: 'Reportes', path: '/reports', icon: BarChart3, roles: ['ADMIN', 'MANAGER'] },
     { name: 'Configuración', path: '/settings', icon: Settings, roles: ['ADMIN', 'MANAGER', 'CASHIER'] },
   ];

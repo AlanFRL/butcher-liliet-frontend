@@ -82,7 +82,7 @@ export const TerminalSelectPage: React.FC = () => {
     const terminalData = terminals.find(t => t.id === selectedTerminal);
     if (terminalData) {
       setCurrentTerminal(terminalData);
-      navigate('/dashboard');
+      navigate('/cash');
     }
   };
 
