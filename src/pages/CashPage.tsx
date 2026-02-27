@@ -55,7 +55,9 @@ export const CashPage: React.FC = () => {
     .reduce((sum, m) => sum + m.amount, 0);
   
   // Usar expectedAmount del backend (ya calculado correctamente)
+  // Asegurar que todos los valores sean números válidos para .toFixed()
   const expectedCash = Number(currentSession?.expectedAmount ?? 0);
+  const openingAmount = Number(currentSession?.openingAmount ?? 0);
   
   const handleDeposit = async () => {
     setError('');
@@ -159,7 +161,7 @@ export const CashPage: React.FC = () => {
               <div className="bg-white rounded-lg p-4">
                 <p className="text-sm text-gray-600 mb-1">Monto Inicial</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  Bs {currentSession.openingAmount.toFixed(2)}
+                  Bs {openingAmount.toFixed(2)}
                 </p>
               </div>
               
@@ -328,7 +330,7 @@ export const CashPage: React.FC = () => {
                           movement.type === 'DEPOSIT' ? 'text-green-600' : 'text-red-600'
                         }
                       >
-                        {movement.type === 'DEPOSIT' ? '+' : '-'}Bs {movement.amount.toFixed(2)}
+                        {movement.type === 'DEPOSIT' ? '+' : '-'}Bs {Number(movement.amount || 0).toFixed(2)}
                       </span>
                     </td>
                   </tr>
