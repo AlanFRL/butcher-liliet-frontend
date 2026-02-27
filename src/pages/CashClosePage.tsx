@@ -208,14 +208,14 @@ export const CashClosePage: React.FC = () => {
               {/* Columna 1: Info Básica */}
               <div className="space-y-2">
                 <div>
-                  <p className="text-xs text-gray-500">Apertura</p>
-                  <p className="text-sm font-semibold text-gray-900">
+                  <p className="text-sm text-gray-500">Apertura</p>
+                  <p className="text-base font-semibold text-gray-900">
                     {new Date(currentSession.openedAt).toLocaleTimeString()}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500">Saldo Inicial</p>
-                  <p className="text-base font-bold text-gray-900">
+                  <p className="text-sm text-gray-500">Saldo Inicial</p>
+                  <p className="text-lg font-bold text-gray-900">
                     Bs {currentSession.openingAmount.toFixed(2)}
                   </p>
                 </div>
@@ -224,13 +224,13 @@ export const CashClosePage: React.FC = () => {
               {/* Columna 2: Ventas */}
               <div className="space-y-2 border-l border-gray-200 pl-4">
                 <div>
-                  <p className="text-xs text-gray-500">Total Ventas</p>
-                  <p className="text-base font-bold text-blue-600">
+                  <p className="text-sm text-gray-500">Total Ventas</p>
+                  <p className="text-lg font-bold text-blue-600">
                     Bs {totalSales.toFixed(2)}
                   </p>
-                  <p className="text-xs text-gray-400">{salesCount} tickets</p>
+                  <p className="text-sm text-gray-400">{salesCount} tickets</p>
                 </div>
-                <div className="flex gap-3 text-xs">
+                <div className="flex gap-3 text-sm">
                   <div>
                     <span className="text-gray-500">💵 Efectivo:</span>
                     <span className="font-semibold text-gray-900 ml-1">Bs {totalCashSales.toFixed(2)}</span>
@@ -244,11 +244,11 @@ export const CashClosePage: React.FC = () => {
 
               {/* Columna 3: Efectivo Esperado */}
               <div className="border-l border-gray-200 pl-4">
-                <p className="text-xs text-gray-500 mb-1">Efectivo Esperado en Caja</p>
-                <p className="text-2xl font-bold text-green-600 mb-1">
+                <p className="text-sm text-gray-500 mb-1">Efectivo Esperado en Caja</p>
+                <p className="text-3xl font-bold text-green-600 mb-1">
                   Bs {expectedCash.toFixed(2)}
                 </p>
-                <div className="text-xs text-gray-600 space-y-0.5">
+                <div className="text-sm text-gray-600 space-y-0.5">
                   <div className="flex justify-between">
                     <span>Inicial:</span>
                     <span className="font-medium">Bs {currentSession.openingAmount.toFixed(2)}</span>
@@ -274,7 +274,7 @@ export const CashClosePage: React.FC = () => {
             </div>
             
             {/* Nota informativa */}
-            <div className="bg-blue-50 border border-blue-200 rounded px-3 py-1.5 text-xs text-blue-700">
+            <div className="bg-blue-50 border border-blue-200 rounded px-3 py-2 text-sm text-blue-700">
               💡 El efectivo esperado NO incluye pagos por transferencia
             </div>
           </div>
@@ -284,18 +284,18 @@ export const CashClosePage: React.FC = () => {
         {/* Arqueo - Compacto */}
         {currentSession && (
         <div className="bg-white border border-gray-200 rounded-lg p-4">
-          <h2 className="text-base font-bold text-gray-900 mb-3">
+          <h2 className="text-lg font-bold text-gray-900 mb-4">
             Arqueo de Caja
           </h2>
           
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid md:grid-cols-3 gap-4 mb-4">
             {/* Ingreso del efectivo contado */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            <div className="md:col-span-2">
+              <label className="block text-base font-medium text-gray-700 mb-2">
                 Efectivo Contado <span className="text-red-500">*</span>
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-lg font-semibold">
                   Bs
                 </span>
                 <input
@@ -305,30 +305,30 @@ export const CashClosePage: React.FC = () => {
                   step="0.01"
                   min="0"
                   placeholder="0.00"
-                  className="w-full pl-12 pr-3 py-2.5 text-xl font-bold border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-center"
+                  className="w-full pl-14 pr-4 py-3 text-2xl font-bold border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-center"
                   required
                 />
               </div>
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1.5 text-sm text-gray-500">
                 Cuenta el efectivo físico en caja
               </p>
             </div>
             
             {/* Diferencia */}
             {countedCash && (
-              <div className={`rounded-lg p-3 border-2 ${
+              <div className={`rounded-lg p-4 border-2 ${
                 Math.abs(difference) < 0.01
                   ? 'bg-green-50 border-green-300'
                   : 'bg-red-50 border-red-300'
               }`}>
-                <p className="text-xs font-medium text-gray-600 mb-1">
+                <p className="text-sm font-medium text-gray-600 mb-1">
                   {Math.abs(difference) < 0.01
                     ? '✓ Cuadre Perfecto'
                     : difference > 0
                     ? '⚠️ Sobrante'
                     : '⚠️ Faltante'}
                 </p>
-                <p className={`text-2xl font-bold ${
+                <p className={`text-3xl font-bold ${
                   Math.abs(difference) < 0.01
                     ? 'text-green-700'
                     : difference > 0
@@ -337,33 +337,32 @@ export const CashClosePage: React.FC = () => {
                 }`}>
                   {difference >= 0 ? '+' : ''}Bs {difference.toFixed(2)}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">Diferencia</p>
+                <p className="text-sm text-gray-500 mt-1">Diferencia</p>
               </div>
             )}
           </div>
           
           {/* Observaciones */}
-          <div className="mt-3">
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Observaciones {Math.abs(difference) > 0.01 && <span className="text-red-500">*</span>}
+          <div>
+            <label className="block text-base font-medium text-gray-700 mb-2">
+              Observaciones {Math.abs(difference) > 0.01 && <span className="text-gray-500 text-sm">(Recomendado)</span>}
             </label>
             <textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              rows={2}
+              rows={3}
               placeholder="Explica cualquier diferencia o agrega comentarios..."
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
-              required={Math.abs(difference) > 0.01}
+              className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
             />
           </div>
           
           {/* Advertencias compactas */}
           {Math.abs(difference) > 0.01 && (
             <div className="mt-3 bg-yellow-50 border border-yellow-300 rounded-lg px-3 py-2 flex items-start">
-              <AlertCircle className="w-4 h-4 text-yellow-600 mt-0.5 mr-2 flex-shrink-0" />
+              <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5 mr-2 flex-shrink-0" />
               <div className="flex-1">
-                <p className="text-xs font-semibold text-yellow-900">
-                  Hay una diferencia de caja - debes explicar el motivo
+                <p className="text-sm font-semibold text-yellow-900">
+                  Hay una diferencia de caja ({difference >= 0 ? '+' : ''}Bs {difference.toFixed(2)})
                 </p>
               </div>
             </div>
@@ -398,7 +397,7 @@ export const CashClosePage: React.FC = () => {
           </Button>
           <Button
             onClick={() => setShowConfirm(true)}
-            disabled={!countedCash || (Math.abs(difference) > 0.01 && !note)}
+            disabled={!countedCash}
             variant="danger"
             size="md"
             className="flex-1"
@@ -496,12 +495,40 @@ export const CashClosePage: React.FC = () => {
       {showConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h3 className="text-xl font-bold text-gray-900 mb-3">
-              ¿Confirmar cierre de caja?
-            </h3>
-            <p className="text-gray-600 mb-6">
-              Una vez cerrada la caja, no podrás realizar más ventas en esta sesión.
-            </p>
+            <div className="flex items-center mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mr-3">
+                <AlertCircle className="w-6 h-6 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">
+                  Cerrar Caja
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Esta acción es definitiva
+                </p>
+              </div>
+            </div>
+            
+            <div className="bg-gray-50 rounded-lg p-4 mb-4">
+              <div className="flex justify-between mb-2">
+                <span className="text-sm text-gray-600">Efectivo contado:</span>
+                <span className="text-base font-bold">Bs {countedCashNum.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between mb-2">
+                <span className="text-sm text-gray-600">Esperado:</span>
+                <span className="text-base font-bold">Bs {expectedCash.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between pt-2 border-t">
+                <span className="text-sm font-semibold">Diferencia:</span>
+                <span className={`text-lg font-bold ${
+                  Math.abs(difference) < 0.01 ? 'text-green-600' :
+                  difference > 0 ? 'text-blue-600' : 'text-red-600'
+                }`}>
+                  {difference >= 0 ? '+' : ''}Bs {difference.toFixed(2)}
+                </span>
+              </div>
+            </div>
+            
             <div className="flex space-x-3">
               <Button
                 onClick={() => setShowConfirm(false)}
@@ -518,7 +545,7 @@ export const CashClosePage: React.FC = () => {
                 className="flex-1"
                 isLoading={isLoading}
               >
-                Sí, Cerrar
+                Confirmar Cierre
               </Button>
             </div>
           </div>
