@@ -44,6 +44,37 @@ export const POSPaymentModal: React.FC<POSPaymentModalProps> = ({
   // Calcular el máximo de descuento adicional: subtotal DESPUÉS de descuentos de items
   const maxAdditionalDiscount = Math.round(cartSubtotal - itemDiscountsTotal);
   
+  // Estado local para el input de descuento (permite borrado completo)
+  const [discountInput, setDiscountInput] = React.useState<string>('');
+  
+  // Sincronizar con el valor externo cuando cambia
+  React.useEffect(() => {
+    setDiscountInput(globalDiscount > 0 ? Math.round(globalDiscount).toString() : '');
+  }, [globalDiscount]);
+  
+  const handleDiscountChange = (value: string) => {
+    // Permitir solo números y string vacío
+    if (value === '' || /^\d+$/.test(value)) {
+      setDiscountInput(value);
+      // Actualizar el valor real (0 si está vacío)
+      const numValue = value === '' ? 0 : parseInt(value, 10);
+      onSetGlobalDiscount(Math.min(numValue, maxAdditionalDiscount));
+    }
+  };
+  
+  const handleDiscountBlur = () => {
+    // Al perder foco, normalizar: si está vacío, mostrar vacío (no 0)
+    // El 0 aparecerá solo si el usuario escribe 0 explícitamente
+    if (discountInput === '' || parseInt(discountInput, 10) === 0) {
+      setDiscountInput('');
+      onSetGlobalDiscount(0);
+    } else {
+      // Quitar ceros a la izquierda
+      const cleanValue = parseInt(discountInput, 10).toString();
+      setDiscountInput(cleanValue);
+    }
+  };
+  
   return (
     <Modal
       isOpen={isOpen}
@@ -112,17 +143,12 @@ export const POSPaymentModal: React.FC<POSPaymentModalProps> = ({
                 Bs
               </span>
               <input
-                type="number"
-                value={Math.round(globalDiscount)}
-                onChange={(e) => {
-                  const value = parseFloat(e.target.value) || 0;
-                  onSetGlobalDiscount(value);
-                }}
-                step="0.01"
-                min="0"
-                max={maxAdditionalDiscount}
+                type="text"
+                value={discountInput}
+                onChange={(e) => handleDiscountChange(e.target.value)}
+                onBlur={handleDiscountBlur}
                 className="w-full pl-10 pr-3 py-2 text-base font-bold border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="0.00"
+                placeholder="0"
               />
             </div>
             <p className="text-xs text-gray-500 mt-1">

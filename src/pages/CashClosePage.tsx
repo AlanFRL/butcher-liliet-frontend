@@ -320,9 +320,9 @@ export const CashClosePage: React.FC = () => {
               <textarea
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                rows={1}
                 placeholder="Explica cualquier diferencia o agrega comentarios..."
                 className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+                style={{ height: '68px' }}
               />
             </div>
           </div>

@@ -22,6 +22,12 @@ export const CashPage: React.FC = () => {
       )
     : [];
   
+  // Desglose por método de pago
+  const cashSales = sessionSales.filter(s => s.paymentMethod === 'CASH');
+  const transferSales = sessionSales.filter(s => s.paymentMethod === 'TRANSFER');
+  
+  const totalCashSales = cashSales.reduce((sum, sale) => sum + sale.total, 0);
+  const totalTransferSales = transferSales.reduce((sum, sale) => sum + sale.total, 0);
   const totalSales = sessionSales.reduce((sum, sale) => sum + sale.total, 0);
   const salesCount = sessionSales.length;
   
@@ -34,7 +40,7 @@ export const CashPage: React.FC = () => {
     .reduce((sum, m) => sum + m.amount, 0);
   
   const expectedCash = currentSession
-    ? currentSession.openingAmount + totalSales + cashIn - cashOut
+    ? currentSession.openingAmount + totalCashSales + cashIn - cashOut
     : 0;
   
   const handleDeposit = async () => {
@@ -144,11 +150,18 @@ export const CashPage: React.FC = () => {
               </div>
               
               <div className="bg-white rounded-lg p-4">
-                <p className="text-sm text-gray-600 mb-1">Ventas</p>
+                <p className="text-sm text-gray-600 mb-1">Ventas ({salesCount} tickets)</p>
                 <p className="text-2xl font-bold text-green-600">
                   Bs {totalSales.toFixed(2)}
                 </p>
-                <p className="text-xs text-gray-500">{salesCount} tickets</p>
+                <div className="flex gap-2 mt-1">
+                  <p className="text-xs text-gray-600">
+                    <span className="font-semibold">Efec:</span> Bs {totalCashSales.toFixed(0)}
+                  </p>
+                  <p className="text-xs text-gray-600">
+                    <span className="font-semibold">Trans:</span> Bs {totalTransferSales.toFixed(0)}
+                  </p>
+                </div>
               </div>
               
               <div className="bg-white rounded-lg p-4">
