@@ -22,17 +22,14 @@ export const OrdersPage: React.FC = () => {
   const { showToast, ToastComponent } = useToast();
 
   const navigate = useNavigate();
-  const { orders, total, totalPages, error, loadOrders, getOverdueOrders, updateOrderStatus } = useOrderStore();
+  const { orders, error, loadOrders, getOverdueOrders, updateOrderStatus } = useOrderStore();
   const { loadOrderToCart } = useCartStore();
   const overdueOrders = getOverdueOrders();
 
-  // Cargar pedidos al montar el componente y cuando cambien filtros o página
+  // Cargar pedidos al montar el componente (SIN paginación por ahora - backend tiene error)
   useEffect(() => {
-    loadOrders(currentPage, itemsPerPage, {
-      status: statusFilter !== 'ALL' ? statusFilter : undefined,
-      customerName: searchQuery || undefined,
-    });
-  }, [currentPage, statusFilter, searchQuery, loadOrders]);
+    loadOrders(); // Llamada sin parámetros para backward compatibility
+  }, [loadOrders]);
 
   // Mostrar error si ocurre
   useEffect(() => {
@@ -95,18 +92,44 @@ export const OrdersPage: React.FC = () => {
     }
   };
 
-  // Filtrar pedidos - ya vienen ordenados del backend por created_at DESC
+  // Filtrar pedidos manualmente (backend sin paginación temporalmente)
   const filteredOrders = useMemo(() => {
-    // El backend ya aplica filtros status y customerName
-    // Solo necesitamos mostrar los orders que nos llegaron
-    return orders;
-  }, [orders]);
+    let filtered = orders;
+
+    // Filtro por estado
+    if (statusFilter !== 'ALL') {
+      filtered = filtered.filter((o) => o.status === statusFilter);
+    }
+
+    // Filtro por búsqueda
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (o) =>
+          o.orderNumber.toString().includes(query) ||
+          o.customerName.toLowerCase().includes(query) ||
+          o.customerPhone.includes(query)
+      );
+    }
+
+    // Ordenar por fecha de creación (más recientes primero)
+    return filtered.sort((a, b) => {
+      const dateA = new Date(a.createdAt).getTime();
+      const dateB = new Date(b.createdAt).getTime();
+      return dateB - dateA;
+    });
+  }, [orders, statusFilter, searchQuery]);
+
+  // Paginación manual
+  const totalPagesLocal = Math.ceil(filteredOrders.length / itemsPerPage);
+  const paginatedOrders = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredOrders.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredOrders, currentPage, itemsPerPage]);
 
   // Resetear página al cambiar filtros
   useEffect(() => {
-    if (currentPage !== 1) {
-      setCurrentPage(1);
-    }
+    setCurrentPage(1);
   }, [searchQuery, statusFilter]);
 
   const getStatusBadge = (status: OrderStatus) => {
@@ -309,7 +332,7 @@ export const OrdersPage: React.FC = () => {
       ) : (
         <>
           <div className="space-y-4">
-            {filteredOrders.map((order) => {
+            {paginatedOrders.map((order) => {
             const isOverdue = isOrderOverdue(order);
             const statusBadge = getStatusBadge(order.status);
 
@@ -450,10 +473,10 @@ export const OrdersPage: React.FC = () => {
           </div>
 
           {/* Paginación */}
-          {totalPages && totalPages > 1 && (
+          {totalPagesLocal > 1 && (
             <div className="mt-6 flex items-center justify-between bg-white rounded-lg shadow-sm border border-gray-200 p-4">
               <div className="text-sm text-gray-600">
-                Mostrando {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, total || 0)} de {total || 0} pedidos
+                Mostrando {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, filteredOrders.length)} de {filteredOrders.length} pedidos
               </div>
               <div className="flex gap-2">
                 <Button
@@ -466,11 +489,11 @@ export const OrdersPage: React.FC = () => {
                   Anterior
                 </Button>
                 <div className="flex items-center gap-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  {Array.from({ length: totalPagesLocal }, (_, i) => i + 1)
                     .filter(page => {
                       // Mostrar primera, última, actual y vecinas
                       return page === 1 || 
-                             page === totalPages || 
+                             page === totalPagesLocal || 
                              Math.abs(page - currentPage) <= 1;
                     })
                     .map((page, idx, arr) => (
@@ -490,8 +513,8 @@ export const OrdersPage: React.FC = () => {
                     ))}
                 </div>
                 <Button
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(p => Math.min(totalPagesLocal, p + 1))}
+                  disabled={currentPage === totalPagesLocal}
                   variant="outline"
                   size="sm"
                 >
