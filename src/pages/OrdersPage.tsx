@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Plus, Search, Calendar, Clock, Phone, User, Package, AlertCircle, CheckCircle, Eye, CreditCard } from 'lucide-react';
+import { createRoot } from 'react-dom/client';
+import { Plus, Search, Calendar, Clock, Phone, User, Package, AlertCircle, CheckCircle, Eye, CreditCard, FileText } from 'lucide-react';
 import { Button, useToast } from '../components/ui';
 import { useOrderStore, useCartStore } from '../store';
 import type { Order, OrderStatus } from '../types';
@@ -7,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { NewOrderModal } from '../components/orders/NewOrderModal';
 import { OrderDetailModal } from '../components/orders/OrderDetailModal';
 import { EditOrderModal } from '../components/orders/EditOrderModal';
+import { PrintableInvoiceNote } from '../components/orders/PrintableInvoiceNote';
 
 export const OrdersPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -50,6 +52,42 @@ export const OrdersPage: React.FC = () => {
     loadOrderToCart(order);
     // Navegar al POS con el orderId en el state
     navigate('/pos', { state: { orderId: order.id } });
+  };
+
+  // Función para imprimir nota de venta
+  const handlePrintInvoice = (order: Order) => {
+    // Crear iframe oculto para impresión
+    const printIframe = document.createElement('iframe');
+    printIframe.style.position = 'fixed';
+    printIframe.style.right = '0';
+    printIframe.style.bottom = '0';
+    printIframe.style.width = '0';
+    printIframe.style.height = '0';
+    printIframe.style.border = 'none';
+    document.body.appendChild(printIframe);
+
+    const iframeDoc = printIframe.contentDocument || printIframe.contentWindow?.document;
+    if (!iframeDoc) return;
+
+    iframeDoc.open();
+    iframeDoc.write('<!DOCTYPE html><html><head><title>Nota de Venta</title></head><body><div id="root"></div></body></html>');
+    iframeDoc.close();
+
+    const rootElement = iframeDoc.getElementById('root');
+    if (rootElement) {
+      const root = createRoot(rootElement);
+      root.render(<PrintableInvoiceNote order={order} />);
+
+      // Esperar a que se renderice y luego imprimir
+      setTimeout(() => {
+        printIframe.contentWindow?.print();
+
+        // Limpiar después de imprimir
+        setTimeout(() => {
+          document.body.removeChild(printIframe);
+        }, 100);
+      }, 500);
+    }
   };
 
   // Filtrar pedidos
@@ -368,6 +406,16 @@ export const OrdersPage: React.FC = () => {
                           Cobrar en POS
                         </Button>
                       )}
+                      {/* Botón Nota de Venta - disponible siempre */}
+                      <Button
+                        onClick={() => handlePrintInvoice(order)}
+                        variant="outline"
+                        size="sm"
+                        className="text-primary-600 border-primary-600 hover:bg-primary-50"
+                      >
+                        <FileText className="w-4 h-4 mr-1" />
+                        Nota de Venta
+                      </Button>
                       <Button
                         onClick={() => handleViewOrder(order)}
                         variant="outline"
