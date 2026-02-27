@@ -1,7 +1,8 @@
-import React from 'react';
-import { X, Printer, DollarSign, TrendingUp, TrendingDown, Calendar, User, Monitor } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Printer, DollarSign, TrendingUp, TrendingDown, Calendar, User, Monitor, Receipt, Eye, Package } from 'lucide-react';
 import { Button } from '../ui';
 import { ThermalReceipt } from '../ThermalReceipt';
+import { formatDateBolivia, formatTimeBolivia } from '../../utils/timezone';
 
 interface CashMovement {
   id: string;
@@ -47,7 +48,10 @@ export const CashSessionDetail: React.FC<CashSessionDetailProps> = ({
   isOpen,
   onClose,
 }) => {
-  const [showPrintPreview, setShowPrintPreview] = React.useState(false);
+  const [showPrintPreview, setShowPrintPreview] = useState(false);
+  const [activeTab, setActiveTab] = useState<'movements' | 'sales' | 'products'>('movements');
+  const [selectedSale, setSelectedSale] = useState<any>(null);
+  const [showSaleDetail, setShowSaleDetail] = useState(false);
 
   if (!isOpen) return null;
   
@@ -57,6 +61,7 @@ export const CashSessionDetail: React.FC<CashSessionDetailProps> = ({
     movementsCount: movements.length,
     salesCount: sales.length,
     movements: movements,
+    sales: sales,
   });
 
   const openingBalance = parseFloat(session.openingAmount);
@@ -72,13 +77,19 @@ export const CashSessionDetail: React.FC<CashSessionDetailProps> = ({
     .filter(m => m.type === 'WITHDRAWAL')
     .reduce((sum, m) => sum + parseFloat(m.amount), 0);
 
-  // Calcular ventas por método de pago (solo efectivo y transferencia)
+  // Calcular ventas por método de pago (solo efectivo y transferencia afectan el arqueo)
   const cashSales = sales.filter(s => s.paymentMethod === 'CASH');
   const transferSales = sales.filter(s => s.paymentMethod === 'TRANSFER');
+  const cardSales = sales.filter(s => s.paymentMethod === 'CARD');
+  const mixedSales = sales.filter(s => s.paymentMethod === 'MIXED');
 
   const totalCashSales = cashSales.reduce((sum, s) => sum + parseFloat(s.total), 0);
   const totalTransferSales = transferSales.reduce((sum, s) => sum + parseFloat(s.total), 0);
-  const totalSales = totalCashSales + totalTransferSales;
+  const totalCardSales = cardSales.reduce((sum, s) => sum + parseFloat(s.total), 0);
+  const totalMixedSales = mixedSales.reduce((sum, s) => sum + parseFloat(s.total), 0);
+  
+  // Total de TODAS las ventas para mostrar
+  const totalAllSales = totalCashSales + totalTransferSales + totalCardSales + totalMixedSales;
 
   const handlePrint = () => {
     console.log('🖨️ Printing cash session:', session.id);
@@ -238,7 +249,7 @@ export const CashSessionDetail: React.FC<CashSessionDetailProps> = ({
                   <div className="bg-green-50 rounded-lg p-5 border border-green-200">
                     <p className="text-sm text-green-600 mb-1 font-medium">Total Ventas</p>
                     <p className="text-2xl font-bold text-green-900">
-                      Bs {totalSales.toFixed(2)}
+                      Bs {totalAllSales.toFixed(2)}
                     </p>
                     <p className="text-xs text-green-600 mt-1">{sales.length} ventas</p>
                   </div>
@@ -246,7 +257,7 @@ export const CashSessionDetail: React.FC<CashSessionDetailProps> = ({
                   {session.closedAt && (
                     <>
                       <div className="bg-purple-50 rounded-lg p-5 border border-purple-200">
-                        <p className="text-sm text-purple-600 mb-1 font-medium">Efectivo Contado</p>
+                        <p className="text-sm text-purple-600 mb-1 font-medium">Saldo Final Contado</p>
                         <p className="text-2xl font-bold text-purple-900">
                           Bs {closingBalance.toFixed(2)}
                         </p>
@@ -276,101 +287,276 @@ export const CashSessionDetail: React.FC<CashSessionDetailProps> = ({
                   )}
                 </div>
 
-                {/* Movimientos de Caja */}
-                {movements.length > 0 && (
-                  <div>
-                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
-                      <DollarSign className="w-5 h-5 mr-2 text-primary-600" />
-                      Movimientos de Caja
-                    </h3>
-                    <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                      {totalDeposits > 0 && (
+                {/* Pestañas */}
+                <div className="border-b border-gray-200">
+                  <div className="flex space-x-4">
+                    <button
+                      onClick={() => setActiveTab('movements')}
+                      className={`pb-3 px-2 font-medium text-sm transition-colors border-b-2 ${
+                        activeTab === 'movements'
+                          ? 'border-primary-600 text-primary-600'
+                          : 'border-transparent text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center">
+                        <DollarSign className="w-4 h-4 mr-2" />
+                        Movimientos ({movements.length})
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('sales')}
+                      className={`pb-3 px-2 font-medium text-sm transition-colors border-b-2 ${
+                        activeTab === 'sales'
+                          ? 'border-primary-600 text-primary-600'
+                          : 'border-transparent text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center">
+                        <Receipt className="w-4 h-4 mr-2" />
+                        Ventas ({sales.length})
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('products')}
+                      className={`pb-3 px-2 font-medium text-sm transition-colors border-b-2 ${
+                        activeTab === 'products'
+                          ? 'border-primary-600 text-primary-600'
+                          : 'border-transparent text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center">
+                        <Package className="w-4 h-4 mr-2" />
+                        Productos
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Contenido de las pestañas */}
+                {activeTab === 'movements' && (
+                  <div className="space-y-4">
+                    {/* Resumen de movimientos */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-green-50 rounded-lg p-4 border border-green-200">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center">
-                            <TrendingUp className="w-4 h-4 text-green-600 mr-2" />
-                            <span className="text-sm text-gray-700">Total Ingresos</span>
+                            <TrendingUp className="w-5 h-5 text-green-600 mr-2" />
+                            <span className="text-sm text-green-700 font-medium">Total Ingresos</span>
                           </div>
-                          <span className="font-semibold text-green-600">
-                            +Bs {totalDeposits.toFixed(2)}
+                          <span className="text-lg font-bold text-green-900">
+                            Bs {totalDeposits.toFixed(2)}
                           </span>
                         </div>
-                      )}
-                      {totalWithdrawals > 0 && (
+                      </div>
+                      <div className="bg-red-50 rounded-lg p-4 border border-red-200">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center">
-                            <TrendingDown className="w-4 h-4 text-red-600 mr-2" />
-                            <span className="text-sm text-gray-700">Total Retiros</span>
+                            <TrendingDown className="w-5 h-5 text-red-600 mr-2" />
+                            <span className="text-sm text-red-700 font-medium">Total Retiros</span>
                           </div>
-                          <span className="font-semibold text-red-600">
-                            -Bs {totalWithdrawals.toFixed(2)}
+                          <span className="text-lg font-bold text-red-900">
+                            Bs {totalWithdrawals.toFixed(2)}
                           </span>
                         </div>
-                      )}
-                      
-                      {/* Lista detallada de movimientos */}
-                      <div className="mt-4 space-y-2 border-t border-gray-200 pt-3">
-                        {movements.map(movement => {
-                          const amount = parseFloat(movement.amount);
-                          const isDeposit = movement.type === 'DEPOSIT';
-                          
-                          return (
-                            <div key={movement.id} className="flex items-start justify-between text-sm">
-                              <div className="flex-1">
-                                <div className="flex items-center">
-                                  {isDeposit ? (
-                                    <TrendingUp className="w-3 h-3 text-green-600 mr-1" />
-                                  ) : (
-                                    <TrendingDown className="w-3 h-3 text-red-600 mr-1" />
-                                  )}
-                                  <span className={`font-medium ${
-                                    isDeposit ? 'text-green-700' : 'text-red-700'
-                                  }`}>
-                                    {movement.type === 'DEPOSIT' ? 'Ingreso' : 
-                                     movement.type === 'WITHDRAWAL' ? 'Retiro' : 'Ajuste'}
-                                  </span>
-                                </div>
-                                {movement.reason && (
-                                  <p className="text-xs text-gray-500 ml-4">{movement.reason}</p>
-                                )}
-                                <p className="text-xs text-gray-400 ml-4">
-                                  {new Date(movement.createdAt).toLocaleString('es')}
-                                </p>
-                              </div>
-                              <span className={`font-semibold ${
-                                isDeposit ? 'text-green-600' : 'text-red-600'
-                              }`}>
-                                {isDeposit ? '+' : '-'}Bs {amount.toFixed(2)}
-                              </span>
-                            </div>
-                          );
-                        })}
                       </div>
                     </div>
+
+                    {/* Tabla de movimientos */}
+                    {movements.length > 0 ? (
+                      <div className="border border-gray-200 rounded-lg overflow-hidden">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Motivo</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha/Hora</th>
+                              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Monto</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {movements.map(movement => {
+                              const amount = parseFloat(movement.amount);
+                              const isDeposit = movement.type === 'DEPOSIT';
+                              
+                              return (
+                                <tr key={movement.id} className="hover:bg-gray-50">
+                                  <td className="px-4 py-3 whitespace-nowrap">
+                                    <div className="flex items-center">
+                                      {isDeposit ? (
+                                        <TrendingUp className="w-4 h-4 text-green-600 mr-2" />
+                                      ) : (
+                                        <TrendingDown className="w-4 h-4 text-red-600 mr-2" />
+                                      )}
+                                      <span className={`text-sm font-medium ${
+                                        isDeposit ? 'text-green-700' : 'text-red-700'
+                                      }`}>
+                                        {movement.type === 'DEPOSIT' ? 'Ingreso' : 
+                                         movement.type === 'WITHDRAWAL' ? 'Retiro' : 'Ajuste'}
+                                      </span>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <p className="text-sm text-gray-900">
+                                      {movement.reason || '-'}
+                                    </p>
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap">
+                                    <p className="text-sm text-gray-500">
+                                      {formatDateBolivia(new Date(movement.createdAt))} {formatTimeBolivia(new Date(movement.createdAt))}
+                                    </p>
+                                  </td>
+                                  <td className="px-4 py-3 text-right whitespace-nowrap">
+                                    <span className={`text-sm font-bold ${
+                                      isDeposit ? 'text-green-600' : 'text-red-600'
+                                    }`}>
+                                      {isDeposit ? '+' : '-'}Bs {amount.toFixed(2)}
+                                    </span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        <DollarSign className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                        <p>No hay movimientos de caja registrados</p>
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {/* Ventas por Método de Pago */}
-                {sales.length > 0 && (
-                  <div>
-                    <h3 className="font-semibold text-gray-900 mb-3">
-                      Desglose por Método de Pago
-                    </h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-                        <p className="text-sm text-green-600 mb-1">Efectivo</p>
-                        <p className="text-xl font-bold text-green-900">
-                          Bs {totalCashSales.toFixed(2)}
-                        </p>
-                        <p className="text-xs text-green-600 mt-1">{cashSales.length} ventas</p>
+                {activeTab === 'sales' && (
+                  <div className="space-y-4">
+                    {/* Resumen por método de pago */}
+                    <div className="grid grid-cols-4 gap-3">
+                      <div className="bg-green-50 rounded-lg p-3 border border-green-200">
+                        <p className="text-xs text-green-600 mb-1">Efectivo</p>
+                        <p className="text-base font-bold text-green-900">Bs {totalCashSales.toFixed(2)}</p>
+                        <p className="text-xs text-green-600">{cashSales.length} ventas</p>
                       </div>
-                      
-                      <div className="bg-indigo-50 rounded-lg p-4 border border-indigo-200">
-                        <p className="text-sm text-indigo-600 mb-1">Transferencia</p>
-                        <p className="text-xl font-bold text-indigo-900">
-                          Bs {totalTransferSales.toFixed(2)}
-                        </p>
-                        <p className="text-xs text-indigo-600 mt-1">{transferSales.length} ventas</p>
+                      <div className="bg-indigo-50 rounded-lg p-3 border border-indigo-200">
+                        <p className="text-xs text-indigo-600 mb-1">Transferencia</p>
+                        <p className="text-base font-bold text-indigo-900">Bs {totalTransferSales.toFixed(2)}</p>
+                        <p className="text-xs text-indigo-600">{transferSales.length} ventas</p>
                       </div>
+                      <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
+                        <p className="text-xs text-purple-600 mb-1">Tarjeta</p>
+                        <p className="text-base font-bold text-purple-900">Bs {totalCardSales.toFixed(2)}</p>
+                        <p className="text-xs text-purple-600">{cardSales.length} ventas</p>
+                      </div>
+                      <div className="bg-orange-50 rounded-lg p-3 border border-orange-200">
+                        <p className="text-xs text-orange-600 mb-1">Mixto</p>
+                        <p className="text-base font-bold text-orange-900">Bs {totalMixedSales.toFixed(2)}</p>
+                        <p className="text-xs text-orange-600">{mixedSales.length} ventas</p>
+                      </div>
+                    </div>
+
+                    {/* Tabla de ventas */}
+                    {sales.length > 0 ? (
+                      <div className="border border-gray-200 rounded-lg overflow-hidden">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha/Hora</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Método Pago</th>
+                              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
+                              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Acción</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {sales.map(sale => (
+                              <tr key={sale.id} className="hover:bg-gray-50">
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <span className="text-sm font-mono text-gray-900">
+                                    #{sale.id.slice(-8).toUpperCase()}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <p className="text-sm text-gray-900">
+                                    {formatDateBolivia(new Date(sale.createdAt))}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    {formatTimeBolivia(new Date(sale.createdAt))}
+                                  </p>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                    sale.paymentMethod === 'CASH' ? 'bg-green-100 text-green-800' :
+                                    sale.paymentMethod === 'TRANSFER' ? 'bg-indigo-100 text-indigo-800' :
+                                    sale.paymentMethod === 'CARD' ? 'bg-purple-100 text-purple-800' :
+                                    'bg-orange-100 text-orange-800'
+                                  }`}>
+                                    {sale.paymentMethod === 'CASH' ? 'Efectivo' :
+                                     sale.paymentMethod === 'TRANSFER' ? 'Transferencia' :
+                                     sale.paymentMethod === 'CARD' ? 'Tarjeta' : 'Mixto'}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-right whitespace-nowrap">
+                                  <span className="text-sm font-bold text-gray-900">
+                                    Bs {parseFloat(sale.total).toFixed(2)}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-center whitespace-nowrap">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      setSelectedSale(sale);
+                                      setShowSaleDetail(true);
+                                    }}
+                                  >
+                                    <Eye className="w-4 h-4 mr-1" />
+                                    Ver
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        <Receipt className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                        <p>No hay ventas registradas en esta sesión</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'products' && (
+                  <div className="space-y-4">
+                    <div className="border border-gray-200 rounded-lg overflow-hidden">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Producto</th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Cantidad</th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {aggregateProductsSummary().map((product, index) => (
+                            <tr key={index} className="hover:bg-gray-50">
+                              <td className="px-4 py-3">
+                                <p className="text-sm font-medium text-gray-900">{product.productName}</p>
+                              </td>
+                              <td className="px-4 py-3 text-right whitespace-nowrap">
+                                <span className="text-sm text-gray-900">
+                                  {product.quantity} {product.unit}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-right whitespace-nowrap">
+                                <span className="text-sm font-bold text-gray-900">
+                                  Bs {product.total.toFixed(2)}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 )}
@@ -446,7 +632,7 @@ export const CashSessionDetail: React.FC<CashSessionDetailProps> = ({
                   initialAmount: openingBalance,
                   productsSummary: aggregateProductsSummary(),
                   salesCount: sales.length,
-                  totalSales,
+                  totalSales: totalAllSales,
                   totalCashSales,
                   totalTransferSales: totalTransferSales,
                   totalDeposits,
@@ -475,6 +661,152 @@ export const CashSessionDetail: React.FC<CashSessionDetailProps> = ({
                 className="flex-1"
               >
                 Volver
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Detalle de Venta */}
+      {showSaleDetail && selectedSale && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900">Detalle de Venta</h2>
+              <button
+                onClick={() => {
+                  setShowSaleDetail(false);
+                  setSelectedSale(null);
+                }}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              <div className="space-y-4">
+                {/* Info general */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-gray-600">ID de Venta</p>
+                      <p className="font-bold text-lg text-gray-900">
+                        #{selectedSale.id.slice(-8).toUpperCase()}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600">Fecha y Hora</p>
+                      <p className="font-semibold text-gray-900">
+                        {formatDateBolivia(new Date(selectedSale.createdAt))}
+                      </p>
+                      <p className="text-gray-600">
+                        {formatTimeBolivia(new Date(selectedSale.createdAt))}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600">Método de Pago</p>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        selectedSale.paymentMethod === 'CASH' ? 'bg-green-100 text-green-800' :
+                        selectedSale.paymentMethod === 'TRANSFER' ? 'bg-indigo-100 text-indigo-800' :
+                        selectedSale.paymentMethod === 'CARD' ? 'bg-purple-100 text-purple-800' :
+                        'bg-orange-100 text-orange-800'
+                      }`}>
+                        {selectedSale.paymentMethod === 'CASH' ? 'Efectivo' :
+                         selectedSale.paymentMethod === 'TRANSFER' ? 'Transferencia' :
+                         selectedSale.paymentMethod === 'CARD' ? 'Tarjeta' : 'Mixto'}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-gray-600">Cajero</p>
+                      <p className="font-semibold text-gray-900">
+                        {selectedSale.cashier?.fullName || selectedSale.user?.fullName || 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Items */}
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-3">Productos</h3>
+                  <div className="border border-gray-200 rounded-lg overflow-hidden">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Producto</th>
+                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Cant.</th>
+                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">P. Unit</th>
+                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Subtotal</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {(selectedSale.items || []).map((item: any, index: number) => (
+                          <tr key={index}>
+                            <td className="px-4 py-3">
+                              <p className="text-sm font-medium text-gray-900">
+                                {item.product?.name || item.productName || 'Producto'}
+                              </p>
+                            </td>
+                            <td className="px-4 py-3 text-right text-sm text-gray-900">
+                              {parseFloat(item.quantity || item.qty || 0).toFixed(3)}
+                            </td>
+                            <td className="px-4 py-3 text-right text-sm text-gray-900">
+                              Bs {parseFloat(item.unitPrice || 0).toFixed(2)}
+                            </td>
+                            <td className="px-4 py-3 text-right text-sm font-bold text-gray-900">
+                              Bs {parseFloat(item.subtotal || item.total || 0).toFixed(2)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Totales */}
+                <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Subtotal:</span>
+                    <span className="font-semibold text-gray-900">
+                      Bs {parseFloat(selectedSale.subtotal || 0).toFixed(2)}
+                    </span>
+                  </div>
+                  {parseFloat(selectedSale.discount || 0) > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Descuento:</span>
+                      <span className="font-semibold text-red-600">
+                        -Bs {parseFloat(selectedSale.discount).toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-lg border-t border-gray-300 pt-2">
+                    <span className="font-bold text-gray-900">Total:</span>
+                    <span className="font-bold text-primary-600">
+                      Bs {parseFloat(selectedSale.total).toFixed(2)}
+                    </span>
+                  </div>
+                  {selectedSale.paymentMethod === 'CASH' && parseFloat(selectedSale.changeAmount || 0) > 0 && (
+                    <div className="flex justify-between text-sm text-gray-600">
+                      <span>Cambio:</span>
+                      <span>Bs {parseFloat(selectedSale.changeAmount).toFixed(2)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end space-x-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
+              <Button
+                onClick={() => {
+                  setShowSaleDetail(false);
+                  setSelectedSale(null);
+                }}
+                variant="outline"
+              >
+                Cerrar
               </Button>
             </div>
           </div>

@@ -56,8 +56,15 @@ const tabs: Tab[] = [
 export const ReportsPage: React.FC = () => {
   const navigate = useNavigate();
   const { currentUser } = useAuthStore();
+  
+  // Inicializar fecha desde con el día 1 del mes actual
+  const getFirstDayOfMonth = () => {
+    const now = getNowBolivia();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  };
+  
   const [dateFrom, setDateFrom] = useState(
-    formatDateForInput(getNowBolivia())
+    formatDateForInput(getFirstDayOfMonth())
   );
   const [dateTo, setDateTo] = useState(
     formatDateForInput(getNowBolivia())
