@@ -41,12 +41,15 @@ export const POSPaymentModal: React.FC<POSPaymentModalProps> = ({
   onSetCashPaid,
   onConfirm,
 }) => {
+  // Calcular el máximo de descuento adicional: subtotal DESPUÉS de descuentos de items
+  const maxAdditionalDiscount = Math.round(cartSubtotal - itemDiscountsTotal);
+  
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
       title="Procesar Pago"
-      size="2xl"
+      size="xl"
     >
       <div className="grid md:grid-cols-2 gap-6">
         {/* Columna Izquierda: Resumen de Venta */}
@@ -117,13 +120,13 @@ export const POSPaymentModal: React.FC<POSPaymentModalProps> = ({
                 }}
                 step="0.01"
                 min="0"
-                max={cartSubtotal}
+                max={maxAdditionalDiscount}
                 className="w-full pl-10 pr-3 py-2 text-base font-bold border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="0.00"
               />
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              Máximo: Bs {Math.round(cartSubtotal)}
+              Máximo: Bs {maxAdditionalDiscount}
             </p>
           </div>
           

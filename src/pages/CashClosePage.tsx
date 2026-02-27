@@ -310,9 +310,6 @@ export const CashClosePage: React.FC = () => {
                   required
                 />
               </div>
-              <p className="mt-1.5 text-sm text-gray-500">
-                Cuenta el efectivo físico en caja
-              </p>
             </div>
             
             {/* Columna 2: Observaciones */}
@@ -323,7 +320,7 @@ export const CashClosePage: React.FC = () => {
               <textarea
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                rows={2}
+                rows={1}
                 placeholder="Explica cualquier diferencia o agrega comentarios..."
                 className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
               />
