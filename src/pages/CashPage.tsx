@@ -41,18 +41,21 @@ export const CashPage: React.FC = () => {
   const cashSales = sessionSales.filter(s => s.paymentMethod === 'CASH');
   const transferSales = sessionSales.filter(s => s.paymentMethod === 'TRANSFER');
   
-  const totalCashSales = cashSales.reduce((sum, sale) => sum + sale.total, 0);
-  const totalTransferSales = transferSales.reduce((sum, sale) => sum + sale.total, 0);
-  const totalSales = sessionSales.reduce((sum, sale) => sum + sale.total, 0);
+  const totalCashSales = cashSales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
+  const totalTransferSales = transferSales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
+  const totalSales = sessionSales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
   const salesCount = sessionSales.length;
   
-  const cashIn = cashMovements
-    .filter((m) => m.type === 'DEPOSIT')
-    .reduce((sum, m) => sum + m.amount, 0);
+  // Proteger cashMovements de null/undefined
+  const safeMovements = Array.isArray(cashMovements) ? cashMovements : [];
   
-  const cashOut = cashMovements
+  const cashIn = safeMovements
+    .filter((m) => m.type === 'DEPOSIT')
+    .reduce((sum, m) => sum + Number(m.amount || 0), 0);
+  
+  const cashOut = safeMovements
     .filter((m) => m.type === 'WITHDRAWAL')
-    .reduce((sum, m) => sum + m.amount, 0);
+    .reduce((sum, m) => sum + Number(m.amount || 0), 0);
   
   // Usar expectedAmount del backend (ya calculado correctamente)
   // Asegurar que todos los valores sean números válidos para .toFixed()
@@ -281,7 +284,7 @@ export const CashPage: React.FC = () => {
       )}
       
       {/* Movimientos Recientes */}
-      {currentSession && cashMovements.length > 0 && (
+      {currentSession && safeMovements.length > 0 && (
         <div>
           <h2 className="text-xl font-bold text-gray-900 mb-4">
             Movimientos de Esta Sesión
@@ -305,7 +308,7 @@ export const CashPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {cashMovements.map((movement) => (
+                {safeMovements.map((movement) => (
                   <tr key={movement.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {new Date(movement.createdAt).toLocaleTimeString()}
