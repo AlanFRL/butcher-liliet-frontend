@@ -92,13 +92,12 @@ export const OrdersPage: React.FC = () => {
       PENDING: { color: 'bg-yellow-100 text-yellow-800', text: 'Pendiente' },
       READY: { color: 'bg-green-100 text-green-800', text: 'Listo' },
       DELIVERED: { color: 'bg-gray-100 text-gray-800', text: 'Entregado' },
-      CANCELLED: { color: 'bg-red-100 text-red-800', text: 'Cancelado' },
     };
     return badges[status];
   };
 
   const isOrderOverdue = (order: Order) => {
-    if (order.status === 'DELIVERED' || order.status === 'CANCELLED') return false;
+    if (order.status === 'DELIVERED') return false;
     
     // Parse date and time explicitly to avoid timezone issues
     const [year, month, day] = order.deliveryDate.split('-').map(Number);

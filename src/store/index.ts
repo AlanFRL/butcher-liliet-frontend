@@ -1323,7 +1323,6 @@ interface OrderState {
   }) => Promise<Order | null>;
   updateOrderStatus: (orderId: string, status: OrderStatus, reason?: string, saleId?: string) => Promise<boolean>;
   updateOrder: (orderId: string, updates: Partial<Order>) => Promise<boolean>;
-  cancelOrder: (orderId: string, reason: string) => Promise<boolean>;
   markAsDelivered: (orderId: string) => Promise<boolean>;
   deleteOrder: (orderId: string) => Promise<boolean>;
   getOrderById: (id: string) => Order | undefined;
@@ -1383,8 +1382,6 @@ export const useOrderStore = create<OrderState>((set, get) => ({
         createdAt: order.createdAt,
         updatedAt: order.updatedAt,
         completedAt: order.deliveredAt,
-        cancelledAt: order.cancelledAt,
-        cancellationReason: order.cancellationReason,
       }));
 
       set({ orders, isLoading: false });
@@ -1490,15 +1487,13 @@ export const useOrderStore = create<OrderState>((set, get) => ({
     try {
       let response;
       
-      if (status === 'CANCELLED' && reason) {
-        response = await ordersApi.cancel(orderId, reason);
-      } else if (status === 'DELIVERED') {
+      if (status === 'DELIVERED') {
         response = await ordersApi.markAsDelivered(orderId);
       } else if (status === 'READY') {
         response = await ordersApi.markAsReady(orderId);
       } else {
         // General update not supported - use specific status endpoints
-        throw new Error('Use specific status methods: markAsReady, markAsDelivered, cancel');
+        throw new Error('Use specific status methods: markAsReady, markAsDelivered');
       }
 
       // Update local state
@@ -1511,8 +1506,6 @@ export const useOrderStore = create<OrderState>((set, get) => ({
             status: response.status as OrderStatus,
             updatedAt: response.updatedAt,
             completedAt: response.deliveredAt,
-            cancelledAt: response.cancelledAt,
-            cancellationReason: response.cancellationReason,
             saleId: saleId || order.saleId,
           };
         }),
@@ -1575,10 +1568,6 @@ export const useOrderStore = create<OrderState>((set, get) => ({
     }
   },
 
-  cancelOrder: async (orderId, reason) => {
-    return get().updateOrderStatus(orderId, 'CANCELLED', reason);
-  },
-
   markAsDelivered: async (orderId) => {
     return get().updateOrderStatus(orderId, 'DELIVERED');
   },
@@ -1634,7 +1623,7 @@ export const useOrderStore = create<OrderState>((set, get) => ({
   getOverdueOrders: () => {
     const now = new Date();
     return get().orders.filter((order) => {
-      if (order.status === 'DELIVERED' || order.status === 'CANCELLED') return false;
+      if (order.status === 'DELIVERED') return false;
       
       const deliveryDateTime = new Date(`${order.deliveryDate}T${order.deliveryTime}`);
       return deliveryDateTime < now;
@@ -1645,8 +1634,7 @@ export const useOrderStore = create<OrderState>((set, get) => ({
     const today = new Date().toISOString().split('T')[0];
     return get().orders.filter(
       (o) => o.deliveryDate === today && 
-             o.status !== 'DELIVERED' && 
-             o.status !== 'CANCELLED'
+             o.status !== 'DELIVERED'
     );
   },
 

@@ -20,7 +20,7 @@ export type MovementType =
 
 export type CashMovementType = 'DEPOSIT' | 'WITHDRAWAL' | 'ADJUSTMENT';
 
-export type OrderStatus = 'PENDING' | 'READY' | 'DELIVERED' | 'CANCELLED';
+export type OrderStatus = 'PENDING' | 'READY' | 'DELIVERED';
 
 export type BarcodeType =
   | 'STANDARD'        // Código de barras estándar (EAN-13, UPC, etc.)
@@ -241,8 +241,6 @@ export interface Order {
   createdAt: string;
   updatedAt: string;
   completedAt?: string;
-  cancelledAt?: string;
-  cancellationReason?: string;
 }
 
 export interface OrderItem {

@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { Palette, Users, Monitor, Tag } from 'lucide-react';
+import { Palette, Users, Monitor, Tag, Shield } from 'lucide-react';
 import { useAuthStore } from '../store';
 import { AppearanceTab } from '../components/settings/AppearanceTab';
 import { UsersTab } from '../components/settings/UsersTab';
 import { TerminalsTab } from '../components/settings/TerminalsTab';
 import { CategoriesTab } from '../components/settings/CategoriesTab';
+import { AdvancedSettingsTab } from '../components/settings/AdvancedSettingsTab';
 
-type SettingsTab = 'appearance' | 'users' | 'terminals' | 'categories';
+type SettingsTab = 'appearance' | 'users' | 'terminals' | 'categories' | 'advanced';
 
 export const SettingsPage: React.FC = () => {
   const { currentUser } = useAuthStore();
@@ -17,6 +18,7 @@ export const SettingsPage: React.FC = () => {
     { id: 'users' as SettingsTab, name: 'Usuarios', icon: Users, roles: ['ADMIN'] },
     { id: 'terminals' as SettingsTab, name: 'Terminales', icon: Monitor, roles: ['ADMIN'] },
     { id: 'categories' as SettingsTab, name: 'Categorías', icon: Tag, roles: ['ADMIN'] },
+    { id: 'advanced' as SettingsTab, name: 'Funcionalidades Avanzadas', icon: Shield, roles: ['ADMIN'] },
   ];
 
   const visibleTabs = tabs.filter(tab => tab.roles.includes(currentUser?.role || ''));
@@ -57,6 +59,7 @@ export const SettingsPage: React.FC = () => {
         {activeTab === 'users' && currentUser?.role === 'ADMIN' && <UsersTab />}
         {activeTab === 'terminals' && currentUser?.role === 'ADMIN' && <TerminalsTab />}
         {activeTab === 'categories' && currentUser?.role === 'ADMIN' && <CategoriesTab />}
+        {activeTab === 'advanced' && currentUser?.role === 'ADMIN' && <AdvancedSettingsTab />}
       </div>
     </div>
   );

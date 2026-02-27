@@ -7,6 +7,7 @@ import type { Order, OrderStatus } from '../../types';
 import { useNavigate } from 'react-router-dom';
 import { PrintableInvoiceNote } from './PrintableInvoiceNote';
 import { usePermissions } from '../../hooks/usePermissions';
+import { useAdvancedSettings } from '../../hooks/useAdvancedSettings';
 
 interface OrderDetailModalProps {
   order: Order;
@@ -17,26 +18,26 @@ interface OrderDetailModalProps {
 
 export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order: initialOrder, onClose, onEdit, showToast }) => {
   const navigate = useNavigate();
-  const { updateOrderStatus, cancelOrder, deleteOrder, getOrderById } = useOrderStore();
+  const { updateOrderStatus, deleteOrder, getOrderById } = useOrderStore();
   const { loadOrderToCart } = useCartStore();
   const { currentSession } = useCashStore();
   const { canDeleteOrders } = usePermissions();
-  const [showCancelModal, setShowCancelModal] = useState(false);
+  const { allowDeleteOrders } = useAdvancedSettings();
   const [showDeliverModal, setShowDeliverModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [cancellationReason, setCancellationReason] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   
   // Estado local para reflejar cambios en tiempo real
   const currentOrder = getOrderById(initialOrder.id) || initialOrder;
   
   // Verificar si la orden puede ser eliminada
-  // Los pedidos cancelados pueden eliminarse sin restricción de sesión
-  const canDelete = canDeleteOrders && 
-    !currentOrder.saleId && 
-    currentSession?.status === 'OPEN' &&
-    (currentOrder.status === 'CANCELLED' || 
-     new Date(currentOrder.createdAt) >= new Date(currentSession.openedAt));
+  // Solo ADMIN puede eliminar (canDeleteOrders)
+  // Sin venta: siempre permitir
+  // Con venta: solo si allowDeleteOrders está habilitado y sesión está abierta
+  const canDelete = canDeleteOrders && (
+    !currentOrder.saleId || 
+    (allowDeleteOrders && currentSession?.status === 'OPEN')
+  );
 
   const handleChargeOrder = () => {
     // Pre-cargar items del pedido al carrito
@@ -85,7 +86,6 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order: initi
     PENDING: { color: 'bg-yellow-100 text-yellow-800', text: 'Pendiente' },
     READY: { color: 'bg-green-100 text-green-800', text: 'Listo' },
     DELIVERED: { color: 'bg-gray-100 text-gray-800', text: 'Entregado' },
-    CANCELLED: { color: 'bg-red-100 text-red-800', text: 'Cancelado' },
   }[currentOrder.status];
 
   const handleStatusChange = (newStatus: OrderStatus) => {
@@ -101,17 +101,6 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order: initi
     updateOrderStatus(currentOrder.id, 'DELIVERED');
     showToast('success', 'Pedido marcado como entregado sin registro de venta');
     setShowDeliverModal(false);
-    onClose();
-  };
-
-  const handleCancel = () => {
-    if (!cancellationReason.trim()) {
-      showToast('warning', 'Debes especificar un motivo de cancelación');
-      return;
-    }
-    cancelOrder(currentOrder.id, cancellationReason);
-    showToast('success', 'Pedido cancelado');
-    setShowCancelModal(false);
     onClose();
   };
 
@@ -135,7 +124,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order: initi
 
   return (
     <>
-      <Modal isOpen={true} onClose={onClose} title={`Pedido #${currentOrder.orderNumber.toString().padStart(4, '0')}`} size="lg">
+      <Modal isOpen={true} onClose={onClose} title={`Pedido #${currentOrder.orderNumber.toString().padStart(4, '0')}`} size="xl">
         <div className="space-y-6">
           {/* Estado */}
           <div className="flex items-center justify-between">
@@ -156,11 +145,8 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order: initi
               )}
             </div>
             <div className="flex flex-wrap gap-2">
-              {/* Botones de acción normales - solo si no está cancelado */}
-              {currentOrder.status !== 'CANCELLED' && (
-                <>
-                  {/* Botón para editar - solo PENDING o READY */}
-                  {(currentOrder.status === 'PENDING' || currentOrder.status === 'READY') && onEdit && (
+              {/* Botón para editar - solo PENDING o READY */}
+              {(currentOrder.status === 'PENDING' || currentOrder.status === 'READY') && onEdit && (
                     <Button
                       onClick={() => onEdit(currentOrder)}
                       variant="outline"
@@ -168,71 +154,55 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order: initi
                     >
                       Editar
                     </Button>
-                  )}
-                  
-                  {/* Botón para cobrar en POS - READY o DELIVERED sin pago */}
-                  {(currentOrder.status === 'READY' || 
-                    (currentOrder.status === 'DELIVERED' && !currentOrder.saleId)) && (
-                    <Button
-                      onClick={handleChargeOrder}
-                      variant="primary"
-                      size="sm"
-                    >
-                      <CreditCard className="w-4 h-4 mr-1" />
-                      Cobrar en POS
-                    </Button>
-                  )}
-                  
-                  {/* Botón para nota de venta - READY o DELIVERED (con o sin pago) */}
-                  {(currentOrder.status === 'READY' || currentOrder.status === 'DELIVERED') && (
-                    <Button
-                      onClick={handlePrintInvoice}
-                      variant="outline"
-                      size="sm"
-                      className="text-primary-600 border-primary-600 hover:bg-primary-50"
-                    >
-                      <FileText className="w-4 h-4 mr-1" />
-                      Nota de Venta
-                    </Button>
-                  )}
-                  
-                  {/* Botón marcar como listo */}
-                  {currentOrder.status === 'PENDING' && (
-                    <Button
-                      onClick={() => handleStatusChange('READY')}
-                      variant="primary"
-                      size="sm"
-                    >
-                      Marcar como Listo
-                    </Button>
-                  )}
-                  
-                  {/* Botón marcar como entregado - solo si no está entregado */}
-                  {currentOrder.status === 'READY' && (
-                    <Button
-                      onClick={() => handleStatusChange('DELIVERED')}
-                      variant="outline"
-                      size="sm"
-                    >
-                      Marcar como Entregado
-                    </Button>
-                  )}
-                  
-                  {/* Botón cancelar - solo si no está entregado ni cancelado */}
-                  {currentOrder.status !== 'DELIVERED' && (
-                    <Button
-                      onClick={() => setShowCancelModal(true)}
-                      variant="outline"
-                      size="sm"
-                      className="text-red-600 border-red-600 hover:bg-red-50"
-                    >
-                      Cancelar Pedido
-                    </Button>
-                  )}
-                </>
               )}
               
-              {/* Botón eliminar - disponible SIEMPRE si cumple condiciones (incluso cancelados) */}
+              {/* Botón para cobrar en POS - READY o DELIVERED sin pago */}
+              {(currentOrder.status === 'READY' ||
+                    (currentOrder.status === 'DELIVERED' && !currentOrder.saleId)) && (
+                <Button
+                  onClick={handleChargeOrder}
+                  variant="primary"
+                  size="sm"
+                >
+                  <CreditCard className="w-4 h-4 mr-1" />
+                  Cobrar en POS
+                </Button>
+              )}
+              
+              {/* Botón para nota de venta - disponible siempre */}
+              <Button
+                    onClick={handlePrintInvoice}
+                variant="outline"
+                size="sm"
+                className="text-primary-600 border-primary-600 hover:bg-primary-50"
+              >
+                <FileText className="w-4 h-4 mr-1" />
+                Nota de Venta
+              </Button>
+              
+              {/* Botón marcar como listo */}
+              {currentOrder.status === 'PENDING' && (
+                    <Button
+                  onClick={() => handleStatusChange('READY')}
+                  variant="primary"
+                  size="sm"
+                >
+                  Marcar como Listo
+                </Button>
+              )}
+              
+              {/* Botón marcar como entregado - solo si no está entregado */}
+              {currentOrder.status === 'READY' && (
+                    <Button
+                  onClick={() => handleStatusChange('DELIVERED')}
+                  variant="outline"
+                  size="sm"
+                >
+                  Marcar como Entregado
+                </Button>
+              )}
+              
+              {/* Botón eliminar - disponible si cumple condiciones */}
               {canDelete && (
                 <Button
                   onClick={() => setShowDeleteModal(true)}
@@ -399,50 +369,6 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order: initi
         </div>
       </Modal>
 
-      {/* Modal de cancelación */}
-      {showCancelModal && (
-        <Modal
-          isOpen={true}
-          onClose={() => setShowCancelModal(false)}
-          title="Cancelar Pedido"
-          size="md"
-        >
-          <div className="space-y-4">
-            <p className="text-gray-600">
-              ¿Estás seguro que deseas cancelar este pedido? Esta acción no se puede deshacer.
-            </p>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Motivo de cancelación <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                value={cancellationReason}
-                onChange={(e) => setCancellationReason(e.target.value)}
-                rows={3}
-                placeholder="Explica el motivo de la cancelación..."
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
-                required
-              />
-            </div>
-
-            <div className="flex gap-3">
-              <Button onClick={() => setShowCancelModal(false)} variant="outline" className="flex-1">
-                Volver
-              </Button>
-              <Button
-                onClick={handleCancel}
-                variant="danger"
-                className="flex-1"
-                disabled={!cancellationReason.trim()}
-              >
-                Confirmar Cancelación
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
       {/* Modal de confirmación para marcar como entregado sin cobrar */}
       {showDeliverModal && (
         <Modal
@@ -499,15 +425,38 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order: initi
               ¿Estás seguro que deseas eliminar este pedido?
             </p>
             
+            {/* Advertencia estándar */}
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
               <p className="text-red-800 font-medium mb-2">
                 ⚠️ ADVERTENCIA
               </p>
               <p className="text-red-700 text-sm">
                 Esta acción es <strong>permanente</strong> y no se puede deshacer.
-                El pedido y sus items serán eliminados completamente del sistema.
+                {currentOrder.saleId ? (
+                  <span>
+                    {' '}Se eliminará el pedido, <strong>la venta asociada</strong>, 
+                    se <strong>restaurará el inventario</strong> y se <strong>ajustará el arqueo de caja</strong>.
+                  </span>
+                ) : (
+                  <span> El pedido y sus items serán eliminados completamente del sistema.</span>
+                )}
               </p>
             </div>
+
+            {/* Advertencia adicional si tiene venta */}
+            {currentOrder.saleId && (
+              <div className="bg-orange-50 border-2 border-orange-300 rounded-lg p-4">
+                <p className="text-orange-900 font-semibold mb-2 flex items-center gap-2">
+                  💰 Este pedido tiene una venta asociada
+                </p>
+                <ul className="text-sm text-orange-800 space-y-1 ml-4 list-disc">
+                  <li>Se eliminará la venta del sistema</li>
+                  <li>Se restaurará el inventario descontado</li>
+                  <li>Se ajustará el monto esperado de la sesión actual</li>
+                  <li className="font-semibold">Esta operación quedará registrada en los logs de auditoría</li>
+                </ul>
+              </div>
+            )}
 
             <div className="bg-gray-50 rounded-lg p-3 space-y-1">
               <p className="text-sm text-gray-700">
@@ -519,6 +468,11 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order: initi
               <p className="text-sm text-gray-700">
                 <strong>Total:</strong> Bs {Math.round(currentOrder.total)}
               </p>
+              {currentOrder.saleId && (
+                <p className="text-sm text-blue-700 font-medium">
+                  <strong>Venta:</strong> {currentOrder.saleId.slice(-8)}
+                </p>
+              )}
             </div>
 
             <div className="flex gap-3">

@@ -926,7 +926,7 @@ export interface OrderResponse {
   discount: string;
   total: string;
   deposit?: string;
-  status: 'PENDING' | 'CONFIRMED' | 'READY' | 'DELIVERED' | 'CANCELLED';
+  status: 'PENDING' | 'CONFIRMED' | 'READY' | 'DELIVERED';
   deliveryDate: string;
   deliveryTime?: string;
   notes?: string;
@@ -937,8 +937,6 @@ export interface OrderResponse {
   updatedAt: string;
   confirmedAt?: string;
   deliveredAt?: string;
-  cancelledAt?: string;
-  cancellationReason?: string;
   items?: OrderItemResponse[];
   creator?: {
     id: string;
@@ -1079,16 +1077,6 @@ export const ordersApi = {
   markAsDelivered: async (id: string): Promise<OrderResponse> => {
     return apiFetch<OrderResponse>(`/orders/${id}/delivered`, {
       method: 'PATCH',
-    });
-  },
-
-  /**
-   * Cancelar pedido
-   */
-  cancel: async (id: string, reason: string): Promise<OrderResponse> => {
-    return apiFetch<OrderResponse>(`/orders/${id}/cancel`, {
-      method: 'PATCH',
-      body: JSON.stringify({ reason }),
     });
   },
 
