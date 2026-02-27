@@ -583,7 +583,7 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, onClose, 
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Notas del Pedido
+                Notas del Pedido (Opcional)
               </label>
               <textarea
                 value={notes}

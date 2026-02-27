@@ -14,13 +14,31 @@ interface NewOrderModalProps {
   showToast: (type: 'success' | 'error' | 'warning' | 'info', message: string) => void;
 }
 
+// Helper: Obtener fecha actual en formato YYYY-MM-DD
+const getTodayDate = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// Helper: Obtener hora actual + 1 hora en formato HH:MM
+const getDefaultTime = () => {
+  const now = new Date();
+  now.setHours(now.getHours() + 1); // +1 hora
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  return `${hours}:${minutes}`;
+};
+
 export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast }) => {
   const [step, setStep] = useState<'customer' | 'products' | 'details'>('customer');
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerResponse | null>(null);
   const [customerName, setCustomerName] = useState(''); // Snapshot
   const [customerPhone, setCustomerPhone] = useState(''); // Snapshot
-  const [deliveryDate, setDeliveryDate] = useState('');
-  const [deliveryTime, setDeliveryTime] = useState('');
+  const [deliveryDate, setDeliveryDate] = useState(getTodayDate()); // Fecha actual por defecto
+  const [deliveryTime, setDeliveryTime] = useState(getDefaultTime()); // Hora actual + 1h por defecto
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Array<{
@@ -809,7 +827,7 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Notas del Pedido
+                Notas del Pedido (Opcional)
               </label>
               <textarea
                 value={notes}
