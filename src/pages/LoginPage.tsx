@@ -36,12 +36,6 @@ export const LoginPage: React.FC = () => {
     }
   };
   
-  // Usuarios de demo para mostrar
-  const demoUsers = [
-    { username: 'admin', pin: '1234', role: 'Administrador' },
-    { username: 'cajero1', pin: '1111', role: 'Cajero' },
-  ];
-  
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-900 via-primary-800 to-primary-700 flex items-center justify-center p-4 relative overflow-hidden">
       {/* Imagen de fondo - Opcional */}
@@ -129,32 +123,6 @@ export const LoginPage: React.FC = () => {
               Ingresar
             </Button>
           </form>
-        </div>
-        
-        {/* Usuarios Demo */}
-        <div className="mt-6 bg-white/10 backdrop-blur-sm rounded-xl p-6">
-          <h3 className="text-white font-semibold mb-3 text-center">
-            Usuarios de Demostración
-          </h3>
-          <div className="space-y-2">
-            {demoUsers.map((user) => (
-              <button
-                key={user.username}
-                onClick={() => {
-                  setUsername(user.username);
-                  setPin(user.pin);
-                }}
-                className="w-full bg-white/20 hover:bg-white/30 text-white rounded-lg px-4 py-2 text-sm transition-all text-left"
-              >
-                <div className="flex justify-between items-center">
-                  <span className="font-medium">{user.role}</span>
-                  <span className="text-xs opacity-75">
-                    {user.username} / {user.pin}
-                  </span>
-                </div>
-              </button>
-            ))}
-          </div>
         </div>
         
         <p className="text-center text-primary-200 text-sm mt-6">
