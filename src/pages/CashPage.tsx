@@ -55,7 +55,7 @@ export const CashPage: React.FC = () => {
     .reduce((sum, m) => sum + m.amount, 0);
   
   // Usar expectedAmount del backend (ya calculado correctamente)
-  const expectedCash = currentSession?.expectedAmount ?? 0;
+  const expectedCash = Number(currentSession?.expectedAmount ?? 0);
   
   const handleDeposit = async () => {
     setError('');

@@ -1233,15 +1233,6 @@ export const useSalesStore = create<SalesState>((set, get) => ({
     try {
       console.log('⚠️ Deleting sale:', saleId);
       
-      // Verificar si la venta tiene pedido asociado ANTES de eliminarla
-      const currentState = get();
-      const saleToDelete = currentState.sales.find(s => s.id === saleId);
-      const hasOrderId = saleToDelete?.orderId;
-      
-      if (hasOrderId) {
-        console.log(`🔗 Sale has orderId: ${hasOrderId}, will reload orders after deletion`);
-      }
-      
       await salesApi.delete(saleId);
       
       console.log('✅ Sale deleted successfully');
@@ -1259,17 +1250,15 @@ export const useSalesStore = create<SalesState>((set, get) => ({
       const productState = useProductStore.getState();
       productState.loadProducts();
       
-      // Recargar pedidos si la venta tenía pedido asociado (para limpiar saleId del pedido)
-      if (hasOrderId) {
-        const orderState = useOrderStore.getState();
-        console.log('🔄 Reloading orders to update order with cleaned saleId...');
-        orderState.loadOrders();
-      }
+      // SIEMPRE recargar pedidos (por si se limpió saleId de algún pedido)
+      const orderState = useOrderStore.getState();
+      console.log('🔄 Reloading orders after sale deletion...');
+      await orderState.loadOrders();
       
       // Recargar sesión actual si está abierta (para actualizar expectedAmount)
       const cashState = useCashStore.getState();
       if (cashState.currentSession) {
-        cashState.loadCurrentSession();
+        await cashState.loadCurrentSession();
       }
       
       return true;
