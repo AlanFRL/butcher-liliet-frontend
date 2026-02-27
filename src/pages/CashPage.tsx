@@ -39,9 +39,8 @@ export const CashPage: React.FC = () => {
     .filter((m) => m.type === 'WITHDRAWAL')
     .reduce((sum, m) => sum + m.amount, 0);
   
-  const expectedCash = currentSession
-    ? currentSession.openingAmount + totalCashSales + cashIn - cashOut
-    : 0;
+  // Usar expectedAmount del backend (ya calculado correctamente)
+  const expectedCash = currentSession?.expectedAmount ?? 0;
   
   const handleDeposit = async () => {
     setError('');
