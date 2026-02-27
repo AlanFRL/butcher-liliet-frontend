@@ -537,6 +537,25 @@ export const useCashStore = create<CashState>((set, get) => ({
       
       console.log('✅ Session deleted successfully');
       
+      // Reload all related data after session deletion
+      // The backend will have deleted all sales, restored inventory, and cleaned up orders
+      console.log('🔄 Reloading data after session deletion...');
+      
+      // Reload products (to reflect restored inventory)
+      const productState = useProductStore.getState();
+      await productState.loadProducts();
+      console.log('  ✅ Products reloaded');
+      
+      // Reload orders (to reflect cleaned up saleIds and statuses)
+      const orderState = useOrderStore.getState();
+      await orderState.loadOrders();
+      console.log('  ✅ Orders reloaded');
+      
+      // Reload sales (to remove deleted sales from the store)
+      const salesState = useSalesStore.getState();
+      await salesState.loadSales();
+      console.log('  ✅ Sales reloaded');
+      
       set({ 
         isLoading: false,
         error: null 
