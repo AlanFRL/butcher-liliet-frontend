@@ -18,7 +18,7 @@ interface OrderDetailModalProps {
 
 export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order: initialOrder, onClose, onEdit, showToast }) => {
   const navigate = useNavigate();
-  const { updateOrderStatus, deleteOrder, getOrderById } = useOrderStore();
+  const { updateOrderStatus, deleteOrder } = useOrderStore();
   const { loadOrderToCart } = useCartStore();
   const { currentSession } = useCashStore();
   const { canDeleteOrders } = usePermissions();
@@ -27,8 +27,10 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order: initi
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   
-  // Estado local para reflejar cambios en tiempo real
-  const currentOrder = getOrderById(initialOrder.id) || initialOrder;
+  // Subscribe to store changes to reflect updates in real-time
+  const currentOrder = useOrderStore((state) => 
+    state.orders.find(o => o.id === initialOrder.id) || initialOrder
+  );
   
   // Verificar si la orden puede ser eliminada
   // Solo ADMIN puede eliminar (canDeleteOrders)
