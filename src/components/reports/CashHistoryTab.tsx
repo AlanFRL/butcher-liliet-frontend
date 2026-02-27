@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DollarSign, Eye, Printer, Filter, Trash2 } from 'lucide-react';
+import { DollarSign, Eye, Printer, Filter, Trash2, AlertCircle } from 'lucide-react';
 import { Button } from '../ui';
 import Pagination from '../ui/Pagination';
 import { useAuthStore, useCashStore } from '../../store';
@@ -549,98 +549,86 @@ export const CashHistoryTab: React.FC<CashHistoryTabProps> = ({
       {/* Modal de confirmación para eliminar sesión */}
       {showDeleteModal && sessionToDelete && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-lg w-full p-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">🔥 ELIMINAR SESIÓN DE CAJA</h3>
-            
-            <div className="space-y-4">
-              <div className="bg-red-50 border-2 border-red-300 rounded-lg p-4">
-                <p className="text-red-800 font-bold mb-2">
-                  ⚠️ ACCIÓN EXTREMADAMENTE PELIGROSA
-                </p>
-                <p className="text-red-700 text-sm mb-3">
-                  Estás a punto de <strong>eliminar COMPLETAMENTE</strong> una sesión de caja.
-                  Esta es la operación más destructiva del sistema.
-                </p>
-                <ul className="text-red-700 text-sm space-y-2">
-                  <li>❌ Se eliminarán <strong>TODAS las ventas</strong> de esta sesión</li>
-                  <li>❌ Se eliminarán <strong>TODOS los movimientos</strong> (ingresos/retiros)</li>
-                  <li>🔄 Se restaurará el inventario de <strong>TODOS los productos vendidos</strong></li>
-                  <li>🔄 Todas las órdenes asociadas volverán a estado <strong>LISTO</strong></li>
-                  <li>⚠️ Esta acción es <strong>PERMANENTE E IRREVERSIBLE</strong></li>
-                </ul>
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            {/* Header */}
+            <div className="flex items-center mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mr-3">
+                <AlertCircle className="w-6 h-6 text-red-600" />
               </div>
-
-              <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                <p className="text-sm text-gray-700">
-                  <strong>Sesión:</strong> #{sessionToDelete.id.slice(-8).toUpperCase()}
-                </p>
-                <p className="text-sm text-gray-700">
-                  <strong>Usuario:</strong> {sessionToDelete.user.fullName}
-                </p>
-                <p className="text-sm text-gray-700">
-                  <strong>Terminal:</strong> {sessionToDelete.terminal.name}
-                </p>
-                <p className="text-sm text-gray-700">
-                  <strong>Apertura:</strong> {formatDateBolivia(new Date(sessionToDelete.openedAt))} {formatTimeBolivia(new Date(sessionToDelete.openedAt))}
-                </p>
-                {sessionToDelete.closedAt && (
-                  <p className="text-sm text-gray-700">
-                    <strong>Cierre:</strong> {formatDateBolivia(new Date(sessionToDelete.closedAt))} {formatTimeBolivia(new Date(sessionToDelete.closedAt))}
-                  </p>
-                )}
-                <p className="text-sm text-gray-700">
-                  <strong>Monto esperado:</strong> Bs {parseFloat(sessionToDelete.expectedAmount).toFixed(2)}
-                </p>
-              </div>
-
-              <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-4">
-                <p className="text-yellow-900 font-medium mb-2 text-sm">
-                  💡 ¿Cuándo eliminar una sesión?
-                </p>
-                <ul className="text-yellow-800 text-xs space-y-1">
-                  <li>• Cuando se registraron datos de prueba que deben ser removidos</li>
-                  <li>• Cuando hubo un error crítico en el registro de la sesión completa</li>
-                  <li>• NUNCA para corregir un error menor (usa cancelación de ventas)</li>
-                </ul>
-              </div>
-
               <div>
-                <label className="block text-sm font-bold text-red-700 mb-2">
-                  Para confirmar, escribe: <span className="font-mono bg-red-100 px-2 py-1 rounded">ELIMINAR</span>
-                </label>
-                <input
-                  type="text"
-                  value={deleteConfirmText}
-                  onChange={(e) => setDeleteConfirmText(e.target.value)}
-                  placeholder="Escribe ELIMINAR en mayúsculas"
-                  className="w-full px-4 py-2 border-2 border-red-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 font-mono"
-                  disabled={isDeleting}
-                />
+                <h3 className="text-xl font-bold text-gray-900">Eliminar Sesión</h3>
+                <p className="text-sm text-red-600 font-medium">Acción irreversible</p>
               </div>
+            </div>
+            
+            {/* Advertencia compacta */}
+            <div className="bg-red-50 border border-red-300 rounded-lg p-3 mb-4">
+              <p className="text-sm text-red-800 font-semibold mb-2">
+                ⚠️ Esta acción eliminará:
+              </p>
+              <ul className="text-sm text-red-700 space-y-1">
+                <li>• Todas las ventas de la sesión</li>
+                <li>• Todos los movimientos (ingresos/retiros)</li>
+                <li>• Restaurará inventario de productos</li>
+              </ul>
+            </div>
 
-              <div className="flex gap-3 pt-2">
-                <Button 
-                  onClick={() => {
-                    setShowDeleteModal(false);
-                    setSessionToDelete(null);
-                    setDeleteConfirmText('');
-                  }}
-                  variant="outline" 
-                  className="flex-1"
-                  disabled={isDeleting}
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  onClick={handleConfirmDelete}
-                  variant="danger"
-                  className="flex-1"
-                  isLoading={isDeleting}
-                  disabled={deleteConfirmText !== 'ELIMINAR'}
-                >
-                  Sí, ELIMINAR Sesión
-                </Button>
-              </div>
+            {/* Info de la sesión */}
+            <div className="bg-gray-50 rounded-lg p-3 mb-4 space-y-1.5">
+              <p className="text-sm text-gray-700">
+                <strong>Sesión:</strong> #{sessionToDelete.id.slice(-8).toUpperCase()}
+              </p>
+              <p className="text-sm text-gray-700">
+                <strong>Usuario:</strong> {sessionToDelete.user.fullName}
+              </p>
+              <p className="text-sm text-gray-700">
+                <strong>Apertura:</strong> {formatDateBolivia(new Date(sessionToDelete.openedAt))}
+              </p>
+              {sessionToDelete.closedAt && (
+                <p className="text-sm text-gray-700">
+                  <strong>Cierre:</strong> {formatDateBolivia(new Date(sessionToDelete.closedAt))}
+                </p>
+              )}
+            </div>
+
+            {/* Confirmación */}
+            <div className="mb-4">
+              <label className="block text-sm font-bold text-red-700 mb-2">
+                Escribe <span className="font-mono bg-red-100 px-2 py-0.5 rounded">ELIMINAR</span> para confirmar
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder="ELIMINAR"
+                className="w-full px-3 py-2 border-2 border-red-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 font-mono"
+                disabled={isDeleting}
+              />
+            </div>
+
+            {/* Botones */}
+            <div className="flex gap-3">
+              <Button 
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setSessionToDelete(null);
+                  setDeleteConfirmText('');
+                }}
+                variant="outline" 
+                className="flex-1"
+                disabled={isDeleting}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleConfirmDelete}
+                variant="danger"
+                className="flex-1"
+                isLoading={isDeleting}
+                disabled={deleteConfirmText !== 'ELIMINAR'}
+              >
+                Eliminar Sesión
+              </Button>
             </div>
           </div>
         </div>

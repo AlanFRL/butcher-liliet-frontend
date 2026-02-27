@@ -288,72 +288,77 @@ export const CashClosePage: React.FC = () => {
             Arqueo de Caja
           </h2>
           
-          <div className="grid md:grid-cols-3 gap-4 mb-4">
-            {/* Ingreso del efectivo contado */}
-            <div className="md:col-span-2">
-              <label className="block text-base font-medium text-gray-700 mb-2">
-                Efectivo Contado <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-lg font-semibold">
-                  Bs
-                </span>
-                <input
-                  type="number"
-                  value={countedCash}
-                  onChange={(e) => setCountedCash(e.target.value)}
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  className="w-full pl-14 pr-4 py-3 text-2xl font-bold border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-center"
-                  required
+          <div className="grid md:grid-cols-2 gap-4">
+            {/* Columna 1: Efectivo y Observaciones */}
+            <div className="space-y-4">
+              {/* Efectivo Contado */}
+              <div>
+                <label className="block text-base font-medium text-gray-700 mb-2">
+                  Efectivo Contado <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-lg font-semibold">
+                    Bs
+                  </span>
+                  <input
+                    type="number"
+                    value={countedCash}
+                    onChange={(e) => setCountedCash(e.target.value)}
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    className="w-full pl-14 pr-4 py-3 text-2xl font-bold border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-center"
+                    required
+                  />
+                </div>
+                <p className="mt-1.5 text-sm text-gray-500">
+                  Cuenta el efectivo físico en caja
+                </p>
+              </div>
+              
+              {/* Observaciones */}
+              <div>
+                <label className="block text-base font-medium text-gray-700 mb-2">
+                  Observaciones {Math.abs(difference) > 0.01 && <span className="text-gray-500 text-sm">(Recomendado)</span>}
+                </label>
+                <textarea
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  rows={4}
+                  placeholder="Explica cualquier diferencia o agrega comentarios..."
+                  className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
                 />
               </div>
-              <p className="mt-1.5 text-sm text-gray-500">
-                Cuenta el efectivo físico en caja
-              </p>
             </div>
             
-            {/* Diferencia */}
+            {/* Columna 2: Diferencia */}
             {countedCash && (
-              <div className={`rounded-lg p-4 border-2 ${
-                Math.abs(difference) < 0.01
-                  ? 'bg-green-50 border-green-300'
-                  : 'bg-red-50 border-red-300'
-              }`}>
-                <p className="text-sm font-medium text-gray-600 mb-1">
-                  {Math.abs(difference) < 0.01
-                    ? '✓ Cuadre Perfecto'
-                    : difference > 0
-                    ? '⚠️ Sobrante'
-                    : '⚠️ Faltante'}
-                </p>
-                <p className={`text-3xl font-bold ${
+              <div className="flex items-center justify-center">
+                <div className={`rounded-lg p-6 border-2 w-full text-center ${
                   Math.abs(difference) < 0.01
-                    ? 'text-green-700'
-                    : difference > 0
-                    ? 'text-blue-700'
-                    : 'text-red-700'
+                    ? 'bg-green-50 border-green-300'
+                    : 'bg-red-50 border-red-300'
                 }`}>
-                  {difference >= 0 ? '+' : ''}Bs {difference.toFixed(2)}
-                </p>
-                <p className="text-sm text-gray-500 mt-1">Diferencia</p>
+                  <p className="text-base font-medium text-gray-600 mb-2">
+                    {Math.abs(difference) < 0.01
+                      ? '✓ Cuadre Perfecto'
+                      : difference > 0
+                      ? '⚠️ Sobrante'
+                      : '⚠️ Faltante'}
+                  </p>
+                  <p className={`text-5xl font-bold mb-2 ${
+                    Math.abs(difference) < 0.01
+                      ? 'text-green-700'
+                      : difference > 0
+                      ? 'text-blue-700'
+                      : 'text-red-700'
+                  }`}>
+                    {difference >= 0 ? '+' : ''}Bs {difference.toFixed(2)}
+                  </p>
+                  <p className="text-base text-gray-600">Diferencia</p>
+                </div>
               </div>
             )}
-          </div>
-          
-          {/* Observaciones */}
-          <div>
-            <label className="block text-base font-medium text-gray-700 mb-2">
-              Observaciones {Math.abs(difference) > 0.01 && <span className="text-gray-500 text-sm">(Recomendado)</span>}
-            </label>
-            <textarea
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              rows={3}
-              placeholder="Explica cualquier diferencia o agrega comentarios..."
-              className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
-            />
           </div>
           
           {/* Advertencias compactas */}
