@@ -237,84 +237,86 @@ export const CashSessionDetail: React.FC<CashSessionDetailProps> = ({
                   </div>
                 </div>
 
-                {/* Resumen Financiero Simplificado */}
-                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                  <div className="bg-gray-50 px-6 py-3 border-b border-gray-200">
-                    <h3 className="text-sm font-semibold text-gray-700 uppercase">Resumen de Sesión</h3>
+                {/* Resumen Financiero Compacto */}
+                <div className="grid grid-cols-3 gap-3">
+                  {/* Columna 1: Info de Sesión */}
+                  <div className="bg-white border border-gray-200 rounded-lg p-4">
+                    <div className="space-y-2.5">
+                      <div>
+                        <p className="text-xs text-gray-500 mb-0.5">Saldo Inicial</p>
+                        <p className="text-lg font-bold text-gray-900">Bs {openingBalance.toFixed(2)}</p>
+                      </div>
+                      {session.closedAt && (
+                        <>
+                          <div className="border-t border-gray-100 pt-2.5">
+                            <p className="text-xs text-gray-500 mb-0.5">Esperado en Caja</p>
+                            <p className="text-lg font-bold text-gray-900">Bs {parseFloat(session.expectedAmount).toFixed(2)}</p>
+                          </div>
+                          <div className="border-t border-gray-100 pt-2.5">
+                            <p className="text-xs text-gray-500 mb-0.5">Contado al Cerrar</p>
+                            <p className="text-lg font-bold text-gray-900">Bs {closingBalance.toFixed(2)}</p>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
-                  <div className="p-6 space-y-3">
-                    {/* Saldo Inicial */}
-                    <div className="flex justify-between items-center pb-3 border-b border-gray-100">
-                      <span className="text-sm text-gray-600">Saldo Inicial:</span>
-                      <span className="text-base font-bold text-gray-900">
-                        Bs {openingBalance.toFixed(2)}
-                      </span>
-                    </div>
 
-                    {/* Total Ventas */}
-                    <div className="flex justify-between items-center pb-3 border-b border-gray-100">
-                      <span className="text-sm text-gray-600">Total Ventas:</span>
-                      <span className="text-base font-bold text-gray-900">
-                        Bs {totalAllSales.toFixed(2)}
-                        <span className="text-xs text-gray-500 ml-2">({sales.length} ventas)</span>
-                      </span>
-                    </div>
-
-                    {/* Ventas en Efectivo */}
-                    <div className="flex justify-between items-center pb-3 border-b border-gray-100">
-                      <span className="text-sm text-gray-600 ml-4">• En Efectivo:</span>
-                      <span className="text-sm font-semibold text-gray-700">
-                        Bs {totalCashSales.toFixed(2)}
-                        <span className="text-xs text-gray-500 ml-2">({cashSales.length})</span>
-                      </span>
-                    </div>
-
-                    {/* Ventas por Transferencia */}
-                    <div className="flex justify-between items-center pb-3 border-b border-gray-100">
-                      <span className="text-sm text-gray-600 ml-4">• Por Transferencia:</span>
-                      <span className="text-sm font-semibold text-gray-700">
-                        Bs {totalTransferSales.toFixed(2)}
-                        <span className="text-xs text-gray-500 ml-2">({transferSales.length})</span>
-                      </span>
-                    </div>
-
-                    {/* Esperado en Caja (solo si está cerrada) */}
-                    {session.closedAt && (
-                      <>
-                        <div className="flex justify-between items-center pb-3 border-b border-gray-100">
-                          <span className="text-sm text-gray-600">Esperado en Caja:</span>
-                          <span className="text-base font-bold text-gray-900">
-                            Bs {parseFloat(session.expectedAmount).toFixed(2)}
-                          </span>
+                  {/* Columna 2: Ventas */}
+                  <div className="bg-white border border-gray-200 rounded-lg p-4">
+                    <div className="space-y-2.5">
+                      <div>
+                        <p className="text-xs text-gray-500 mb-0.5">Total Ventas</p>
+                        <p className="text-lg font-bold text-gray-900">
+                          Bs {totalAllSales.toFixed(2)}
+                        </p>
+                        <p className="text-xs text-gray-400">{sales.length} ventas</p>
+                      </div>
+                      <div className="border-t border-gray-100 pt-2.5">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-xs text-gray-600">Efectivo:</span>
+                          <span className="text-sm font-semibold text-gray-900">Bs {totalCashSales.toFixed(2)}</span>
                         </div>
-
-                        {/* Contado Real */}
-                        <div className="flex justify-between items-center pb-3 border-b border-gray-200">
-                          <span className="text-sm text-gray-600">Contado al Cerrar:</span>
-                          <span className="text-base font-bold text-gray-900">
-                            Bs {closingBalance.toFixed(2)}
-                          </span>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-gray-600">Transferencia:</span>
+                          <span className="text-sm font-semibold text-gray-900">Bs {totalTransferSales.toFixed(2)}</span>
                         </div>
+                      </div>
+                    </div>
+                  </div>
 
-                        {/* Diferencia */}
-                        <div className="flex justify-between items-center pt-2">
-                          <span className={`text-sm font-semibold ${
-                            difference > 0 ? 'text-green-700' :
-                            difference < 0 ? 'text-red-700' :
-                            'text-gray-700'
-                          }`}>
-                            Diferencia:
-                          </span>
-                          <span className={`text-lg font-bold ${
+                  {/* Columna 3: Movimientos y Diferencia */}
+                  <div className="bg-white border border-gray-200 rounded-lg p-4">
+                    <div className="space-y-2.5">
+                      {(totalDeposits > 0 || totalWithdrawals > 0) && (
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1.5">Movimientos de Caja</p>
+                          {totalDeposits > 0 && (
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="text-xs text-green-600">Ingresos:</span>
+                              <span className="text-sm font-semibold text-green-600">+Bs {totalDeposits.toFixed(2)}</span>
+                            </div>
+                          )}
+                          {totalWithdrawals > 0 && (
+                            <div className="flex justify-between items-center">
+                              <span className="text-xs text-red-600">Retiros:</span>
+                              <span className="text-sm font-semibold text-red-600">-Bs {totalWithdrawals.toFixed(2)}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {session.closedAt && (
+                        <div className={`border-t border-gray-100 pt-2.5 ${!totalDeposits && !totalWithdrawals ? '' : ''}`}>
+                          <p className="text-xs text-gray-500 mb-0.5">Diferencia</p>
+                          <p className={`text-xl font-bold ${
                             difference > 0 ? 'text-green-600' :
                             difference < 0 ? 'text-red-600' :
                             'text-gray-900'
                           }`}>
                             {difference > 0 && '+'}Bs {difference.toFixed(2)}
-                          </span>
+                          </p>
                         </div>
-                      </>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
 
