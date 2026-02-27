@@ -966,6 +966,14 @@ export interface OrderItemResponse {
   };
 }
 
+export interface PaginatedOrdersResponse {
+  data: OrderResponse[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 export const ordersApi = {
   /**
    * Crear pedido
@@ -997,22 +1005,26 @@ export const ordersApi = {
   },
 
   /**
-   * Listar pedidos con filtros
+   * Listar pedidos con filtros y paginación
    */
   getAll: async (params?: {
     status?: string;
     customerName?: string;
     startDate?: string;
     endDate?: string;
-  }): Promise<OrderResponse[]> => {
+    page?: number;
+    limit?: number;
+  }): Promise<PaginatedOrdersResponse | OrderResponse[]> => {
     const queryParams = new URLSearchParams();
     if (params?.status) queryParams.append('status', params.status);
     if (params?.customerName) queryParams.append('customerName', params.customerName);
     if (params?.startDate) queryParams.append('startDate', params.startDate);
     if (params?.endDate) queryParams.append('endDate', params.endDate);
+    if (params?.page !== undefined) queryParams.append('page', params.page.toString());
+    if (params?.limit !== undefined) queryParams.append('limit', params.limit.toString());
 
     const query = queryParams.toString();
-    return apiFetch<OrderResponse[]>(`/orders${query ? `?${query}` : ''}`, {
+    return apiFetch<PaginatedOrdersResponse | OrderResponse[]>(`/orders${query ? `?${query}` : ''}`, {
       method: 'GET',
     });
   },

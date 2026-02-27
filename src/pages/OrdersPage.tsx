@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Plus, Search, Calendar, Clock, Phone, User, Package, AlertCircle, CheckCircle, Eye, CreditCard, FileText } from 'lucide-react';
+import { Plus, Search, Calendar, Clock, Phone, User, Package, AlertCircle, CheckCircle, Eye, CreditCard, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button, useToast } from '../components/ui';
 import { useOrderStore, useCartStore } from '../store';
 import type { Order, OrderStatus } from '../types';
@@ -17,17 +17,22 @@ export const OrdersPage: React.FC = () => {
   const [showOrderDetailModal, setShowOrderDetailModal] = useState(false);
   const [showEditOrderModal, setShowEditOrderModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const { showToast, ToastComponent } = useToast();
 
   const navigate = useNavigate();
-  const { orders, error, loadOrders, getOverdueOrders } = useOrderStore();
+  const { orders, total, totalPages, error, loadOrders, getOverdueOrders, updateOrderStatus } = useOrderStore();
   const { loadOrderToCart } = useCartStore();
   const overdueOrders = getOverdueOrders();
 
-  // Cargar pedidos al montar el componente
+  // Cargar pedidos al montar el componente y cuando cambien filtros o página
   useEffect(() => {
-    loadOrders();
-  }, [loadOrders]);
+    loadOrders(currentPage, itemsPerPage, {
+      status: statusFilter !== 'ALL' ? statusFilter : undefined,
+      customerName: searchQuery || undefined,
+    });
+  }, [currentPage, statusFilter, searchQuery, loadOrders]);
 
   // Mostrar error si ocurre
   useEffect(() => {
@@ -90,40 +95,19 @@ export const OrdersPage: React.FC = () => {
     }
   };
 
-  // Filtrar pedidos
+  // Filtrar pedidos - ya vienen ordenados del backend por created_at DESC
   const filteredOrders = useMemo(() => {
-    let filtered = orders;
+    // El backend ya aplica filtros status y customerName
+    // Solo necesitamos mostrar los orders que nos llegaron
+    return orders;
+  }, [orders]);
 
-    // Filtro por estado
-    if (statusFilter !== 'ALL') {
-      filtered = filtered.filter((o) => o.status === statusFilter);
+  // Resetear página al cambiar filtros
+  useEffect(() => {
+    if (currentPage !== 1) {
+      setCurrentPage(1);
     }
-
-    // Filtro por búsqueda
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (o) =>
-          o.orderNumber.toString().includes(query) ||
-          o.customerName.toLowerCase().includes(query) ||
-          o.customerPhone.includes(query)
-      );
-    }
-
-    // Ordenar por fecha de entrega (más próximos primero)
-    return filtered.sort((a, b) => {
-      // Parse dates explicitly to avoid timezone issues
-      const [yearA, monthA, dayA] = a.deliveryDate.split('-').map(Number);
-      const [hoursA, minutesA] = a.deliveryTime.split(':').map(Number);
-      const dateA = new Date(yearA, monthA - 1, dayA, hoursA, minutesA, 0);
-      
-      const [yearB, monthB, dayB] = b.deliveryDate.split('-').map(Number);
-      const [hoursB, minutesB] = b.deliveryTime.split(':').map(Number);
-      const dateB = new Date(yearB, monthB - 1, dayB, hoursB, minutesB, 0);
-      
-      return dateA.getTime() - dateB.getTime();
-    });
-  }, [orders, statusFilter, searchQuery]);
+  }, [searchQuery, statusFilter]);
 
   const getStatusBadge = (status: OrderStatus) => {
     const badges = {
@@ -157,6 +141,20 @@ export const OrdersPage: React.FC = () => {
     setShowEditOrderModal(true);
   };
 
+  const handleStatusChange = async (order: Order, newStatus: OrderStatus) => {
+    const success = await updateOrderStatus(order.id, newStatus);
+    if (success) {
+      const statusText = {
+        PENDING: 'Pendiente',
+        READY: 'Listo',
+        DELIVERED: 'Entregado'
+      }[newStatus];
+      showToast('success', `Pedido marcado como ${statusText}`);
+    } else {
+      showToast('error', 'No se pudo actualizar el estado del pedido');
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       {ToastComponent}
@@ -178,23 +176,6 @@ export const OrdersPage: React.FC = () => {
         </Button>
       </div>
 
-      {/* Alertas */}
-      {overdueOrders.length > 0 && (
-        <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded-lg">
-          <div className="flex items-start">
-            <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" />
-            <div>
-              <p className="font-semibold text-red-900">
-                {overdueOrders.length} pedido{overdueOrders.length > 1 ? 's' : ''} atrasado{overdueOrders.length > 1 ? 's' : ''}
-              </p>
-              <p className="text-sm text-red-700 mt-1">
-                Hay pedidos que ya pasaron su fecha de entrega programada
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Resumen del día */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
@@ -205,6 +186,17 @@ export const OrdersPage: React.FC = () => {
             </div>
             <Calendar className="w-8 h-8 text-primary-600" />
           </div>
+          {/* Alerta de pedidos atrasados (compacta) */}
+          {overdueOrders.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-gray-100">
+              <div className="flex items-center text-red-600">
+                <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
+                <span className="text-xs font-medium">
+                  {overdueOrders.length} atrasado{overdueOrders.length > 1 ? 's' : ''}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
@@ -315,8 +307,9 @@ export const OrdersPage: React.FC = () => {
           )}
         </div>
       ) : (
-        <div className="space-y-4">
-          {filteredOrders.map((order) => {
+        <>
+          <div className="space-y-4">
+            {filteredOrders.map((order) => {
             const isOverdue = isOrderOverdue(order);
             const statusBadge = getStatusBadge(order.status);
 
@@ -385,6 +378,18 @@ export const OrdersPage: React.FC = () => {
                       Creado {new Date(order.createdAt).toLocaleDateString('es-BO')} {new Date(order.createdAt).toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' })}
                     </div>
                     <div className="flex gap-2">
+                      {/* Botón Marcar como Listo para pedidos PENDING */}
+                      {order.status === 'PENDING' && (
+                        <Button
+                          onClick={() => handleStatusChange(order, 'READY')}
+                          variant="outline"
+                          size="sm"
+                          className="text-green-600 border-green-600 hover:bg-green-50"
+                        >
+                          <CheckCircle className="w-4 h-4 mr-1" />
+                          Marcar como Listo
+                        </Button>
+                      )}
                       {/* Botón Editar para pedidos PENDING o READY */}
                       {(order.status === 'PENDING' || order.status === 'READY') && (
                         <Button
@@ -395,8 +400,8 @@ export const OrdersPage: React.FC = () => {
                           Editar
                         </Button>
                       )}
-                      {/* Botón Cobrar en POS para pedidos READY */}
-                      {order.status === 'READY' && (
+                      {/* Botón Cobrar en POS para pedidos READY o DELIVERED sin cobro */}
+                      {(order.status === 'READY' || (order.status === 'DELIVERED' && !order.saleId)) && (
                         <Button
                           onClick={() => handleChargeOrder(order)}
                           variant="primary"
@@ -404,6 +409,18 @@ export const OrdersPage: React.FC = () => {
                         >
                           <CreditCard className="w-4 h-4 mr-1" />
                           Cobrar en POS
+                        </Button>
+                      )}
+                      {/* Botón Marcar como Entregado para pedidos READY */}
+                      {order.status === 'READY' && (
+                        <Button
+                          onClick={() => handleStatusChange(order, 'DELIVERED')}
+                          variant="outline"
+                          size="sm"
+                          className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                        >
+                          <CheckCircle className="w-4 h-4 mr-1" />
+                          Marcar Entregado
                         </Button>
                       )}
                       {/* Botón Nota de Venta - disponible siempre */}
@@ -430,7 +447,61 @@ export const OrdersPage: React.FC = () => {
               </div>
             );
           })}
-        </div>
+          </div>
+
+          {/* Paginación */}
+          {totalPages && totalPages > 1 && (
+            <div className="mt-6 flex items-center justify-between bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <div className="text-sm text-gray-600">
+                Mostrando {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, total || 0)} de {total || 0} pedidos
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  variant="outline"
+                  size="sm"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Anterior
+                </Button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter(page => {
+                      // Mostrar primera, última, actual y vecinas
+                      return page === 1 || 
+                             page === totalPages || 
+                             Math.abs(page - currentPage) <= 1;
+                    })
+                    .map((page, idx, arr) => (
+                      <React.Fragment key={page}>
+                        {idx > 0 && arr[idx - 1] !== page - 1 && (
+                          <span className="px-2 text-gray-400">...</span>
+                        )}
+                        <Button
+                          onClick={() => setCurrentPage(page)}
+                          variant={currentPage === page ? 'primary' : 'outline'}
+                          size="sm"
+                          className="min-w-[2.5rem]"
+                        >
+                          {page}
+                        </Button>
+                      </React.Fragment>
+                    ))}
+                </div>
+                <Button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  variant="outline"
+                  size="sm"
+                >
+                  Siguiente
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* Modal Nuevo Pedido */}

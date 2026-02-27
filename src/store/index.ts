@@ -1302,9 +1302,17 @@ export const useAppStore = create<AppState>((set, get) => ({
 interface OrderState {
   orders: Order[];
   customers: Customer[];
+  total?: number;
+  currentPage?: number;
+  totalPages?: number;
   isLoading: boolean;
   error: string | null;
-  loadOrders: () => Promise<void>;
+  loadOrders: (page?: number, limit?: number, filters?: {
+    status?: string;
+    customerName?: string;
+    startDate?: string;
+    endDate?: string;
+  }) => Promise<void>;
   createOrder: (data: {
     customerId: string; // Add customerId
     customerName: string;
@@ -1340,52 +1348,118 @@ interface OrderState {
 export const useOrderStore = create<OrderState>((set, get) => ({
   orders: [],
   customers: storage.getCustomers(),
+  total: undefined,
+  currentPage: undefined,
+  totalPages: undefined,
   isLoading: false,
   error: null,
 
-  loadOrders: async () => {
+  loadOrders: async (page?: number, limit?: number, filters?: {
+    status?: string;
+    customerName?: string;
+    startDate?: string;
+    endDate?: string;
+  }) => {
     set({ isLoading: true, error: null });
     
     try {
-      const response = await ordersApi.getAll();
+      const response = await ordersApi.getAll({
+        ...filters,
+        page,
+        limit,
+      });
       
-      // Convert backend response to frontend Order format
-      const orders: Order[] = response.map(order => ({
-        id: order.id,
-        orderNumber: parseInt(order.orderNumber.replace(/\D/g, '')),
-        customerId: order.customerId || '', // Customer ID from backend
-        customerName: order.customerName,
-        customerPhone: order.customerPhone || '',
-        status: order.status as OrderStatus,
-        deliveryDate: order.deliveryDate,
-        deliveryTime: order.deliveryTime || '',
-        items: order.items?.map(item => ({
-          id: item.id,
-          orderId: order.id,
-          productId: item.productId,
-          productName: item.productName,
-          productSku: item.productSku,
-          saleType: 'UNIT' as SaleType,
-          qty: parseDecimal(item.quantity),
-          unit: item.unit,
-          unitPrice: parseDecimal(item.unitPrice),
-          total: parseDecimal(item.subtotal),
-          discount: parseDecimal(item.discount || 0), // Cargar descuento del item
-          notes: item.notes,
-        })) || [],
-        subtotal: parseDecimal(order.subtotal),
-        discount: parseDecimal(order.discount),
-        total: parseDecimal(order.total),
-        notes: order.notes,
-        createdBy: order.createdBy,
-        saleId: order.saleId,
-        createdAt: order.createdAt,
-        updatedAt: order.updatedAt,
-        completedAt: order.deliveredAt,
-      }));
+      // Type guard: check if response is paginated
+      if ('data' in response && typeof response.total === 'number') {
+        // Paginated response
+        const orders: Order[] = response.data.map(order => ({
+          id: order.id,
+          orderNumber: parseInt(order.orderNumber.replace(/\D/g, '')),
+          customerId: order.customerId || '', // Customer ID from backend
+          customerName: order.customerName,
+          customerPhone: order.customerPhone || '',
+          status: order.status as OrderStatus,
+          deliveryDate: order.deliveryDate,
+          deliveryTime: order.deliveryTime || '',
+          items: order.items?.map(item => ({
+            id: item.id,
+            orderId: order.id,
+            productId: item.productId,
+            productName: item.productName,
+            productSku: item.productSku,
+            saleType: 'UNIT' as SaleType,
+            qty: parseDecimal(item.quantity),
+            unit: item.unit,
+            unitPrice: parseDecimal(item.unitPrice),
+            total: parseDecimal(item.subtotal),
+            discount: parseDecimal(item.discount || 0), // Cargar descuento del item
+            notes: item.notes,
+          })) || [],
+          subtotal: parseDecimal(order.subtotal),
+          discount: parseDecimal(order.discount),
+          total: parseDecimal(order.total),
+          notes: order.notes,
+          createdBy: order.createdBy,
+          saleId: order.saleId,
+          createdAt: order.createdAt,
+          updatedAt: order.updatedAt,
+          completedAt: order.deliveredAt,
+        }));
 
-      set({ orders, isLoading: false });
-      console.log('✅ Orders loaded from backend:', orders.length);
+        set({ 
+          orders, 
+          total: response.total,
+          currentPage: response.page,
+          totalPages: response.totalPages,
+          isLoading: false 
+        });
+        console.log('✅ Orders loaded from backend (paginated):', orders.length, 'of', response.total);
+      } else {
+        // Non-paginated response (backward compatibility)
+        const orderArray = Array.isArray(response) ? response : [];
+        const orders: Order[] = orderArray.map(order => ({
+          id: order.id,
+          orderNumber: parseInt(order.orderNumber.replace(/\D/g, '')),
+          customerId: order.customerId || '', // Customer ID from backend
+          customerName: order.customerName,
+          customerPhone: order.customerPhone || '',
+          status: order.status as OrderStatus,
+          deliveryDate: order.deliveryDate,
+          deliveryTime: order.deliveryTime || '',
+          items: order.items?.map(item => ({
+            id: item.id,
+            orderId: order.id,
+            productId: item.productId,
+            productName: item.productName,
+            productSku: item.productSku,
+            saleType: 'UNIT' as SaleType,
+            qty: parseDecimal(item.quantity),
+            unit: item.unit,
+            unitPrice: parseDecimal(item.unitPrice),
+            total: parseDecimal(item.subtotal),
+            discount: parseDecimal(item.discount || 0), // Cargar descuento del item
+            notes: item.notes,
+          })) || [],
+          subtotal: parseDecimal(order.subtotal),
+          discount: parseDecimal(order.discount),
+          total: parseDecimal(order.total),
+          notes: order.notes,
+          createdBy: order.createdBy,
+          saleId: order.saleId,
+          createdAt: order.createdAt,
+          updatedAt: order.updatedAt,
+          completedAt: order.deliveredAt,
+        }));
+
+        set({ 
+          orders, 
+          total: undefined,
+          currentPage: undefined,
+          totalPages: undefined,
+          isLoading: false 
+        });
+        console.log('✅ Orders loaded from backend (non-paginated):', orders.length);
+      }
     } catch (error) {
       console.error('❌ Error loading orders:', error);
       set({ error: 'Failed to load orders', isLoading: false });
