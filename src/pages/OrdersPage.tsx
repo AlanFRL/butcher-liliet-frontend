@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Plus, Search, Calendar, Clock, Phone, User, Package, AlertCircle, CheckCircle, Eye, CreditCard, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
-import { Button, useToast } from '../components/ui';
+import { Button, useToast, Modal } from '../components/ui';
 import { useOrderStore, useCartStore } from '../store';
 import type { Order, OrderStatus } from '../types';
 import { useNavigate } from 'react-router-dom';
@@ -11,6 +11,19 @@ import { EditOrderModal } from '../components/orders/EditOrderModal';
 import { PrintableInvoiceNote } from '../components/orders/PrintableInvoiceNote';
 
 export const OrdersPage: React.FC = () => {
+  // Helpers para fechas
+  const getFirstDayOfMonth = () => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  };
+
+  const formatDateForInput = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | OrderStatus>('ALL');
   const [showNewOrderModal, setShowNewOrderModal] = useState(false);
@@ -18,6 +31,11 @@ export const OrdersPage: React.FC = () => {
   const [showEditOrderModal, setShowEditOrderModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [dateFrom, setDateFrom] = useState(formatDateForInput(getFirstDayOfMonth()));
+  const [dateTo, setDateTo] = useState(formatDateForInput(new Date()));
+  const [dateError, setDateError] = useState<string | null>(null);
+  const [showDeliverConfirm, setShowDeliverConfirm] = useState(false);
+  const [orderToDeliver, setOrderToDeliver] = useState<Order | null>(null);
   const itemsPerPage = 10;
   const { showToast, ToastComponent } = useToast();
 
@@ -26,13 +44,39 @@ export const OrdersPage: React.FC = () => {
   const { loadOrderToCart } = useCartStore();
   const overdueOrders = getOverdueOrders();
 
+  // Validación de rango de fechas
+  useEffect(() => {
+    if (!dateFrom || !dateTo) {
+      setDateError(null);
+      return;
+    }
+    
+    const from = new Date(dateFrom);
+    const to = new Date(dateTo);
+    
+    if (from > to) {
+      setDateError('La fecha "hasta" no puede ser anterior a la fecha "desde"');
+      return;
+    }
+    
+    const diffDays = Math.ceil((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays > 90) {
+      setDateError('El rango máximo permitido es de 90 días. Por favor selecciona un período menor.');
+    } else {
+      setDateError(null);
+    }
+  }, [dateFrom, dateTo]);
+
   // Cargar pedidos con paginación del backend
   useEffect(() => {
     loadOrders(currentPage, itemsPerPage, {
       status: statusFilter !== 'ALL' ? statusFilter : undefined,
       customerName: searchQuery || undefined,
+      startDate: dateFrom || undefined,
+      endDate: dateTo || undefined,
     });
-  }, [currentPage, statusFilter, searchQuery, loadOrders]);
+  }, [currentPage, statusFilter, searchQuery, dateFrom, dateTo, loadOrders]);
 
   // Mostrar error si ocurre
   useEffect(() => {
@@ -103,10 +147,8 @@ export const OrdersPage: React.FC = () => {
 
   // Resetear página al cambiar filtros
   useEffect(() => {
-    if (currentPage !== 1) {
-      setCurrentPage(1);
-    }
-  }, [searchQuery, statusFilter]);
+    setCurrentPage(1); // Siempre resetear a página 1, sin condicional
+  }, [searchQuery, statusFilter, dateFrom, dateTo]);
 
   const getStatusBadge = (status: OrderStatus) => {
     const badges = {
@@ -141,6 +183,14 @@ export const OrdersPage: React.FC = () => {
   };
 
   const handleStatusChange = async (order: Order, newStatus: OrderStatus) => {
+    // Si se marca como entregado, mostrar confirmación
+    if (newStatus === 'DELIVERED') {
+      setOrderToDeliver(order);
+      setShowDeliverConfirm(true);
+      return;
+    }
+    
+    // Para otros cambios de estado, continuar directo
     const success = await updateOrderStatus(order.id, newStatus);
     if (success) {
       const statusText = {
@@ -152,6 +202,20 @@ export const OrdersPage: React.FC = () => {
     } else {
       showToast('error', 'No se pudo actualizar el estado del pedido');
     }
+  };
+
+  const confirmDeliverOrder = async () => {
+    if (!orderToDeliver) return;
+    
+    const success = await updateOrderStatus(orderToDeliver.id, 'DELIVERED');
+    if (success) {
+      showToast('success', 'Pedido marcado como Entregado');
+    } else {
+      showToast('error', 'No se pudo marcar el pedido como entregado');
+    }
+    
+    setShowDeliverConfirm(false);
+    setOrderToDeliver(null);
   };
 
   return (
@@ -284,6 +348,53 @@ export const OrdersPage: React.FC = () => {
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Filtro por rango de fechas */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+        <h3 className="text-sm font-medium text-gray-700 mb-3">Filtrar por Rango de Fechas (Entrega)</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Fecha Desde
+            </label>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              max={dateTo}
+              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
+                dateError
+                  ? 'border-red-500 focus:ring-red-500'
+                  : 'border-gray-300 focus:ring-primary-500'
+              }`}
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Fecha Hasta
+            </label>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              min={dateFrom}
+              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
+                dateError
+                  ? 'border-red-500 focus:ring-red-500'
+                  : 'border-gray-300 focus:ring-primary-500'
+              }`}
+            />
+          </div>
+        </div>
+        
+        {dateError && (
+          <div className="mt-3 text-sm text-red-600 flex items-center gap-2">
+            <span>⚠️</span>
+            <span>{dateError}</span>
+          </div>
+        )}
       </div>
 
       {/* Lista de pedidos */}
@@ -537,6 +648,43 @@ export const OrdersPage: React.FC = () => {
           }}
           showToast={showToast}
         />
+      )}
+
+      {/* Modal Confirmación Marcar Entregado */}
+      {showDeliverConfirm && orderToDeliver && (
+        <Modal
+          isOpen={showDeliverConfirm}
+          onClose={() => setShowDeliverConfirm(false)}
+          title="Confirmar Entrega"
+          size="md"
+        >
+          <div className="space-y-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-900">
+                <strong>Pedido #{orderToDeliver.orderNumber.toString().padStart(4, '0')}</strong> - {orderToDeliver.customerName}
+              </p>
+            </div>
+            
+            <div className="space-y-2 text-sm text-gray-700">
+              <p>
+                Vas a marcar este pedido como <strong>Entregado</strong>.
+              </p>
+              <p className="text-gray-600">
+                <strong>Nota:</strong> Si aún no cobraste en el POS, esto no generará una venta automáticamente. 
+                Puedes cobrar después sin problema desde la opción "Cobrar en POS".
+              </p>
+            </div>
+            
+            <div className="flex justify-end gap-3 pt-4 border-t">
+              <Button onClick={() => setShowDeliverConfirm(false)} variant="outline">
+                Cancelar
+              </Button>
+              <Button onClick={confirmDeliverOrder} variant="primary">
+                Sí, Marcar Entregado
+              </Button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

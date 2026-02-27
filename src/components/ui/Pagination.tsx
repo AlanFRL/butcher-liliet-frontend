@@ -9,7 +9,9 @@
  * - Diseño responsive y accesible
  */
 
+import React from 'react';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import Button from './Button';
 
 interface PaginationProps {
   currentPage: number;
@@ -65,22 +67,22 @@ export default function Pagination({
   return (
     <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
       {/* Información de items y selector de tamaño */}
-      <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+      <div className="flex items-center gap-4 text-sm text-gray-600">
         <span>
-          Mostrando <span className="font-semibold text-gray-900 dark:text-gray-100">{startItem}</span> a{' '}
-          <span className="font-semibold text-gray-900 dark:text-gray-100">{endItem}</span> de{' '}
-          <span className="font-semibold text-gray-900 dark:text-gray-100">{totalItems}</span> registros
+          Mostrando <span className="font-semibold text-gray-900">{startItem}</span> a{' '}
+          <span className="font-semibold text-gray-900">{endItem}</span> de{' '}
+          <span className="font-semibold text-gray-900">{totalItems}</span> registros
         </span>
 
         <div className="flex items-center gap-2">
-          <label htmlFor="pageSize" className="text-sm text-gray-600 dark:text-gray-400">
+          <label htmlFor="pageSize" className="text-sm text-gray-600">
             Mostrar:
           </label>
           <select
             id="pageSize"
             value={pageSize}
             onChange={(e) => onPageSizeChange(Number(e.target.value))}
-            className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            className="rounded-lg border border-gray-300 bg-white text-gray-900 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
           >
             {pageSizeOptions.map((size) => (
               <option key={size} value={size}>
@@ -92,66 +94,70 @@ export default function Pagination({
       </div>
 
       {/* Controles de navegación */}
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-2">
         {/* Primera página */}
-        <button
+        <Button
           onClick={() => onPageChange(1)}
           disabled={currentPage === 1}
-          className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          variant="outline"
+          size="sm"
           title="Primera página"
         >
           <ChevronsLeft className="w-4 h-4" />
-        </button>
+        </Button>
 
         {/* Página anterior */}
-        <button
+        <Button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          variant="outline"
+          size="sm"
           title="Página anterior"
         >
           <ChevronLeft className="w-4 h-4" />
-        </button>
+        </Button>
 
         {/* Números de página */}
-        <div className="flex items-center gap-1 mx-2">
+        <div className="flex items-center gap-1">
           {pageNumbers.map((page, index) => (
-            <button
-              key={index}
-              onClick={() => typeof page === 'number' && onPageChange(page)}
-              disabled={page === '...'}
-              className={`min-w-[2.25rem] px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${
-                page === currentPage
-                  ? 'bg-primary-600 text-white hover:bg-primary-700 dark:bg-primary-600 dark:hover:bg-primary-700'
-                  : page === '...'
-                  ? 'text-gray-500 dark:text-gray-400 cursor-default'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-              }`}
-            >
-              {page}
-            </button>
+            <React.Fragment key={index}>
+              {page === '...' ? (
+                <span className="px-2 text-gray-400">...</span>
+              ) : (
+                <Button
+                  onClick={() => typeof page === 'number' && onPageChange(page)}
+                  variant={page === currentPage ? 'primary' : 'outline'}
+                  size="sm"
+                  className="min-w-[2.5rem]"
+                >
+                  {page}
+                </Button>
+              )}
+            </React.Fragment>
           ))}
         </div>
 
         {/* Página siguiente */}
-        <button
+        <Button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          variant="outline"
+          size="sm"
           title="Página siguiente"
         >
           <ChevronRight className="w-4 h-4" />
-        </button>
+        </Button>
 
         {/* Última página */}
-        <button
+        <Button
           onClick={() => onPageChange(totalPages)}
           disabled={currentPage === totalPages}
-          className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          variant="outline"
+          size="sm"
           title="Última página"
         >
           <ChevronsRight className="w-4 h-4" />
-        </button>
+        </Button>
       </div>
     </div>
   );
