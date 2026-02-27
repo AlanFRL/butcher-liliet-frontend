@@ -551,10 +551,12 @@ export const useCashStore = create<CashState>((set, get) => ({
       await orderState.loadOrders();
       console.log('  ✅ Orders reloaded');
       
-      // Reload sales (to remove deleted sales from the store)
-      const salesState = useSalesStore.getState();
-      await salesState.loadSales();
-      console.log('  ✅ Sales reloaded');
+      // Clear sales from store (session deleted, so all its sales are gone)
+      // Note: useSalesStore doesn't have a loadSales method, so we clear it manually
+      const salesStore = useSalesStore as any;
+      salesStore.setState({ sales: [] });
+      storage.saveSales([]);
+      console.log('  ✅ Sales cleared from store');
       
       set({ 
         isLoading: false,
