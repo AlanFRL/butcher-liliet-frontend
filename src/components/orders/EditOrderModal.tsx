@@ -208,14 +208,22 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, onClose, 
     setShowDiscountModal(true);
   };
 
-  const handleApplyDiscount = (newDiscount: number) => {
+  const handleApplyDiscount = (newUnitPrice: number) => {
     if (selectedItemForDiscount) {
-      const updatedItems = [...selectedItems];
-      updatedItems[selectedItemForDiscount.index] = {
-        ...updatedItems[selectedItemForDiscount.index],
-        discount: newDiscount,
-      };
-      setSelectedItems(updatedItems);
+      const item = selectedItems[selectedItemForDiscount.index];
+      if (item) {
+        const originalPrice = item.product.price;
+        const newTotal = Math.round(item.qty * newUnitPrice);
+        const expectedTotal = Math.round(item.qty * originalPrice);
+        const newDiscount = Math.round(expectedTotal - newTotal);
+        
+        const updatedItems = [...selectedItems];
+        updatedItems[selectedItemForDiscount.index] = {
+          ...updatedItems[selectedItemForDiscount.index],
+          discount: newDiscount,
+        };
+        setSelectedItems(updatedItems);
+      }
       setShowDiscountModal(false);
       setSelectedItemForDiscount(null);
     }
@@ -362,7 +370,6 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, onClose, 
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex-1 pr-2">
                             <p className="font-medium text-gray-900 text-sm">{item.product.name}</p>
-                            <p className="text-xs text-gray-500">{item.product.sku}</p>
                           </div>
                           <button
                             onClick={() => handleRemoveProduct(index)}
@@ -395,14 +402,21 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, onClose, 
                                 className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary-500"
                               />
                               <span className="text-xs text-gray-500">{item.product.unit}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs mb-1">
                               <button
                                 onClick={() => handleOpenDiscountModal(index)}
-                                className="ml-auto flex items-center gap-1 px-2 py-1 text-xs bg-yellow-50 text-yellow-700 rounded hover:bg-yellow-100 border border-yellow-200"
+                                className="flex items-center gap-1 px-2 py-1 text-xs bg-yellow-50 text-yellow-700 rounded hover:bg-yellow-100 border border-yellow-200"
                                 title="Aplicar descuento"
                               >
                                 <Tag className="w-3 h-3" />
-                                {item.discount && item.discount > 0 ? `-Bs ${Math.round(item.discount)}` : 'Desc'}
+                                {item.discount && item.discount > 0 ? 'Editar desc' : 'Desc'}
                               </button>
+                              {item.discount && item.discount > 0 && (
+                                <span className="text-xs text-green-600">
+                                  Descuento: -Bs {Math.round(item.discount)}
+                                </span>
+                              )}
                             </div>
                             <div className="flex items-center justify-between text-xs">
                               {item.discount && item.discount > 0 ? (

@@ -554,7 +554,6 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
                             <div className="flex items-center gap-2">
                               <p className="font-medium text-gray-900 text-sm">{item.product.name}</p>
                             </div>
-                            <p className="text-xs text-gray-500">{item.product.sku}</p>
                             {/* Mostrar stock para productos UNIT */}
                             {item.product.saleType === 'UNIT' && (
                               <p className="text-xs text-gray-500 mt-1">
@@ -617,11 +616,6 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
                                 )}
                               </div>
                             </div>
-                            {(item.discount ?? 0) > 0 && (
-                              <div className="flex items-center justify-end text-xs text-green-600 mt-1">
-                                <span>Descuento: -Bs {Math.round(item.discount ?? 0)}</span>
-                              </div>
-                            )}
                             <div className="flex items-center justify-between mt-0.5">
                               <button
                                 onClick={() => handleOpenDiscountModal(index)}
@@ -630,6 +624,11 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
                                 <Tag className="w-3 h-3" />
                                 {item.discount ? 'Editar' : 'Aplicar'} descuento
                               </button>
+                              {(item.discount ?? 0) > 0 && (
+                                <span className="text-xs text-green-600">
+                                  Descuento: -Bs {Math.round(item.discount ?? 0)}
+                                </span>
+                              )}
                             </div>
                           </div>
                         ) : (
@@ -677,11 +676,6 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
                                 )}
                               </div>
                             </div>
-                            {(item.discount ?? 0) > 0 && (
-                              <div className="flex items-center justify-end text-xs text-green-600 mt-1">
-                                <span>Descuento: -Bs {Math.round(item.discount ?? 0)}</span>
-                              </div>
-                            )}
                             <div className="flex items-center justify-between mt-0.5">
                               <button
                                 onClick={() => handleOpenDiscountModal(index)}
@@ -690,6 +684,11 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ onClose, showToast
                                 <Tag className="w-3 h-3" />
                                 {item.discount ? 'Editar' : 'Aplicar'} descuento
                               </button>
+                              {(item.discount ?? 0) > 0 && (
+                                <span className="text-xs text-green-600">
+                                  Descuento: -Bs {Math.round(item.discount ?? 0)}
+                                </span>
+                              )}
                             </div>
                           </div>
                         )}
