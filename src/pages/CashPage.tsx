@@ -5,8 +5,8 @@ import { Button } from '../components/ui';
 import { useCashStore, useSalesStore, useAuthStore } from '../store';
 
 export const CashPage: React.FC = () => {
-  const { currentSession, cashMovements, addCashMovement } = useCashStore();
-  const { sales } = useSalesStore();
+  const { currentSession, cashMovements, addCashMovement, loadCurrentSession } = useCashStore();
+  const { sales, syncSessionSales } = useSalesStore();
   const { currentUser } = useAuthStore();
   const [showDepositModal, setShowDepositModal] = React.useState(false);
   const [showWithdrawalModal, setShowWithdrawalModal] = React.useState(false);
@@ -14,6 +14,21 @@ export const CashPage: React.FC = () => {
   const [reason, setReason] = React.useState('');
   const [isProcessing, setIsProcessing] = React.useState(false);
   const [error, setError] = React.useState('');
+  
+  // Recargar sesión actual y ventas al montar el componente
+  React.useEffect(() => {
+    const loadData = async () => {
+      await loadCurrentSession();
+    };
+    loadData();
+  }, [loadCurrentSession]);
+  
+  // Sincronizar ventas cuando cambia la sesión
+  React.useEffect(() => {
+    if (currentSession?.id) {
+      syncSessionSales(currentSession.id);
+    }
+  }, [currentSession?.id, syncSessionSales]);
   
   // Calcular totales de la sesión actual
   const sessionSales = currentSession

@@ -99,6 +99,7 @@ interface SalesState {
   getSalesByDateRange: (from: string, to: string) => Sale[];
   getTodaysSales: () => Sale[];
   deleteSale: (saleId: string) => Promise<boolean>;
+  syncSessionSales: (sessionId: string) => Promise<void>;
 }
 
 interface AppState {
@@ -1263,6 +1264,66 @@ export const useSalesStore = create<SalesState>((set, get) => ({
     } catch (error) {
       console.error('❌ Error deleting sale:', error);
       return false;
+    }
+  },
+
+  syncSessionSales: async (sessionId: string): Promise<void> => {
+    try {
+      console.log('🔄 Syncing sales for session:', sessionId);
+      
+      // Obtener ventas de la sesión desde el backend
+      const response = await salesApi.getAll({ sessionId });
+      
+      // Si es paginado, extraer el array de data
+      const backendSales = Array.isArray(response) ? response : response.data;
+      
+      // Convertir a formato local
+      const salesFromBackend: Sale[] = backendSales.map((s: any) => ({
+        id: s.id,
+        sessionId: s.sessionId,
+        cashSessionId: s.sessionId,
+        userId: s.userId,
+        ticketNumber: s.ticketNumber,
+        items: s.items?.map((item: any) => ({
+          id: item.id,
+          productId: item.productId,
+          productName: item.productName,
+          productSku: item.productSku,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          discount: item.discount || 0,
+          total: item.total,
+        })) || [],
+        subtotal: s.subtotal,
+        discount: s.discount || 0,
+        total: s.total,
+        paymentMethod: s.paymentMethod,
+        cashAmount: s.cashAmount,
+        cardAmount: s.cardAmount,
+        transferAmount: s.transferAmount,
+        changeAmount: s.changeAmount,
+        status: s.status,
+        notes: s.notes,
+        customerName: s.customerName,
+        orderId: s.orderId,
+        createdAt: s.createdAt,
+      }));
+      
+      // Reemplazar solo las ventas de esta sesión en el store
+      set((state) => {
+        const otherSales = state.sales.filter(s => s.cashSessionId !== sessionId);
+        return {
+          sales: [...otherSales, ...salesFromBackend],
+        };
+      });
+      
+      // Persistir en localStorage
+      const updatedState = get();
+      storage.saveSales(updatedState.sales);
+      
+      console.log('✅ Session sales synced successfully');
+    } catch (error) {
+      console.error('❌ Error syncing session sales:', error);
     }
   },
 }));
