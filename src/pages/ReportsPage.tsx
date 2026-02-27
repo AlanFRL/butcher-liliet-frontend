@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart3, Receipt, DollarSign } from 'lucide-react';
-import { useSalesStore, useOrderStore, useAuthStore } from '../store';
+import { useOrderStore, useAuthStore } from '../store';
 import { salesApi } from '../services/api';
 import type { PaginatedResponse, SaleResponse } from '../services/api';
 import { SalesSummaryTab } from '../components/reports/SalesSummaryTab';
@@ -82,7 +82,6 @@ export const ReportsPage: React.FC = () => {
   const [salesTotalItems, setSalesTotalItems] = useState(0);
   const [salesTotalPages, setSalesTotalPages] = useState(0);
   
-  const { sales } = useSalesStore();
   const { orders } = useOrderStore();
   
   // Filtrar tabs según rol del usuario
@@ -186,16 +185,16 @@ export const ReportsPage: React.FC = () => {
       }
     } catch (error) {
       console.error('❌ Error loading sales:', error);
+      // On error, clear sales to avoid showing stale data
+      setBackendSales([]);
+      setSalesTotalItems(0);
+      setSalesTotalPages(0);
     }
   };
   
-  // Usar ventas del backend (ya vienen paginadas y filtradas) o localStorage como fallback
-  const filteredSales = backendSales.length > 0 
-    ? backendSales // Ya vienen filtradas y paginadas del backend
-    : sales.filter((s) => {
-        const saleDate = new Date(s.createdAt).toISOString().split('T')[0];
-        return saleDate >= dateFrom && saleDate <= dateTo && s.status === 'COMPLETED';
-      });
+  // ALWAYS use backend sales (already filtered and paginated)
+  // Never fall back to localStorage for ReportsPage as it may contain stale data
+  const filteredSales = backendSales;
   
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
