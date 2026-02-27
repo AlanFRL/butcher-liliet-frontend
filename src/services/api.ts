@@ -919,6 +919,7 @@ export const salesApi = {
 export interface OrderResponse {
   id: string;
   orderNumber: string;
+  customerId?: string; // Customer ID (may not be returned by backend yet)
   customerName: string;
   customerPhone?: string;
   customerEmail?: string;

@@ -1353,7 +1353,7 @@ export const useOrderStore = create<OrderState>((set, get) => ({
       const orders: Order[] = response.map(order => ({
         id: order.id,
         orderNumber: parseInt(order.orderNumber.replace(/\D/g, '')),
-        customerId: '', // No longer used
+        customerId: order.customerId || '', // Customer ID from backend
         customerName: order.customerName,
         customerPhone: order.customerPhone || '',
         status: order.status as OrderStatus,

@@ -142,9 +142,28 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, onClose, 
     if (qty < 0) return;
     
     setSelectedItems(
-      selectedItems.map((item) =>
-        item.product.id === productId ? { ...item, qty } : item
-      )
+      selectedItems.map((item) => {
+        if (item.product.id !== productId) return item;
+        
+        // Si hay descuento aplicado, recalcularlo proporcionalmente
+        if (item.discount && item.discount > 0) {
+          const price = item.product.price;
+          const oldQty = item.qty;
+          
+          // Calcular el precio efectivo por unidad (precio con descuento)
+          const oldTotal = Math.round(oldQty * price);
+          const effectiveUnitPrice = (oldTotal - item.discount) / oldQty;
+          
+          // Aplicar el mismo precio efectivo a la nueva cantidad
+          const newSubtotal = Math.round(qty * price);
+          const newTotal = Math.round(qty * effectiveUnitPrice);
+          const newDiscount = Math.round(newSubtotal - newTotal);
+          
+          return { ...item, qty, discount: newDiscount > 0 ? newDiscount : 0 };
+        }
+        
+        return { ...item, qty };
+      })
     );
   };
   
@@ -295,14 +314,14 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, onClose, 
         {/* Steps */}
         <div className="flex items-center justify-between mb-6">
           <div className={`flex-1 text-center ${step === 'products' ? 'text-primary-600 font-semibold' : 'text-gray-400'}`}>
-            <div className={`w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center ${step === 'products' ? 'bg-primary-600 text-white' : 'bg-gray-200'}`}>
+            <div className={`w-6 h-6 rounded-full mx-auto mb-2 flex items-center justify-center text-sm ${step === 'products' ? 'bg-primary-600 text-white' : 'bg-gray-200'}`}>
               1
             </div>
             Productos
           </div>
           <div className="flex-1 border-t border-gray-300"></div>
           <div className={`flex-1 text-center ${step === 'details' ? 'text-primary-600 font-semibold' : 'text-gray-400'}`}>
-            <div className={`w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center ${step === 'details' ? 'bg-primary-600 text-white' : 'bg-gray-200'}`}>
+            <div className={`w-6 h-6 rounded-full mx-auto mb-2 flex items-center justify-center text-sm ${step === 'details' ? 'bg-primary-600 text-white' : 'bg-gray-200'}`}>
               2
             </div>
             Detalles
