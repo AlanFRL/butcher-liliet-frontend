@@ -157,7 +157,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order: initi
               )}
               
               {/* Botón para cobrar en POS - READY o DELIVERED sin pago */}
-              {(currentOrder.status === 'READY' ||
+              {((currentOrder.status === 'READY' && !currentOrder.saleId) ||
                     (currentOrder.status === 'DELIVERED' && !currentOrder.saleId)) && (
                 <Button
                   onClick={handleChargeOrder}

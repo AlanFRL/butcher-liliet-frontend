@@ -511,7 +511,7 @@ export const OrdersPage: React.FC = () => {
                         </Button>
                       )}
                       {/* Botón Cobrar en POS para pedidos READY o DELIVERED sin cobro */}
-                      {(order.status === 'READY' || (order.status === 'DELIVERED' && !order.saleId)) && (
+                      {((order.status === 'READY' && !order.saleId) || (order.status === 'DELIVERED' && !order.saleId)) && (
                         <Button
                           onClick={() => handleChargeOrder(order)}
                           variant="primary"
