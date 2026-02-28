@@ -10,14 +10,6 @@ export type SaleStatus = 'DRAFT' | 'COMPLETED' | 'CANCELLED';
 
 export type PaymentMethod = 'CASH' | 'CARD' | 'TRANSFER' | 'MIXED';
 
-export type MovementType = 
-  | 'PURCHASE_IN' 
-  | 'ADJUST_IN' 
-  | 'ADJUST_OUT' 
-  | 'WASTE' 
-  | 'SALE_OUT' 
-  | 'RETURN_IN';
-
 export type CashMovementType = 'DEPOSIT' | 'WITHDRAWAL' | 'ADJUSTMENT';
 
 export type OrderStatus = 'PENDING' | 'READY' | 'DELIVERED';
@@ -66,14 +58,10 @@ export interface Product {
   // Sistema de inventario
   barcodeType?: BarcodeType; // Required for real products, optional for mock data
   barcode?: string; // Required for real products - código de barras del producto
-  barcodePrefix?: string; // Prefijo para identificar en scanner (ej: "20" para precios embebidos)
   
-  // Control de stock (solo para UNIT_STOCK y UNIT_VARIABLE)
+  // Control de stock
   stockUnits?: number;     // Stock disponible en unidades
   minStockAlert?: number;  // Alerta de stock mínimo
-  
-  // Para WEIGHT_MANUAL (referencia, no se controla stock)
-  estimatedStockKg?: number; // Solo informativo
   
   // Descuentos (para impresión PLU y futuras funcionalidades)
   discountPrice?: number;   // Precio con descuento
@@ -149,28 +137,6 @@ export interface Sale {
   notes: string | null;
   customerName: string | null;
   orderId?: string;
-  createdAt: string;
-}
-
-export interface InventoryBalance {
-  id: string;
-  productId: string;
-  warehouseId: string;
-  qty: number;
-  updatedAt: string;
-}
-
-export interface InventoryMovement {
-  id: string;
-  type: MovementType;
-  productId: string;
-  warehouseId: string;
-  qty: number;
-  unitCost: number | null;
-  referenceType: string | null;
-  referenceId: string | null;
-  reason: string | null;
-  createdBy: string;
   createdAt: string;
 }
 

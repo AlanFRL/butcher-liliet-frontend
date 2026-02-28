@@ -1,39 +1,9 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { 
-  User, 
   Product, 
   ProductCategory,
   Terminal 
 } from '../types';
-
-// ============= USUARIOS MOCK =============
-
-export const mockUsers: User[] = [
-  {
-    id: uuidv4(),
-    role: 'ADMIN',
-    username: 'admin',
-    fullName: 'Administrator',
-    pin: '1234',
-    isActive: true,
-  },
-  {
-    id: uuidv4(),
-    role: 'CASHIER',
-    username: 'cajero1',
-    fullName: 'Juan Pérez',
-    pin: '1111',
-    isActive: true,
-  },
-  {
-    id: uuidv4(),
-    role: 'MANAGER',
-    username: 'encargado1',
-    fullName: 'María González',
-    pin: '2222',
-    isActive: true,
-  },
-];
 
 // ============= TERMINALES MOCK =============
 

@@ -66,7 +66,6 @@ interface ProductState {
   error: string | null;
   addProduct: (product: Omit<Product, 'id'>) => Promise<void>;
   updateProduct: (id: string, product: Partial<Product>) => Promise<void>;
-  toggleProductActive: (id: string) => void;
   toggleProductFavorite: (id: string) => void;
   getProductById: (id: string) => Product | undefined;
   getProductsByCategory: (categoryId: string) => Product[];
@@ -664,14 +663,6 @@ export const useProductStore = create<ProductState>((set, get) => ({
       });
       throw error;
     }
-  },
-  
-  toggleProductActive: (id) => {
-    set((state) => ({
-      products: state.products.map((p) =>
-        p.id === id ? { ...p, isActive: !p.isActive } : p
-      ),
-    }));
   },
   
   toggleProductFavorite: (id) => {
@@ -1417,7 +1408,6 @@ interface OrderState {
   markAsDelivered: (orderId: string) => Promise<boolean>;
   deleteOrder: (orderId: string) => Promise<boolean>;
   getOrderById: (id: string) => Order | undefined;
-  getOrdersByStatus: (status: OrderStatus) => Order[];
   getPendingOrders: () => Order[];
   getOverdueOrders: () => Order[];
   getTodaysDeliveries: () => Order[];
@@ -1765,10 +1755,6 @@ export const useOrderStore = create<OrderState>((set, get) => ({
 
   getOrderById: (id) => {
     return get().orders.find((o) => o.id === id);
-  },
-
-  getOrdersByStatus: (status) => {
-    return get().orders.filter((o) => o.status === status);
   },
 
   getPendingOrders: () => {
