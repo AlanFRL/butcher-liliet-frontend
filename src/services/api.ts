@@ -72,9 +72,26 @@ async function apiFetch<T>(
         statusCode: response.status,
       }));
 
-      // Si es 401, limpiar token
+      // Si es 401 Unauthorized (token expirado o inválido)
       if (response.status === 401) {
+        console.warn('⚠️ Token expired or invalid (401). Redirecting to login...');
         tokenManager.removeToken();
+        
+        // Limpiar todo el localStorage para evitar estados inconsistentes
+        localStorage.clear();
+        
+        // Redirigir al login (hard redirect para limpiar todo el estado de React)
+        // Solo redirigir si no estamos ya en el login
+        if (!window.location.pathname.includes('/login')) {
+          window.location.href = '/login';
+        }
+        
+        // Lanzar error para que el llamador también pueda manejarlo si es necesario
+        throw new ApiError(
+          'Sesión expirada. Por favor inicia sesión nuevamente.',
+          401,
+          errorData
+        );
       }
 
       throw new ApiError(
