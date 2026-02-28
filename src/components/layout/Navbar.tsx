@@ -29,8 +29,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onLogout }) => {
     { name: 'Pedidos', path: '/orders', icon: ClipboardList, roles: ['ADMIN', 'MANAGER', 'CASHIER'] },
     { name: 'Clientes', path: '/customers', icon: Users, roles: ['ADMIN', 'MANAGER', 'CASHIER'] },
     { name: 'Productos', path: '/products', icon: Package, roles: ['ADMIN', 'MANAGER', 'CASHIER'] },
-    { name: 'Inventario', path: '/inventory', icon: Boxes, roles: ['ADMIN', 'MANAGER'] },
-    { name: 'Reportes', path: '/reports', icon: BarChart3, roles: ['ADMIN', 'MANAGER'] },
+    { name: 'Inventario', path: '/inventory', icon: Boxes, roles: ['ADMIN', 'MANAGER', 'CASHIER'] },
+    { name: 'Reportes', path: '/reports', icon: BarChart3, roles: ['ADMIN', 'MANAGER', 'CASHIER'] },
     { name: 'Configuración', path: '/settings', icon: Settings, roles: ['ADMIN', 'MANAGER', 'CASHIER'] },
   ];
   

@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Package, DollarSign, Box } from 'lucide-react';
 import { useProductStore } from '../store';
+import { usePermissions } from '../hooks/usePermissions';
 
 export const InventoryPage: React.FC = () => {
   const { products, loadProducts } = useProductStore();
+  const { canManageProducts } = usePermissions();
   const [isLoading, setIsLoading] = useState(false);
   const [showStockModal, setShowStockModal] = useState(false);
   const [selectedProductForStock, setSelectedProductForStock] = useState<string>('');
@@ -91,7 +93,9 @@ export const InventoryPage: React.FC = () => {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Inventario</h1>
-          <p className="text-gray-600 mt-1">Gestión de stock de productos</p>
+          <p className="text-gray-600 mt-1">
+            {canManageProducts ? 'Gestión de stock de productos' : 'Consulta de stock de productos'}
+          </p>
         </div>
       </div>
 
@@ -184,16 +188,20 @@ export const InventoryPage: React.FC = () => {
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <button
-                            onClick={() => {
-                              setSelectedProductForStock(product.id);
-                              setStockFormData({ ...stockFormData, productId: product.id });
-                              setShowStockModal(true);
-                            }}
-                            className="text-primary-600 hover:text-primary-900 font-medium"
-                          >
-                            Ajustar Stock
-                          </button>
+                          {canManageProducts ? (
+                            <button
+                              onClick={() => {
+                                setSelectedProductForStock(product.id);
+                                setStockFormData({ ...stockFormData, productId: product.id });
+                                setShowStockModal(true);
+                              }}
+                              className="text-primary-600 hover:text-primary-900 font-medium"
+                            >
+                              Ajustar Stock
+                            </button>
+                          ) : (
+                            <span className="text-gray-400 text-sm">-</span>
+                          )}
                         </td>
                       </tr>
                     );
