@@ -99,7 +99,6 @@ export const POSPaymentModal: React.FC<POSPaymentModalProps> = ({
                 // Para SOBRECARGAS: mostrar precio efectivo
                 const displayUnitPrice = isDiscount ? item.unitPrice : (item.effectiveUnitPrice || item.unitPrice);
                 
-                const itemSubtotalBeforeDiscount = Math.round(item.qty * item.unitPrice); // Precio sistema
                 const itemActualSubtotal = Math.round(item.qty * displayUnitPrice);
                 const itemDiscount = item.discount || 0;
                 

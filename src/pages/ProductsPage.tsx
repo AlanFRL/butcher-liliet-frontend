@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Plus, Edit2, Star, Search, Trash2, ToggleLeft, ToggleRight, Printer, Tag } from 'lucide-react';
+import { Package, Plus, Edit2, Star, Search, Trash2, Printer, Tag } from 'lucide-react';
 import { Button, Modal, Input, useToast } from '../components/ui';
-import { useProductStore, useAuthStore } from '../store';
+import { useProductStore } from '../store';
 import { usePermissions } from '../hooks/usePermissions';
 import type { Product, SaleType } from '../types';
 import { PrintablePLUListWithDiscount } from '../components/PrintablePLUListWithDiscount';
@@ -23,7 +23,6 @@ export const ProductsPage: React.FC = () => {
   const { showToast, ToastComponent } = useToast();
   
   const { products, categories, addProduct, updateProduct, toggleProductFavorite, loadProducts, loadCategories, isLoading } = useProductStore();
-  const { currentUser } = useAuthStore();
   const { canManageProducts } = usePermissions();
   
   // Cargar productos y categorías si están vacíos
@@ -249,28 +248,6 @@ export const ProductsPage: React.FC = () => {
       showToast('error', 'Error al eliminar el producto');
     } finally {
       setDeletingProductId(null);
-    }
-  };
-
-  const handleToggleActive = async (product: Product) => {
-    try {
-      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
-      const response = await fetch(`${API_BASE_URL}/products/${product.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('butcher_auth_token')}`
-        },
-        body: JSON.stringify({
-          isActive: !product.isActive
-        })
-      });
-
-      if (response.ok) {
-        await loadProducts();
-      }
-    } catch (error) {
-      console.error('Error toggling product status:', error);
     }
   };
 
@@ -504,13 +481,13 @@ export const ProductsPage: React.FC = () => {
                     <p className="text-xs text-gray-500">por {product.unit}</p>
                   </td>
                   <td className="px-6 py-4 text-center">
-                    {product.discountedPrice && product.discountedPrice < product.price ? (
+                    {product.discountPrice && product.discountPrice < product.price ? (
                       <div className="flex flex-col items-center">
                         <span className="font-semibold text-green-700">
-                          Bs {product.discountedPrice.toFixed(2)}
+                          Bs {product.discountPrice.toFixed(2)}
                         </span>
                         <span className="text-xs text-green-600">
-                          -{Math.round((1 - product.discountedPrice / product.price) * 100)}%
+                          -{Math.round((1 - product.discountPrice / product.price) * 100)}%
                         </span>
                       </div>
                     ) : (

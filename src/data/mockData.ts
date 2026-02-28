@@ -419,11 +419,3 @@ export const mockProducts: Product[] = [
     isFavorite: false,
   },
 ];
-
-// Función helper para obtener datos mock
-export const getMockData = () => ({
-  users: mockUsers,
-  terminals: mockTerminals,
-  categories: mockCategories,
-  products: mockProducts,
-});
