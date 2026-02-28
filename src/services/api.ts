@@ -189,7 +189,6 @@ export interface ProductResponse {
   barcode: string | null; // Nullable cuando barcodeType es NONE
   barcodeType: 'STANDARD' | 'WEIGHT_EMBEDDED' | 'NONE';
   saleType: 'UNIT' | 'WEIGHT';
-  inventoryType: 'UNIT' | 'WEIGHT' | 'VACUUM_PACKED';
   price: string; // Decimal como string
   costPrice: string | null;
   stockQuantity: string; // Decimal como string
@@ -273,10 +272,6 @@ export interface SaleItemResponse {
   unitPrice: string; // Decimal
   discount: string; // Decimal
   subtotal: string; // Decimal
-  // Batch fields (optional, for VACUUM_PACKED products)
-  batchId?: string | null;
-  batchNumber?: string | null;
-  actualWeight?: string | null; // Decimal
 }
 
 // ============= API: AUTENTICACIÓN =============
@@ -449,7 +444,6 @@ export const productsApi = {
     description?: string;
     categoryId: string;
     saleType: 'UNIT' | 'WEIGHT';
-    inventoryType: 'UNIT' | 'WEIGHT' | 'VACUUM_PACKED';
     price: number;
     costPrice?: number;
     stockQuantity?: number;
@@ -473,7 +467,6 @@ export const productsApi = {
     description?: string;
     categoryId?: string;
     saleType?: 'UNIT' | 'WEIGHT';
-    inventoryType?: 'UNIT' | 'WEIGHT' | 'VACUUM_PACKED';
     price?: number;
     costPrice?: number;
     stockQuantity?: number;

@@ -714,7 +714,6 @@ export const useProductStore = create<ProductState>((set, get) => ({
         barcodeType: p.barcodeType,
         categoryId: p.categoryId || null,
         saleType: p.saleType,
-        inventoryType: p.inventoryType, // CRITICAL: Include inventoryType from backend
         unit: p.unit || 'kg',
         price: parseDecimal(p.price),
         taxRate: 0, // No está en backend todavía
@@ -1075,7 +1074,7 @@ export const useCartStore = create<CartState>((set, get) => ({
     return get().cartItems.reduce((sum, item) => {
       const hasEffectivePrice = item.effectiveUnitPrice !== undefined;
       
-      if (hasEffectivePrice) {
+      if (hasEffectivePrice && item.effectiveUnitPrice !== undefined) {
         const isDiscount = item.effectiveUnitPrice < item.unitPrice;
         
         if (isDiscount) {
@@ -1139,7 +1138,7 @@ export const useSalesStore = create<SalesState>((set, get) => ({
           // - DESCUENTO (efectivo < unitario): enviar unitPrice (sistema) + discount
           // - SOBRECARGA (efectivo > unitario): enviar effectiveUnitPrice (sin discount)
           const hasEffectivePrice = item.effectiveUnitPrice !== undefined;
-          const isDiscount = hasEffectivePrice && item.effectiveUnitPrice < item.unitPrice;
+          const isDiscount = hasEffectivePrice && item.effectiveUnitPrice !== undefined && item.effectiveUnitPrice < item.unitPrice;
           
           return {
             productId: item.productId,
@@ -1305,6 +1304,7 @@ export const useSalesStore = create<SalesState>((set, get) => ({
         sessionId: s.sessionId,
         cashSessionId: s.sessionId,
         userId: s.userId,
+        cashierId: s.userId,
         ticketNumber: s.ticketNumber,
         items: s.items?.map((item: any) => ({
           id: item.id,
@@ -1638,7 +1638,7 @@ export const useOrderStore = create<OrderState>((set, get) => ({
     }
   },
 
-  updateOrderStatus: async (orderId, status, reason, saleId) => {
+  updateOrderStatus: async (orderId, status, _reason, saleId) => {
     set({ isLoading: true, error: null });
     
     try {
