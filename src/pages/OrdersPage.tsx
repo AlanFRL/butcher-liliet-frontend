@@ -560,7 +560,7 @@ export const OrdersPage: React.FC = () => {
           </div>
 
           {/* Paginación */}
-          {totalPages > 1 && (
+          {(totalPages ?? 0) > 1 && (
             <div className="mt-6 flex items-center justify-between bg-white rounded-lg shadow-sm border border-gray-200 p-4">
               <div className="text-sm text-gray-600">
                 Mostrando {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, total || 0)} de {total || 0} pedidos
