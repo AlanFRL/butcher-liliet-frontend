@@ -48,8 +48,8 @@ interface Tab {
 }
 
 const tabs: Tab[] = [
-  { id: 'summary', name: 'Resumen', icon: BarChart3, roles: ['ADMIN', 'MANAGER'] },
-  { id: 'sales', name: 'Ventas', icon: Receipt, roles: ['ADMIN', 'MANAGER'] },
+  { id: 'summary', name: 'Resumen', icon: BarChart3, roles: ['ADMIN', 'MANAGER', 'CASHIER'] },
+  { id: 'sales', name: 'Ventas', icon: Receipt, roles: ['ADMIN', 'MANAGER', 'CASHIER'] },
   { id: 'cash', name: 'Cajas', icon: DollarSign, roles: ['ADMIN', 'MANAGER', 'CASHIER'] },
 ];
 

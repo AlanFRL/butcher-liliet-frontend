@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Package, Plus, Edit2, Star, Search, Trash2, ToggleLeft, ToggleRight, Printer, Tag } from 'lucide-react';
 import { Button, Modal, Input, useToast } from '../components/ui';
 import { useProductStore, useAuthStore } from '../store';
+import { usePermissions } from '../hooks/usePermissions';
 import type { Product, SaleType } from '../types';
 import { PrintablePLUListWithDiscount } from '../components/PrintablePLUListWithDiscount';
 import { PrintablePLUListCompact } from '../components/PrintablePLUListCompact';
@@ -23,6 +24,7 @@ export const ProductsPage: React.FC = () => {
   
   const { products, categories, addProduct, updateProduct, toggleProductFavorite, loadProducts, loadCategories, isLoading } = useProductStore();
   const { currentUser } = useAuthStore();
+  const { canManageProducts } = usePermissions();
   
   // Cargar productos y categorías si están vacíos
   useEffect(() => {
@@ -31,9 +33,6 @@ export const ProductsPage: React.FC = () => {
       loadProducts();
     }
   }, []);
-  
-  // Verificar si el usuario puede editar
-  const canEdit = currentUser?.role === 'ADMIN' || currentUser?.role === 'MANAGER';
   
   // Form state
   const [formData, setFormData] = useState({
@@ -366,7 +365,7 @@ export const ProductsPage: React.FC = () => {
         <div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Productos</h1>
           <p className="text-gray-600">
-            {canEdit ? 'Gestiona tu catálogo de productos' : 'Explora y marca tus productos favoritos'}
+            {canManageProducts ? 'Gestiona tu catálogo de productos' : 'Explora y marca tus productos favoritos'}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -388,7 +387,7 @@ export const ProductsPage: React.FC = () => {
             <Printer className="w-5 h-5 mr-2" />
             PLU con Descuentos
           </Button>
-          {canEdit && (
+          {canManageProducts && (
             <Button onClick={() => handleOpenModal()} variant="primary" size="lg">
               <Plus className="w-5 h-5 mr-2" />
               Nuevo Producto
@@ -464,7 +463,7 @@ export const ProductsPage: React.FC = () => {
                 Precio
               </th>
               <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                Estado
+                Descuento
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
                 Acciones
@@ -505,35 +504,17 @@ export const ProductsPage: React.FC = () => {
                     <p className="text-xs text-gray-500">por {product.unit}</p>
                   </td>
                   <td className="px-6 py-4 text-center">
-                    {canEdit ? (
-                      <button
-                        onClick={() => handleToggleActive(product)}
-                        className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 mx-auto ${
-                          product.isActive
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}
-                      >
-                        {product.isActive ? (
-                          <>
-                            <ToggleRight className="w-4 h-4" />
-                            Activo
-                          </>
-                        ) : (
-                          <>
-                            <ToggleLeft className="w-4 h-4" />
-                            Inactivo
-                          </>
-                        )}
-                      </button>
+                    {product.discountedPrice && product.discountedPrice < product.price ? (
+                      <div className="flex flex-col items-center">
+                        <span className="font-semibold text-green-700">
+                          Bs {product.discountedPrice.toFixed(2)}
+                        </span>
+                        <span className="text-xs text-green-600">
+                          -{Math.round((1 - product.discountedPrice / product.price) * 100)}%
+                        </span>
+                      </div>
                     ) : (
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        product.isActive
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {product.isActive ? 'Activo' : 'Inactivo'}
-                      </span>
+                      <span className="text-gray-400 text-sm">Sin descuento</span>
                     )}
                   </td>
                   <td className="px-6 py-4">
@@ -549,7 +530,7 @@ export const ProductsPage: React.FC = () => {
                       >
                         <Star className={`w-4 h-4 ${product.isFavorite ? 'fill-current' : ''}`} />
                       </button>
-                      {canEdit && (
+                      {canManageProducts && (
                         <>
                           <button
                             onClick={() => handleOpenDiscountModal(product)}
