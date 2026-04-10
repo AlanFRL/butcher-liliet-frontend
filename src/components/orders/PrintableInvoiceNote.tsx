@@ -53,9 +53,9 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
         };
       }
       
-      // Sumar cantidades y montos (respetar redondeos de cada item)
+      // Sumar cantidades y montos
       groups[key].totalQty += item.qty;
-      groups[key].totalAmount += Math.round(item.qty * item.unitPrice); // Subtotal del item
+      groups[key].totalAmount += item.qty * item.unitPrice; // Subtotal del item sin redondeo prematuro
       groups[key].totalDiscount += item.discount || 0;
       groups[key].finalTotal += item.total;
       
