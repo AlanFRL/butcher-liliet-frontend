@@ -255,9 +255,11 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
         </thead>
         <tbody>
           {groupedItems.map((group, index) => {
-            // Calcular precio unitario promedio ponderado
+            // Calcular precio unitario promedio exacto para la columna P. Unit
             const avgUnitPrice = group.totalAmount / group.totalQty;
             const hasGroupDiscount = group.totalDiscount > 0;
+            // El subtotal original con redondeo se reconstruye sumando el total final y el descuento
+            const originalRoundedTotal = group.finalTotal + group.totalDiscount;
             
             return (
               <tr key={group.productId} style={{
@@ -321,7 +323,7 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
                   {hasGroupDiscount ? (
                     <div>
                       <div style={{ fontSize: '12px', color: '#6b7280', textDecoration: 'line-through', fontWeight: 400 }}>
-                        Bs {group.totalAmount.toFixed(2)}
+                        Bs {originalRoundedTotal.toFixed(2)}
                       </div>
                       <div style={{ color: '#dc2626', fontSize: '11px', fontWeight: 400 }}>
                         -Bs {group.totalDiscount.toFixed(2)}
