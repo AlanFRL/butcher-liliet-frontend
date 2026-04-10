@@ -79,9 +79,9 @@ export const CashClosePage: React.FC = () => {
     
     return Array.from(productMap.entries()).map(([productName, data]) => ({
       productName,
-      quantity: parseFloat(data.quantity.toFixed(3)), // Redondear a 3 decimales
+      quantity: Number(Number(data.quantity).toFixed(3)), // Redondear a 3 decimales asegurando tipo número
       unit: data.unit,
-      total: data.total,
+      total: Number(data.total),
     }));
   };
   
@@ -113,23 +113,26 @@ export const CashClosePage: React.FC = () => {
   const cashSales = sessionSales.filter(s => s.paymentMethod === 'CASH');
   const transferSales = sessionSales.filter(s => s.paymentMethod === 'TRANSFER');
 
-  const totalCashSales = cashSales.reduce((sum, sale) => sum + sale.total, 0);
-  const totalTransferSales = transferSales.reduce((sum, sale) => sum + sale.total, 0);
+  const totalCashSales = cashSales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
+  const totalTransferSales = transferSales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
   
-  const totalSales = sessionSales.reduce((sum, sale) => sum + sale.total, 0);
+  const totalSales = sessionSales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
   const salesCount = sessionSales.length;
   
   const cashIn = cashMovements
     .filter((m) => m.type === 'DEPOSIT')
-    .reduce((sum, m) => sum + m.amount, 0);
+    .reduce((sum, m) => sum + Number(m.amount || 0), 0);
   
   const cashOut = cashMovements
     .filter((m) => m.type === 'WITHDRAWAL')
-    .reduce((sum, m) => sum + m.amount, 0);
+    .reduce((sum, m) => sum + Number(m.amount || 0), 0);
+  
+  // Convertir openingAmount a número explícitamente para evitar problemas si viene como string
+  const openingAmountNum = currentSession ? Number(currentSession.openingAmount || 0) : 0;
   
   // Efectivo esperado = inicial + ventas en efectivo + ingresos - retiros
   const expectedCash = currentSession
-    ? currentSession.openingAmount + totalCashSales + cashIn - cashOut
+    ? openingAmountNum + totalCashSales + cashIn - cashOut
     : 0;
   
   const countedCashNum = parseFloat(countedCash) || 0;
@@ -216,7 +219,7 @@ export const CashClosePage: React.FC = () => {
                 <div>
                   <p className="text-sm text-gray-500">Saldo Inicial</p>
                   <p className="text-lg font-bold text-gray-900">
-                    Bs {currentSession.openingAmount.toFixed(2)}
+                    Bs {openingAmountNum.toFixed(2)}
                   </p>
                 </div>
               </div>
@@ -251,7 +254,7 @@ export const CashClosePage: React.FC = () => {
                 <div className="text-sm text-gray-600 space-y-0.5">
                   <div className="flex justify-between">
                     <span>Inicial:</span>
-                    <span className="font-medium">Bs {currentSession.openingAmount.toFixed(2)}</span>
+                    <span className="font-medium">Bs {openingAmountNum.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>+ Efectivo:</span>
