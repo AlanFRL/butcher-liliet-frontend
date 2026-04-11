@@ -40,26 +40,28 @@ export const PrintableCatalog: React.FC<PrintableCatalogProps> = ({ products, ca
   const currentYear = new Date().getFullYear();
 
   return (
-    <div style={{ fontFamily: 'Arial, sans-serif', color: '#1f2937', padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
+    <div style={{ fontFamily: 'Arial, sans-serif', color: '#1f2937', padding: '15px', maxWidth: '800px', margin: '0 auto' }}>
       {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: '30px', borderBottom: '3px solid #b91c1c', paddingBottom: '15px' }}>
-        <h1 style={{ fontSize: '28pt', margin: '0 0 10px 0', color: '#b91c1c', textTransform: 'uppercase', letterSpacing: '2px' }}>Carnicería Lilieth</h1>
-        <h2 style={{ fontSize: '18pt', margin: '0 0 5px 0', color: '#374151' }}>Catálogo de Productos y Precios</h2>
-        <p style={{ fontSize: '14pt', margin: '0 0 5px 0', color: '#6b7280', fontStyle: 'italic' }}>Precios de {getMonthName()} {currentYear}</p>
-        <p style={{ fontSize: '10pt', margin: '0', color: '#9ca3af' }}>Generado: {printDate}</p>
+      <div style={{ textAlign: 'center', marginBottom: '15px', borderBottom: '2px solid #b91c1c', paddingBottom: '10px' }}>
+        <h1 style={{ fontSize: '20pt', margin: '0 0 5px 0', color: '#b91c1c', textTransform: 'uppercase', letterSpacing: '1px' }}>Carnicería Lilieth</h1>
+        <h2 style={{ fontSize: '14pt', margin: '0 0 2px 0', color: '#374151' }}>Catálogo de Productos y Precios</h2>
+        <p style={{ fontSize: '11pt', margin: '0 0 2px 0', color: '#6b7280', fontStyle: 'italic' }}>Precios de {getMonthName()} {currentYear}</p>
+        <p style={{ fontSize: '8pt', margin: '0', color: '#9ca3af' }}>Generado: {printDate}</p>
       </div>
 
       {/* Categories and Products - 2 Columns */}
-      <div style={{ display: 'column', columnCount: 2, columnGap: '40px' }}>
+      <div style={{ columnCount: 2, columnGap: '40px' }}>
         {allCategories.map(category => (
-          <div key={category} style={{ breakInside: 'avoid', marginBottom: '25px' }}>
+          <div key={category} style={{ marginBottom: '20px' }}>
             <h3 style={{
               backgroundColor: '#b91c1c',
               color: 'white',
-              padding: '8px 12px',
-              margin: '0 0 12px 0',
-              fontSize: '14pt',
+              padding: '6px 10px',
+              margin: '0 0 8px 0',
+              fontSize: '12pt',
               borderRadius: '4px',
+              breakAfter: 'avoid',
+              pageBreakAfter: 'avoid',
               WebkitPrintColorAdjust: 'exact',
               printColorAdjust: 'exact'
             }}>
@@ -77,7 +79,9 @@ export const PrintableCatalog: React.FC<PrintableCatalogProps> = ({ products, ca
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     borderBottom: '1px dashed #e5e7eb',
-                    paddingBottom: '4px'
+                    paddingBottom: '4px',
+                    breakInside: 'avoid',
+                    pageBreakInside: 'avoid'
                   }}>
                     <div style={{ flex: 1, paddingRight: '10px' }}>
                       <span style={{ fontWeight: 'bold', fontSize: '11pt' }}>{product.name}</span>
