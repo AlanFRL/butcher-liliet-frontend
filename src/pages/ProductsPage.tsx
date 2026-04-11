@@ -7,12 +7,15 @@ import type { Product, SaleType } from '../types';
 import { PrintablePLUListWithDiscount } from '../components/PrintablePLUListWithDiscount';
 import { PrintablePLUListCompact } from '../components/PrintablePLUListCompact';
 import { DiscountEditModal } from '../components/products/DiscountEditModal';
+import { PrintableCatalog } from '../components/PrintableCatalog';
+import { CatalogConfigModal } from '../components/products/CatalogConfigModal';
 import { createRoot } from 'react-dom/client';
 
 export const ProductsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [showCatalogModal, setShowCatalogModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{[key: string]: string}>({});
   const [isPrinting, setIsPrinting] = useState(false);
@@ -322,6 +325,61 @@ export const ProductsPage: React.FC = () => {
     showToast('success', `Lista PLU generada (${pluProducts.length} productos)`);
   };
   
+  const handlePrintCatalog = (selectedProducts: Product[]) => {
+    if (selectedProducts.length === 0) {
+      showToast('warning', 'Debes seleccionar al menos un producto para el catálogo');
+      return;
+    }
+
+    setShowCatalogModal(false);
+    setIsPrinting(true);
+
+    const printIframe = document.createElement('iframe');
+    printIframe.style.position = 'fixed';
+    printIframe.style.right = '0';
+    printIframe.style.bottom = '0';
+    printIframe.style.width = '0';
+    printIframe.style.height = '0';
+    printIframe.style.border = 'none';
+    document.body.appendChild(printIframe);
+
+    const iframeDoc = printIframe.contentDocument || printIframe.contentWindow?.document;
+    if (!iframeDoc) return;
+
+    iframeDoc.open();
+    iframeDoc.write('<!DOCTYPE html><html><head><title>Catálogo de Productos</title></head><body><div id="root"></div></body></html>');
+    iframeDoc.close();
+
+    const rootElement = iframeDoc.getElementById('root');
+    if (rootElement) {
+      const root = createRoot(rootElement);
+      const printDate = new Date().toLocaleDateString('es-BO', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      root.render(
+        <PrintableCatalog products={selectedProducts} categories={categories} printDate={printDate} />
+      );
+
+      // Esperar a que se renderice y luego imprimir
+      setTimeout(() => {
+        printIframe.contentWindow?.print();
+
+        // Limpiar después de imprimir
+        setTimeout(() => {
+          document.body.removeChild(printIframe);
+          setIsPrinting(false);
+        }, 1000);
+      }, 500);
+    }
+
+    showToast('success', `Catálogo PDF generado (${selectedProducts.length} productos)`);
+  };
+
   // Filtrar productos
   const filteredProducts = products.filter((p) => {
     if (selectedCategory && p.categoryId !== selectedCategory) return false;
@@ -333,10 +391,17 @@ export const ProductsPage: React.FC = () => {
     }
     return true;
   });
-  
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       {ToastComponent}
+      <CatalogConfigModal 
+        isOpen={showCatalogModal}
+        onClose={() => setShowCatalogModal(false)}
+        products={products}
+        categories={categories}
+        onPrint={handlePrintCatalog}
+      />
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -355,14 +420,24 @@ export const ProductsPage: React.FC = () => {
             <Printer className="w-5 h-5 mr-2" />
             PLU Compacto
           </Button>
-          <Button 
-            onClick={() => handlePrintPLU(true)} 
-            variant="secondary" 
+          <Button
+            onClick={() => handlePrintPLU(true)}
+            variant="secondary"
             size="lg"
             disabled={isPrinting}
           >
             <Printer className="w-5 h-5 mr-2" />
             PLU con Descuentos
+          </Button>
+          <Button
+            onClick={() => setShowCatalogModal(true)}
+            variant="primary"
+            size="lg"
+            disabled={isPrinting}
+            className="bg-primary-600 hover:bg-primary-700 text-white"
+          >
+            <Printer className="w-5 h-5 mr-2" />
+            Catálogo
           </Button>
           {canManageProducts && (
             <Button onClick={() => handleOpenModal()} variant="primary" size="lg">
