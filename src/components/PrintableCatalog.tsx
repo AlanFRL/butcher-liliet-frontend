@@ -43,7 +43,7 @@ export const PrintableCatalog: React.FC<PrintableCatalogProps> = ({ products, ca
     <div style={{ fontFamily: 'Arial, sans-serif', color: '#1f2937', padding: '15px', maxWidth: '800px', margin: '0 auto' }}>
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: '15px', borderBottom: '2px solid #b91c1c', paddingBottom: '10px' }}>
-        <h1 style={{ fontSize: '20pt', margin: '0 0 5px 0', color: '#b91c1c', textTransform: 'uppercase', letterSpacing: '1px' }}>Carnicería Lilieth</h1>
+        <h1 style={{ fontSize: '20pt', margin: '0 0 5px 0', color: '#b91c1c', textTransform: 'uppercase', letterSpacing: '1px' }}>Butcher Lilieth</h1>
         <h2 style={{ fontSize: '14pt', margin: '0 0 2px 0', color: '#374151' }}>Catálogo de Productos y Precios</h2>
         <p style={{ fontSize: '11pt', margin: '0 0 2px 0', color: '#6b7280', fontStyle: 'italic' }}>Precios de {getMonthName()} {currentYear}</p>
         <p style={{ fontSize: '8pt', margin: '0', color: '#9ca3af' }}>Generado: {printDate}</p>
