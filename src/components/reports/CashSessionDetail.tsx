@@ -83,13 +83,22 @@ export const CashSessionDetail: React.FC<CashSessionDetailProps> = ({
   const cardSales = sales.filter(s => s.paymentMethod === 'CARD');
   const mixedSales = sales.filter(s => s.paymentMethod === 'MIXED');
 
-  const totalCashSales = cashSales.reduce((sum, s) => sum + parseFloat(s.total), 0);
-  const totalTransferSales = transferSales.reduce((sum, s) => sum + parseFloat(s.total), 0);
+  const totalPureCashSales = cashSales.reduce((sum, s) => sum + parseFloat(s.total), 0);
+  const totalPureTransferSales = transferSales.reduce((sum, s) => sum + parseFloat(s.total), 0);
   const totalCardSales = cardSales.reduce((sum, s) => sum + parseFloat(s.total), 0);
+  
+  // Para mixtos, extraemos sus partes o aproximamos si no existen properties explícitas
+  const mixedCashTotal = mixedSales.reduce((sum, s) => sum + (s.cashAmount ? parseFloat(s.cashAmount) : 0), 0);
+  const mixedTransferTotal = mixedSales.reduce((sum, s) => sum + (s.transferAmount ? parseFloat(s.transferAmount) : 0), 0);
+
+
+  const totalCashSales = totalPureCashSales + mixedCashTotal;
+  const totalTransferSales = totalPureTransferSales + mixedTransferTotal;
+  
   const totalMixedSales = mixedSales.reduce((sum, s) => sum + parseFloat(s.total), 0);
   
   // Total de TODAS las ventas para mostrar
-  const totalAllSales = totalCashSales + totalTransferSales + totalCardSales + totalMixedSales;
+  const totalAllSales = totalPureCashSales + totalPureTransferSales + totalCardSales + totalMixedSales;
 
   const handlePrint = () => {
     console.log('🖨️ Printing cash session:', session.id);
@@ -801,6 +810,25 @@ export const CashSessionDetail: React.FC<CashSessionDetailProps> = ({
                       <span>Cambio:</span>
                       <span>Bs {parseFloat(selectedSale.changeAmount).toFixed(2)}</span>
                     </div>
+                  )}
+
+                  {selectedSale.paymentMethod === 'MIXED' && (
+                    <>
+                      <div className="flex justify-between text-sm text-gray-600">
+                        <span>Efectivo cobrado:</span>
+                        <span>Bs {parseFloat(selectedSale.cashAmount || 0).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm text-gray-600">
+                        <span>Transf. cobrada:</span>
+                        <span>Bs {parseFloat(selectedSale.transferAmount || 0).toFixed(2)}</span>
+                      </div>
+                      {parseFloat(selectedSale.changeAmount || 0) > 0 && (
+                        <div className="flex justify-between text-sm text-gray-600">
+                          <span>Cambio (Efectivo):</span>
+                          <span>Bs {parseFloat(selectedSale.changeAmount).toFixed(2)}</span>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>

@@ -16,7 +16,7 @@ export const POSPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'TRANSFER' | 'CARD'>('CASH');
+  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'TRANSFER' | 'CARD' | 'MIXED'>('CASH');
   const [cashPaid, setCashPaid] = useState('');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [lastSale, setLastSale] = useState<any>(null);
@@ -162,6 +162,9 @@ export const POSPage: React.FC = () => {
     
     if (paymentMethod === 'CASH') {
       setCashPaid(Math.round(getCartTotal()).toString());
+    } else if (paymentMethod === 'MIXED') {
+      // By default empty, so the cashier MUST enter how much was paid in cash
+      setCashPaid('');
     }
     
     setShowPaymentModal(true);
@@ -306,8 +309,12 @@ export const POSPage: React.FC = () => {
   
   const cartTotal = Math.round(getCartTotal());
   const cashPaidNum = Math.round(parseFloat(cashPaid) || 0);
-  const change = cashPaidNum - cartTotal;
-  const canCompleteSale = paymentMethod === 'CASH' ? cashPaidNum >= cartTotal : true;
+  const change = paymentMethod === 'CASH' ? cashPaidNum - cartTotal : 0;
+  const canCompleteSale = paymentMethod === 'CASH' 
+    ? cashPaidNum >= cartTotal 
+    : paymentMethod === 'MIXED' 
+      ? cashPaidNum > 0 && cashPaidNum < cartTotal 
+      : true;
   
   return (
     <div className="h-[calc(100vh-4rem)] flex">
@@ -425,6 +432,9 @@ export const POSPage: React.FC = () => {
                   discount: lastSale.discount || 0,
                   total: lastSale.total,
                   paymentMethod: lastSale.paymentMethod,
+                  cashAmount: lastSale.cashAmount || undefined,
+                  transferAmount: lastSale.transferAmount || undefined,
+                  cardAmount: lastSale.cardAmount || undefined,
                   cashPaid: lastSale.cashAmount || undefined,
                   change: lastSale.changeAmount || undefined,
                 }}

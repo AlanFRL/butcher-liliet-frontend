@@ -9,7 +9,7 @@ interface POSPaymentModalProps {
   cartSubtotal: number;
   itemDiscountsTotal: number;
   globalDiscount: number;
-  paymentMethod: 'CASH' | 'TRANSFER' | 'CARD';
+  paymentMethod: 'CASH' | 'TRANSFER' | 'CARD' | 'MIXED';
   cashPaid: string;
   change: number;
   cashPaidNum: number;
@@ -17,7 +17,7 @@ interface POSPaymentModalProps {
   isProcessing?: boolean;
   onClose: () => void;
   onSetGlobalDiscount: (value: number) => void;
-  onSetPaymentMethod: (method: 'CASH' | 'TRANSFER' | 'CARD') => void;
+  onSetPaymentMethod: (method: 'CASH' | 'TRANSFER' | 'CARD' | 'MIXED') => void;
   onSetCashPaid: (value: string) => void;
   onConfirm: () => void;
 }
@@ -215,6 +215,16 @@ export const POSPaymentModal: React.FC<POSPaymentModalProps> = ({
               >
                 Transferencia
               </button>
+              <button
+                onClick={() => onSetPaymentMethod('MIXED')}
+                className={`py-2.5 px-3 rounded-lg font-medium text-sm transition-all ${
+                  paymentMethod === 'MIXED'
+                    ? 'bg-purple-600 text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Mixto (Efe+QR)
+              </button>
             </div>
           </div>
           
@@ -247,6 +257,43 @@ export const POSPaymentModal: React.FC<POSPaymentModalProps> = ({
                 <div className="mt-3 bg-red-50 rounded-lg p-3">
                   <p className="text-sm text-red-700">
                     Efectivo insuficiente. Faltan Bs {Math.abs(change)}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Pago Mixto */}
+          {paymentMethod === 'MIXED' && (
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Monto Pagado en Efectivo
+              </label>
+              <div className="relative mb-3">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500 font-bold">Bs</span>
+                <input
+                  type="number"
+                  value={cashPaid}
+                  onChange={(e) => onSetCashPaid(e.target.value)}
+                  step="0.01"
+                  min="0.1"
+                  max={cartTotal}
+                  className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg text-xl font-bold focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="0.00"
+                />
+              </div>
+              
+              <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
+                <p className="text-xs text-purple-700 mb-0.5 font-medium">Monto por Transferencia/QR (Automático)</p>
+                <p className="text-xl font-bold text-purple-800">
+                  Bs {cashPaidNum >= 0 && cashPaidNum <= cartTotal ? (cartTotal - cashPaidNum).toFixed(2) : '0.00'}
+                </p>
+              </div>
+
+              {(cashPaidNum <= 0 || cashPaidNum >= cartTotal) && (
+                <div className="mt-2 bg-orange-50 rounded-lg p-2 border border-orange-200">
+                  <p className="text-xs text-orange-700 font-medium">
+                    El monto en efectivo debe ser mayor a 0 y menor al total (Bs {cartTotal}).
                   </p>
                 </div>
               )}

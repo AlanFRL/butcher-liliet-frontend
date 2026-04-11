@@ -112,9 +112,15 @@ export const CashClosePage: React.FC = () => {
   // Desglose por método de pago (solo efectivo y transferencia)
   const cashSales = sessionSales.filter(s => s.paymentMethod === 'CASH');
   const transferSales = sessionSales.filter(s => s.paymentMethod === 'TRANSFER');
+  const mixedSales = sessionSales.filter(s => s.paymentMethod === 'MIXED');
 
-  const totalCashSales = cashSales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
-  const totalTransferSales = transferSales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
+  const pureCashTotal = cashSales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
+  const mixedCashTotal = mixedSales.reduce((sum, sale) => sum + Number(sale.cashAmount || 0), 0);
+  const totalCashSales = pureCashTotal + mixedCashTotal;
+
+  const pureTransferTotal = transferSales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
+  const mixedTransferTotal = mixedSales.reduce((sum, sale) => sum + Number(sale.transferAmount || 0), 0);
+  const totalTransferSales = pureTransferTotal + mixedTransferTotal;
   
   const totalSales = sessionSales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
   const salesCount = sessionSales.length;

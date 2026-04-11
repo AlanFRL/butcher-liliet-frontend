@@ -207,6 +207,8 @@ export interface Order {
   createdAt: string;
   updatedAt: string;
   completedAt?: string;
+  cancelledAt?: string;
+  cancellationReason?: string;
 }
 
 export interface OrderItem {

@@ -1140,9 +1140,9 @@ export const useSalesStore = create<SalesState>((set, get) => ({
         }),
         discount: Math.round(cartState.globalDiscount || 0), // Redondear descuento global
         paymentMethod,
-        cashAmount: paymentMethod === 'CASH' ? cashPaidRounded : undefined,
+        cashAmount: paymentMethod === 'MIXED' ? cashPaidRounded : (paymentMethod === 'CASH' ? cashPaidRounded : undefined),
         cardAmount: paymentMethod === 'CARD' ? cartTotal : undefined,
-        transferAmount: paymentMethod === 'TRANSFER' ? cartTotal : undefined,
+        transferAmount: paymentMethod === 'MIXED' ? cartTotal - cashPaidRounded : (paymentMethod === 'TRANSFER' ? cartTotal : undefined),
         notes: undefined,
         customerId: customerId,
         orderId: orderId,

@@ -24,6 +24,9 @@ interface ThermalReceiptSaleProps {
     total: number;
     paymentMethod: string;
     cashPaid?: number;
+    cashAmount?: number | string;
+    transferAmount?: number | string;
+    cardAmount?: number | string;
     change?: number;
   };
   printable?: boolean; // Marca este recibo como el único que debe imprimirse
@@ -146,7 +149,7 @@ export const ThermalReceiptSale: React.FC<ThermalReceiptSaleProps> = ({ data, pr
             </div>
             <h1 className="text-lg font-bold mb-1">BUTCHER LILIETH</h1>
             <p className="text-xs">Entre Av. Centenario y C/Urubó</p>
-            <p className="text-xs">Tel: 62409387 - 76276838</p>
+            <p className="text-xs">Tel: 76276838</p>
             <p className="text-xs mt-1">
               {data.date} - {data.time}
             </p>
@@ -231,6 +234,29 @@ export const ThermalReceiptSale: React.FC<ThermalReceiptSaleProps> = ({ data, pr
                   <div className="flex justify-between text-xs font-bold">
                     <span>Cambio:</span>
                     <span>Bs {Math.round(data.change).toFixed(2)}</span>
+                  </div>
+                )}
+              </>
+            )}
+
+            {data.paymentMethod === "MIXED" && (
+              <>
+                {(data as any).cashAmount > 0 && (
+                   <div className="flex justify-between text-xs mb-1">
+                    <span>Efectivo:</span>
+                    <span className="font-bold">Bs {(data as any).cashAmount.toFixed(2)}</span>
+                  </div>
+                )}
+                {(data as any).transferAmount > 0 && (
+                   <div className="flex justify-between text-xs mb-1">
+                    <span>QR/Trns:</span>
+                    <span className="font-bold">Bs {(data as any).transferAmount.toFixed(2)}</span>
+                  </div>
+                )}
+                {(data as any).cardAmount > 0 && (
+                   <div className="flex justify-between text-xs mb-1">
+                    <span>Tarjeta:</span>
+                    <span className="font-bold">Bs {(data as any).cardAmount.toFixed(2)}</span>
                   </div>
                 )}
               </>
