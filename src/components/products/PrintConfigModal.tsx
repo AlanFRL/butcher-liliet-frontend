@@ -2,26 +2,45 @@
 import { Modal, Button } from '../ui';
 import type { Product, ProductCategory } from '../../types';
 
-interface CatalogConfigModalProps {
+interface PrintConfigModalProps {
   isOpen: boolean;
   onClose: () => void;
   products: Product[];
   categories: ProductCategory[];
   onPrint: (selectedProducts: Product[]) => void;
+  title: string;
+  description: string;
+  storageKey: string;
 }
 
-export const CatalogConfigModal: React.FC<CatalogConfigModalProps> = ({
+export const PrintConfigModal: React.FC<PrintConfigModalProps> = ({
   isOpen,
   onClose,
   products,
   categories,
-  onPrint
+  onPrint,
+  title,
+  description,
+  storageKey
 }) => {
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   
   useEffect(() => {
     if (isOpen) {
+      // Try to load from localStorage
+      const savedSelection = localStorage.getItem(storageKey);
+      if (savedSelection) {
+        try {
+          const parsed = JSON.parse(savedSelection);
+          setSelectedCategories(new Set(parsed.categories));
+          setSelectedProducts(new Set(parsed.products));
+          return;
+        } catch (e) {
+          console.error("Error parsing saved print selection", e);
+        }
+      }
+
       // By default select all categories
       const allCategoryIds = new Set(categories.map(c => c.id));
       // And products without category (we can use 'null' or 'none' as key, let's keep it simple and just rely on category ids)
@@ -31,7 +50,19 @@ export const CatalogConfigModal: React.FC<CatalogConfigModalProps> = ({
       const allProductIds = new Set(products.map(p => p.id));
       setSelectedProducts(allProductIds);
     }
-  }, [isOpen, categories, products]);
+  }, [isOpen, categories, products, storageKey]);
+
+  // Guardar selección cada vez que cambie
+  useEffect(() => {
+    // No guardamos si el modal no está abierto porque se ejecutaría en el montaje inicial vacío
+    if (isOpen) {
+      const dataToSave = {
+        categories: Array.from(selectedCategories),
+        products: Array.from(selectedProducts)
+      };
+      localStorage.setItem(storageKey, JSON.stringify(dataToSave));
+    }
+  }, [selectedCategories, selectedProducts, isOpen, storageKey]);
 
   const toggleCategory = (categoryId: string) => {
     const newSelected = new Set(selectedCategories);
@@ -83,10 +114,10 @@ export const CatalogConfigModal: React.FC<CatalogConfigModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Configurar Catálogo PDF" size="lg">
+    <Modal isOpen={isOpen} onClose={onClose} title={title} size="lg">
       <div className="p-4 space-y-4 max-h-[60vh] overflow-y-auto">
         <p className="text-gray-600 mb-4">
-          Selecciona las categorías o productos individuales que deseas incluir en el catálogo para clientes.
+          {description}
         </p>
 
         {/* List of categories and their products */}
@@ -137,7 +168,7 @@ export const CatalogConfigModal: React.FC<CatalogConfigModalProps> = ({
           Cancelar
         </Button>
         <Button variant="primary" onClick={handlePrint} disabled={selectedProducts.size === 0}>
-          Generar Catálogo
+          Continuar e Imprimir
         </Button>
       </div>
     </Modal>
