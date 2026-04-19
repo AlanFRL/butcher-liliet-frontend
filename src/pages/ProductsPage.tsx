@@ -8,14 +8,17 @@ import { PrintablePLUListWithDiscount } from '../components/PrintablePLUListWith
 import { PrintablePLUListCompact } from '../components/PrintablePLUListCompact';
 import { DiscountEditModal } from '../components/products/DiscountEditModal';
 import { PrintableCatalog } from '../components/PrintableCatalog';
-import { CatalogConfigModal } from '../components/products/CatalogConfigModal';
+import { PrintConfigModal } from '../components/products/PrintConfigModal'; 
 import { createRoot } from 'react-dom/client';
 
 export const ProductsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const [showCatalogModal, setShowCatalogModal] = useState(false);
+  const [printModalConfig, setPrintModalConfig] = useState<{
+    isOpen: boolean;
+    type: 'catalog' | 'plu-compact' | 'plu-discount' | null;
+  }>({ isOpen: false, type: null });
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{[key: string]: string}>({});
   const [isPrinting, setIsPrinting] = useState(false);
@@ -264,12 +267,8 @@ export const ProductsPage: React.FC = () => {
     showToast('success', 'Descuento actualizado exitosamente');
   };
 
-  const handlePrintPLU = (includeDiscount: boolean = false) => {
-    const pluProducts = products.filter(
-      p => p.barcodeType === 'WEIGHT_EMBEDDED' && p.barcode
-    );
-
-    if (pluProducts.length === 0) {
+  const handlePrintPLU = (includeDiscount: boolean, selectedProducts: Product[]) => {
+    if (selectedProducts.length === 0) {
       showToast('warning', 'No hay productos con código de balanza para imprimir');
       return;
     }
@@ -306,8 +305,8 @@ export const ProductsPage: React.FC = () => {
 
       root.render(
         includeDiscount 
-          ? <PrintablePLUListWithDiscount products={products} categories={categories} printDate={printDate} />
-          : <PrintablePLUListCompact products={products} categories={categories} printDate={printDate} />
+          ? <PrintablePLUListWithDiscount products={selectedProducts} categories={categories} printDate={printDate} />
+          : <PrintablePLUListCompact products={selectedProducts} categories={categories} printDate={printDate} />
       );
 
       // Esperar a que se renderice y luego imprimir
@@ -322,16 +321,15 @@ export const ProductsPage: React.FC = () => {
       }, 500);
     }
 
-    showToast('success', `Lista PLU generada (${pluProducts.length} productos)`);
+    showToast('success', `Lista PLU generada (${selectedProducts.length} productos)`);
   };
-  
   const handlePrintCatalog = (selectedProducts: Product[]) => {
     if (selectedProducts.length === 0) {
       showToast('warning', 'Debes seleccionar al menos un producto para el catálogo');
       return;
     }
 
-    setShowCatalogModal(false);
+    setPrintModalConfig({ isOpen: false, type: null });
     setIsPrinting(true);
 
     const printIframe = document.createElement('iframe');
@@ -392,15 +390,62 @@ export const ProductsPage: React.FC = () => {
     return true;
   });
 
+  const getPrintModalProps = () => {
+    switch (printModalConfig.type) {
+      case 'catalog':
+        return {
+          title: "Configurar Catálogo PDF",
+          description: "Selecciona las categorías o productos individuales que deseas incluir en el catálogo para clientes.",
+          storageKey: "catalog_print_selection",
+          onPrint: (selected: Product[]) => {
+            setPrintModalConfig({ isOpen: false, type: null });
+            handlePrintCatalog(selected);
+          }
+        };
+      case 'plu-compact':
+        return {
+          title: "Imprimir PLU Compacto",
+          description: "Selecciona las categorías o productos PLU que deseas imprimir.",
+          storageKey: "plu_compact_print_selection",
+          onPrint: (selected: Product[]) => {
+            setPrintModalConfig({ isOpen: false, type: null });
+            handlePrintPLU(false, selected);
+          }
+        };
+      case 'plu-discount':
+        return {
+          title: "Imprimir PLU con Descuentos",
+          description: "Selecciona las categorías o productos PLU que tendrán el descuento listado.",
+          storageKey: "plu_discount_print_selection",
+          onPrint: (selected: Product[]) => {
+            setPrintModalConfig({ isOpen: false, type: null });
+            handlePrintPLU(true, selected);
+          }
+        };
+      default:
+        return {
+          title: "",
+          description: "",
+          storageKey: "",
+          onPrint: () => {}
+        };
+    }
+  };
+
+  const printModalProps = getPrintModalProps();
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       {ToastComponent}
-      <CatalogConfigModal 
-        isOpen={showCatalogModal}
-        onClose={() => setShowCatalogModal(false)}
-        products={products}
+      <PrintConfigModal 
+        isOpen={printModalConfig.isOpen}
+        onClose={() => setPrintModalConfig({ isOpen: false, type: null })}
+        products={printModalConfig.type === 'catalog' ? products : products.filter(p => p.barcodeType === 'WEIGHT_EMBEDDED' && p.barcode)}
         categories={categories}
-        onPrint={handlePrintCatalog}
+        title={printModalProps.title}
+        description={printModalProps.description}
+        storageKey={printModalProps.storageKey}
+        onPrint={printModalProps.onPrint}
       />
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
@@ -412,7 +457,7 @@ export const ProductsPage: React.FC = () => {
         </div>
         <div className="flex items-center gap-3">
           <Button 
-            onClick={() => handlePrintPLU(false)} 
+            onClick={() => setPrintModalConfig({ isOpen: true, type: 'plu-compact' })} 
             variant="secondary" 
             size="lg"
             disabled={isPrinting}
@@ -421,7 +466,7 @@ export const ProductsPage: React.FC = () => {
             PLU Compacto
           </Button>
           <Button
-            onClick={() => handlePrintPLU(true)}
+            onClick={() => setPrintModalConfig({ isOpen: true, type: 'plu-discount' })}
             variant="secondary"
             size="lg"
             disabled={isPrinting}
@@ -430,7 +475,7 @@ export const ProductsPage: React.FC = () => {
             PLU con Descuentos
           </Button>
           <Button
-            onClick={() => setShowCatalogModal(true)}
+            onClick={() => setPrintModalConfig({ isOpen: true, type: 'catalog' })}
             variant="primary"
             size="lg"
             disabled={isPrinting}
@@ -817,3 +862,6 @@ export const ProductsPage: React.FC = () => {
     </div>
   );
 };
+
+
+
