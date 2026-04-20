@@ -392,12 +392,15 @@ export const productsApi = {
     search?: string;
     categoryId?: string;
     isActive?: boolean;
+    all?: boolean;
   }): Promise<ProductResponse[]> => {
     const queryParams = new URLSearchParams();
     if (params?.search) queryParams.append('search', params.search);
     if (params?.categoryId) queryParams.append('categoryId', params.categoryId);
     if (params?.isActive !== undefined)
       queryParams.append('isActive', String(params.isActive));
+    if (params?.all !== undefined)
+      queryParams.append('all', String(params.all));
 
     const query = queryParams.toString();
     return apiFetch<ProductResponse[]>(`/products${query ? `?${query}` : ''}`, {

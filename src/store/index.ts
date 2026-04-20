@@ -711,7 +711,7 @@ export const useProductStore = create<ProductState>((set, get) => ({
     set({ isLoading: true, error: null });
     
     try {
-      const productsResponse = await productsApi.getAll();
+      const productsResponse = await productsApi.getAll({ all: true });
       
       // Convertir ProductResponse[] a Product[]
       const products: Product[] = productsResponse.map((p) => ({
