@@ -389,8 +389,23 @@ const SaleDetailModal: React.FC<{
                               {item.unit === 'kg' ? qty.toFixed(3) : qty.toFixed(0)} {item.unit || 'unid'}
                             </td>
                             <td className="px-4 py-3 text-right text-gray-600">
-                              Bs {unitPrice.toFixed(2)}
-                            </td>
+                                {(() => {
+                                  const isWeight = item.product?.saleType === 'WEIGHT' || item.saleType === 'WEIGHT' || item.unit === 'KG' || item.unit?.toLowerCase() === 'kg';
+                                  const hasDiscount = itemDiscount > 0;
+                                  const fallbackUIPrice = (qty * unitPrice - itemDiscount) / qty;
+                                  const appliedUP = item.appliedUnitPrice ?? (isWeight && hasDiscount ? fallbackUIPrice : unitPrice);
+                                  
+                                  if (item.appliedUnitPrice || (isWeight && hasDiscount)) {
+                                    return (
+                                      <div className="flex flex-col items-end">
+                                        <span className="line-through text-gray-400 text-xs">Bs {unitPrice.toFixed(2)}</span>
+                                        <span className="text-gray-900 font-bold">Bs {appliedUP.toFixed(2)}</span>
+                                      </div>
+                                    );
+                                  }
+                                  return <span>Bs {unitPrice.toFixed(2)}</span>;
+                                })()}
+                              </td>
                             <td className="px-4 py-3 text-right">
                               <p className="font-semibold text-gray-900">
                                 Bs {itemSubtotalBeforeDiscount}

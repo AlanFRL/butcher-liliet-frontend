@@ -179,12 +179,29 @@ export const ThermalReceiptSale: React.FC<ThermalReceiptSaleProps> = ({ data, pr
                     <span className="font-semibold">{item.name}</span>
                   </div>
                   <div className="flex justify-between text-xs">
-                    <span>
-                      {effectiveQuantity.toFixed(effectiveUnit === "kg" ? 3 : 0)} {effectiveUnit} × Bs{" "}
-                      {Math.round(item.price)}/{effectiveUnit}
-                    </span>
-                    <span className="font-bold">Bs {itemSubtotalBeforeDiscount}</span>
-                  </div>
+                      <span>{(() => {
+                        const isWeight = item.saleType === 'WEIGHT' || item.product?.saleType === 'WEIGHT' || item.unit === 'KG' || item.unit?.toLowerCase() === 'kg' || effectiveUnit === 'kg';
+                        const hasDiscount = itemDiscount > 0;
+                        const fallbackUIPrice = (item.subtotal && effectiveQuantity) ? item.subtotal / effectiveQuantity : (itemSubtotalBeforeDiscount - itemDiscount) / effectiveQuantity;
+                        const appliedUP = item.appliedUnitPrice ?? (isWeight && hasDiscount ? fallbackUIPrice : item.price);
+                        
+                        if (item.appliedUnitPrice || (isWeight && hasDiscount)) {
+                          return (
+                            <>
+                              {effectiveQuantity.toFixed(effectiveUnit === "kg" ? 3 : 0)} {effectiveUnit} &times; Bs{" "}
+                              <span className="line-through text-gray-400">Math.round({item.price})</span> <span className="font-bold">Bs {Math.round(appliedUP)}</span>/{effectiveUnit}
+                            </>
+                          );
+                        }
+                        return (
+                          <>
+                            {effectiveQuantity.toFixed(effectiveUnit === "kg" ? 3 : 0)} {effectiveUnit} &times; Bs{" "}
+                            {Math.round(item.price)}/{effectiveUnit}
+                          </>
+                        );
+                      })()}</span>
+                      <span className="font-bold">Bs {itemSubtotalBeforeDiscount}</span>
+                    </div>
                   {itemDiscount > 0 && (
                     <div className="flex justify-between text-xs text-red-600 ml-2">
                       <span>Descuento</span>

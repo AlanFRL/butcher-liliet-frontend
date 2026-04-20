@@ -299,13 +299,27 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order: initi
                           {`${item.qty} ${item.unit}`}
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <p className="text-gray-900">Bs {Math.round(item.unitPrice)}</p>
-                          {itemDiscount > 0 && (
-                            <>
-                              <p className="text-xs text-gray-500">Subtotal: Bs {itemSubtotalBeforeDiscount}</p>
-                              <p className="text-xs text-red-600">Descuento: -Bs {Math.round(itemDiscount)}</p>
-                            </>
-                          )}
+                            {(() => {
+                              const isWeight = item.product?.saleType === 'WEIGHT' || item.saleType === 'WEIGHT' || item.unit === 'KG' || item.unit === 'kg';
+                              const hasDiscount = itemDiscount > 0;
+                              const fallbackUIPrice = (item.total / item.qty);
+                              const appliedUP = item.appliedUnitPrice ?? (isWeight && hasDiscount ? fallbackUIPrice : item.unitPrice);
+                              
+                              return (item.appliedUnitPrice || (isWeight && hasDiscount)) ? (
+                                <>
+                                  <span className="line-through text-gray-400 text-xs">Bs {Math.round(item.unitPrice)}</span>
+                                  <p className="text-gray-900 font-bold">Bs {Math.round(appliedUP)}</p>
+                                </>
+                              ) : (
+                                <p className="text-gray-900">Bs {Math.round(item.unitPrice)}</p>
+                              );
+                            })()}
+                            {itemDiscount > 0 && (
+                              <>
+                                <p className="text-xs text-gray-500">Subtotal: Bs {itemSubtotalBeforeDiscount}</p>
+                                <p className="text-xs text-red-600">Descuento: -Bs {Math.round(itemDiscount)}</p>
+                              </>
+                            )}
                         </td>
                         <td className="px-4 py-3 text-right font-semibold text-gray-900">
                           Bs {itemFinalTotal}

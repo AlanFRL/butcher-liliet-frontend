@@ -111,6 +111,7 @@ export interface SaleItem {
   qty: number;
   unit: string; // 'kg', 'unid', 'lt', etc.
   unitPrice: number;
+  appliedUnitPrice?: number;
   discount: number;
   total: number;
   // Para productos de peso (WEIGHT, VACUUM_PACKED)
@@ -221,6 +222,7 @@ export interface OrderItem {
   qty: number;
   unit: string;
   unitPrice: number;
+  appliedUnitPrice?: number;
   total: number;
   discount?: number; // Descuento aplicado al item
   notes?: string; // Notas específicas del item (ej: "corte fino", "sin grasa")
