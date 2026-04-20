@@ -261,12 +261,12 @@ export const PrintableSaleReceipt: React.FC<PrintableSaleReceiptProps> = ({ data
               <>
                 <div className="flex justify-between text-xs mb-1">
                   <span>Pagado:</span>
-                  <span className="font-bold">Bs {data.cashPaid.toFixed(2)}</span>
+                  <span className="font-bold">Bs {Math.round(data.cashPaid)}</span>
                 </div>
                 {data.change !== undefined && data.change > 0 && (
                   <div className="flex justify-between text-xs font-bold">
                     <span>Cambio:</span>
-                    <span>Bs {Math.round(data.change).toFixed(2)}</span>
+                    <span>Bs {Math.round(data.change)}</span>
                   </div>
                 )}
               </>
@@ -277,19 +277,19 @@ export const PrintableSaleReceipt: React.FC<PrintableSaleReceiptProps> = ({ data
                 {(data as any).cashAmount > 0 && (
                    <div className="flex justify-between text-xs mb-1">
                     <span>Efectivo:</span>
-                    <span className="font-bold">Bs {(data as any).cashAmount.toFixed(2)}</span>
+                    <span className="font-bold">Bs {Math.round((data as any).cashAmount)}</span>
                   </div>
                 )}
                 {(data as any).transferAmount > 0 && (
                    <div className="flex justify-between text-xs mb-1">
                     <span>QR/Trns:</span>
-                    <span className="font-bold">Bs {(data as any).transferAmount.toFixed(2)}</span>
+                    <span className="font-bold">Bs {Math.round((data as any).transferAmount)}</span>
                   </div>
                 )}
                 {(data as any).cardAmount > 0 && (
                    <div className="flex justify-between text-xs mb-1">
                     <span>Tarjeta:</span>
-                    <span className="font-bold">Bs {(data as any).cardAmount.toFixed(2)}</span>
+                    <span className="font-bold">Bs {Math.round((data as any).cardAmount)}</span>
                   </div>
                 )}
               </>

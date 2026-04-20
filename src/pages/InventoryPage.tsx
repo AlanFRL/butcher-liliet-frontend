@@ -115,7 +115,7 @@ export const InventoryPage: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-600 text-sm">Valor Total</p>
-                  <p className="text-2xl font-bold text-gray-900">Bs {totalStockValue.toFixed(2)}</p>
+                  <p className="text-2xl font-bold text-gray-900">Bs {Math.round(totalStockValue)}</p>
                 </div>
                 <DollarSign className="w-10 h-10 text-primary-600" />
               </div>
@@ -174,7 +174,7 @@ export const InventoryPage: React.FC = () => {
                           {product.minStockAlert || '-'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          Bs {product.price.toFixed(2)}
+                          Bs {Math.round(product.price)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           {isLowStock ? (

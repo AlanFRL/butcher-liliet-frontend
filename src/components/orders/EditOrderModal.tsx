@@ -360,7 +360,7 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, onClose, 
                       </div>
                       <div className="text-right ml-2">
                         <p className="text-primary-700 font-semibold text-sm">
-                          Bs {product.price.toFixed(2)}
+                          Bs {Math.round(product.price)}
                         </p>
                         <p className="text-xs text-gray-500">/{product.unit}</p>
                       </div>

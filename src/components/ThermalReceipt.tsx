@@ -105,7 +105,7 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({ data, printable 
       <div className="mb-4">
         <div className="flex justify-between font-bold text-sm">
           <span>MONTO INICIAL:</span>
-          <span>Bs {data.initialAmount.toFixed(2)}</span>
+          <span>Bs {Math.round(data.initialAmount)}</span>
         </div>
       </div>
 
@@ -137,14 +137,14 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({ data, printable 
                     ? `${product.quantity} lotes`
                     : `${product.quantity} unid`}
                 </span>
-                <span className="w-16 text-right font-semibold">Bs {product.total.toFixed(2)}</span>
+                <span className="w-16 text-right font-semibold">Bs {Math.round(product.total)}</span>
               </div>
             ))}
             
             <div className="border-t border-dashed border-gray-400 mt-2 pt-2">
               <div className="flex justify-between font-bold text-sm">
                 <span>TOTAL ({data.salesCount} ventas):</span>
-                <span>Bs {data.totalSales.toFixed(2)}</span>
+                <span>Bs {Math.round(data.totalSales)}</span>
               </div>
             </div>
           </>
@@ -158,11 +158,11 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({ data, printable 
         <div className="text-center font-bold mb-2 text-xs">VENTAS POR MÉTODO</div>
         <div className="flex justify-between text-xs">
           <span>Efectivo:</span>
-          <span>Bs {data.totalCashSales.toFixed(2)}</span>
+          <span>Bs {Math.round(data.totalCashSales)}</span>
         </div>
         <div className="flex justify-between text-xs">
           <span>Transferencia:</span>
-          <span>Bs {data.totalTransferSales.toFixed(2)}</span>
+          <span>Bs {Math.round(data.totalTransferSales)}</span>
         </div>
       </div>
 
@@ -174,22 +174,22 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({ data, printable 
         
         <div className="flex justify-between text-xs">
           <span>Monto Inicial:</span>
-          <span>Bs {data.initialAmount.toFixed(2)}</span>
+          <span>Bs {Math.round(data.initialAmount)}</span>
         </div>
         <div className="flex justify-between text-xs">
           <span>(+) Ventas Efectivo:</span>
-          <span>Bs {data.totalCashSales.toFixed(2)}</span>
+          <span>Bs {Math.round(data.totalCashSales)}</span>
         </div>
         {data.totalDeposits != null && data.totalDeposits > 0 && (
           <div className="flex justify-between text-xs">
             <span>(+) Ingresos:</span>
-            <span>Bs {data.totalDeposits.toFixed(2)}</span>
+            <span>Bs {Math.round(data.totalDeposits)}</span>
           </div>
         )}
         {data.totalWithdrawals != null && data.totalWithdrawals > 0 && (
           <div className="flex justify-between text-xs">
             <span>(-) Retiros:</span>
-            <span>Bs {data.totalWithdrawals.toFixed(2)}</span>
+            <span>Bs {Math.round(data.totalWithdrawals)}</span>
           </div>
         )}
         
@@ -197,11 +197,11 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({ data, printable 
         
         <div className="flex justify-between font-bold text-sm">
           <span>EFECTIVO ESPERADO:</span>
-          <span>Bs {(data.initialAmount + data.totalCashSales + (data.totalDeposits || 0) - (data.totalWithdrawals || 0)).toFixed(2)}</span>
+          <span>Bs {Math.round((data.initialAmount + data.totalCashSales + (data.totalDeposits || 0) - (data.totalWithdrawals || 0)))}</span>
         </div>
         <div className="flex justify-between font-bold text-sm">
           <span>EFECTIVO CONTADO:</span>
-          <span>Bs {data.totalCash.toFixed(2)}</span>
+          <span>Bs {Math.round(data.totalCash)}</span>
         </div>
         
         <div className="border-t border-gray-300 my-1"></div>
@@ -211,7 +211,7 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({ data, printable 
           data.difference > 0 ? '' : ''
         }`}>
           <span>DIFERENCIA:</span>
-          <span>{data.difference === 0 ? '✓ Bs 0.00' : `Bs ${data.difference.toFixed(2)} (${data.difference > 0 ? 'Sobrante' : 'Faltante'})`}</span>
+          <span>{data.difference === 0 ? '✓ Bs 0.00' : `Bs ${Math.round(data.difference)} (${data.difference > 0 ? 'Sobrante' : 'Faltante'})`}</span>
         </div>
       </div>
 

@@ -596,7 +596,7 @@ export const ProductsPage: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 text-right">
                     <p className="font-semibold text-gray-900">
-                      Bs {product.price.toFixed(2)}
+                      Bs {Math.round(product.price)}
                     </p>
                     <p className="text-xs text-gray-500">por {product.unit}</p>
                   </td>
@@ -604,7 +604,7 @@ export const ProductsPage: React.FC = () => {
                     {product.discountPrice && product.discountPrice < product.price ? (
                       <div className="flex flex-col items-center">
                         <span className="font-semibold text-green-700">
-                          Bs {product.discountPrice.toFixed(2)}
+                          Bs {Math.round(product.discountPrice)}
                         </span>
                         <span className="text-xs text-green-600">
                           -{Math.round((1 - product.discountPrice / product.price) * 100)}%

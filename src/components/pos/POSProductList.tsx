@@ -184,7 +184,7 @@ export const POSProductList: React.FC<POSProductListProps> = ({
               <div className="flex items-end justify-between">
                 <div>
                   <p className="text-2xl font-bold text-primary-700">
-                    Bs {product.price.toFixed(2)}
+                    Bs {Math.round(product.price)}
                   </p>
                   <p className="text-xs text-gray-500">por {product.unit}</p>
                 </div>

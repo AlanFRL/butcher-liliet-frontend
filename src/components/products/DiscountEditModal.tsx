@@ -94,7 +94,7 @@ export const DiscountEditModal: React.FC<DiscountEditModalProps> = ({
           <div className="bg-gray-50 rounded-lg p-4">
             <p className="font-semibold text-gray-900">{product.name}</p>
             <p className="text-sm text-gray-600">
-              Precio normal: <span className="font-medium">Bs {product.price.toFixed(2)}</span>
+              Precio normal: <span className="font-medium">Bs {Math.round(product.price)}</span>
             </p>
           </div>
 
@@ -134,7 +134,7 @@ export const DiscountEditModal: React.FC<DiscountEditModalProps> = ({
                 required={discountActive}
               />
               <p className="mt-1 text-xs text-gray-500">
-                Debe ser menor a Bs {product.price.toFixed(2)}
+                Debe ser menor a Bs {Math.round(product.price)}
               </p>
             </div>
           )}

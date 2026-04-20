@@ -225,7 +225,7 @@ export const CashClosePage: React.FC = () => {
                 <div>
                   <p className="text-sm text-gray-500">Saldo Inicial</p>
                   <p className="text-lg font-bold text-gray-900">
-                    Bs {openingAmountNum.toFixed(2)}
+                    Bs {Math.round(openingAmountNum)}
                   </p>
                 </div>
               </div>
@@ -235,18 +235,18 @@ export const CashClosePage: React.FC = () => {
                 <div>
                   <p className="text-sm text-gray-500">Total Ventas</p>
                   <p className="text-lg font-bold text-blue-600">
-                    Bs {totalSales.toFixed(2)}
+                    Bs {Math.round(totalSales)}
                   </p>
                   <p className="text-sm text-gray-400">{salesCount} tickets</p>
                 </div>
                 <div className="flex gap-3 text-sm">
                   <div>
                     <span className="text-gray-500">💵 Efectivo:</span>
-                    <span className="font-semibold text-gray-900 ml-1">Bs {totalCashSales.toFixed(2)}</span>
+                    <span className="font-semibold text-gray-900 ml-1">Bs {Math.round(totalCashSales)}</span>
                   </div>
                   <div>
                     <span className="text-gray-500">📱 Transfer:</span>
-                    <span className="font-semibold text-gray-900 ml-1">Bs {totalTransferSales.toFixed(2)}</span>
+                    <span className="font-semibold text-gray-900 ml-1">Bs {Math.round(totalTransferSales)}</span>
                   </div>
                 </div>
               </div>
@@ -255,27 +255,27 @@ export const CashClosePage: React.FC = () => {
               <div className="border-l border-gray-200 pl-4">
                 <p className="text-sm text-gray-500 mb-1">Efectivo Esperado en Caja</p>
                 <p className="text-3xl font-bold text-green-600 mb-1">
-                  Bs {expectedCash.toFixed(2)}
+                  Bs {Math.round(expectedCash)}
                 </p>
                 <div className="text-sm text-gray-600 space-y-0.5">
                   <div className="flex justify-between">
                     <span>Inicial:</span>
-                    <span className="font-medium">Bs {openingAmountNum.toFixed(2)}</span>
+                    <span className="font-medium">Bs {Math.round(openingAmountNum)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>+ Efectivo:</span>
-                    <span className="font-medium text-green-600">Bs {totalCashSales.toFixed(2)}</span>
+                    <span className="font-medium text-green-600">Bs {Math.round(totalCashSales)}</span>
                   </div>
                   {cashIn > 0 && (
                     <div className="flex justify-between">
                       <span>+ Ingresos:</span>
-                      <span className="font-medium text-green-600">Bs {cashIn.toFixed(2)}</span>
+                      <span className="font-medium text-green-600">Bs {Math.round(cashIn)}</span>
                     </div>
                   )}
                   {cashOut > 0 && (
                     <div className="flex justify-between">
                       <span>- Retiros:</span>
-                      <span className="font-medium text-red-600">Bs {cashOut.toFixed(2)}</span>
+                      <span className="font-medium text-red-600">Bs {Math.round(cashOut)}</span>
                     </div>
                   )}
                 </div>
@@ -359,7 +359,7 @@ export const CashClosePage: React.FC = () => {
                       ? 'text-blue-700'
                       : 'text-red-700'
                   }`}>
-                    {difference >= 0 ? '+' : ''}Bs {difference.toFixed(2)}
+                    {difference >= 0 ? '+' : ''}Bs {Math.round(difference)}
                   </p>
                   <p className="text-sm text-gray-600 mt-1">Diferencia</p>
                 </div>
@@ -375,7 +375,7 @@ export const CashClosePage: React.FC = () => {
               <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5 mr-2 flex-shrink-0" />
               <div className="flex-1">
                 <p className="text-sm font-semibold text-yellow-900">
-                  Hay una diferencia de caja ({difference >= 0 ? '+' : ''}Bs {difference.toFixed(2)})
+                  Hay una diferencia de caja ({difference >= 0 ? '+' : ''}Bs {Math.round(difference)})
                 </p>
               </div>
             </div>
@@ -525,11 +525,11 @@ export const CashClosePage: React.FC = () => {
             <div className="bg-gray-50 rounded-lg p-4 mb-4">
               <div className="flex justify-between mb-2">
                 <span className="text-sm text-gray-600">Efectivo contado:</span>
-                <span className="text-base font-bold">Bs {countedCashNum.toFixed(2)}</span>
+                <span className="text-base font-bold">Bs {Math.round(countedCashNum)}</span>
               </div>
               <div className="flex justify-between mb-2">
                 <span className="text-sm text-gray-600">Esperado:</span>
-                <span className="text-base font-bold">Bs {expectedCash.toFixed(2)}</span>
+                <span className="text-base font-bold">Bs {Math.round(expectedCash)}</span>
               </div>
               <div className="flex justify-between pt-2 border-t">
                 <span className="text-sm font-semibold">Diferencia:</span>
@@ -537,7 +537,7 @@ export const CashClosePage: React.FC = () => {
                   Math.abs(difference) < 0.01 ? 'text-green-600' :
                   difference > 0 ? 'text-blue-600' : 'text-red-600'
                 }`}>
-                  {difference >= 0 ? '+' : ''}Bs {difference.toFixed(2)}
+                  {difference >= 0 ? '+' : ''}Bs {Math.round(difference)}
                 </span>
               </div>
             </div>

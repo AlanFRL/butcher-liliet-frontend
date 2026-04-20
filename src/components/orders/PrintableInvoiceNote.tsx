@@ -321,14 +321,14 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
                     {hasGroupDiscount || group.anyItemHasAppliedUP ? (
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'center' }}>
                         <div style={{ color: '#9ca3af', textDecoration: 'line-through', fontSize: '11px', lineHeight: '1' }}>
-                          Bs {avgUnitPrice.toFixed(2)}
+                          Bs {Math.round(avgUnitPrice)}
                         </div>
                         <div style={{ color: '#111827', fontWeight: 'bold' }}>
-                          Bs {(group.finalTotal / group.totalQty).toFixed(2)}
+                          Bs {Math.round(group.finalTotal / group.totalQty)}
                         </div>
                       </div>
                     ) : (
-                      <span>Bs {avgUnitPrice.toFixed(2)}</span>
+                      <span>Bs {Math.round(avgUnitPrice)}</span>
                     )}
                   </td>
                 <td style={{
@@ -342,15 +342,15 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
                   {hasGroupDiscount ? (
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                       <div style={{ fontSize: '12px', color: '#6b7280', textDecoration: 'line-through', fontWeight: 400 }}>
-                        Bs {originalRoundedTotal.toFixed(2)}
+                        Bs {Math.round(originalRoundedTotal)}
                       </div>
                       
                       <div style={{ color: '#1a1a1a' }}>
-                        Bs {group.finalTotal.toFixed(2)}
+                        Bs {Math.round(group.finalTotal)}
                       </div>
                     </div>
                   ) : (
-                    <div>Bs {group.finalTotal.toFixed(2)}</div>
+                    <div>Bs {Math.round(group.finalTotal)}</div>
                   )}
                 </td>
               </tr>
@@ -376,7 +376,7 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
               borderBottom: '1px solid #e5e7eb'
             }}>
               <span>Subtotal:</span>
-              <span style={{ fontWeight: 600 }}>Bs {(order.subtotal || order.total + order.discount).toFixed(2)}</span>
+              <span style={{ fontWeight: 600 }}>Bs {Math.round(order.subtotal || order.total + order.discount)}</span>
             </div>
             <div style={{
               display: 'flex',
@@ -388,7 +388,7 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
               borderBottom: '1px solid #e5e7eb'
             }}>
               <span>Descuento:</span>
-              <span>Bs {order.discount.toFixed(2)}</span>
+              <span>Bs {Math.round(order.discount)}</span>
             </div>
           </>
         ) : null}
@@ -404,7 +404,7 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
           color: 'white'
         }}>
           <span>TOTAL:</span>
-          <span>Bs {order.total.toFixed(2)}</span>
+          <span>Bs {Math.round(order.total)}</span>
         </div>
       </div>
 
