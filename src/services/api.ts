@@ -347,6 +347,7 @@ export const usersApi = {
       password?: string;
       role?: 'ADMIN' | 'MANAGER' | 'CASHIER';
       isActive?: boolean;
+    all?: boolean;
     }
   ): Promise<UserResponse> => {
     return apiFetch<UserResponse>(`/users/${id}`, {
@@ -381,6 +382,12 @@ export const productsApi = {
   /**
    * Listar productos con filtros opcionales
    */
+  toggleActive: async (id: string): Promise<ProductResponse> => {
+    return apiFetch<ProductResponse>(`/products/${id}/toggle`, {
+      method: 'PATCH',
+    });
+  },
+
   getAll: async (params?: {
     search?: string;
     categoryId?: string;

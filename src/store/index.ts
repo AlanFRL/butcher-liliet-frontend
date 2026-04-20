@@ -66,6 +66,7 @@ interface ProductState {
   error: string | null;
   addProduct: (product: Omit<Product, 'id'>) => Promise<void>;
   updateProduct: (id: string, product: Partial<Product>) => Promise<void>;
+  toggleProductActive: (id: string) => Promise<boolean>;
   toggleProductFavorite: (id: string) => void;
   getProductById: (id: string) => Product | undefined;
   getProductsByCategory: (categoryId: string) => Product[];
@@ -629,6 +630,22 @@ export const useProductStore = create<ProductState>((set, get) => ({
     }
   },
   
+  toggleProductActive: async (id: string): Promise<boolean> => {
+    set({ isLoading: true, error: null });
+    try {
+      const updatedProduct = await productsApi.toggleActive(id) as unknown as Product;
+      set((state) => ({
+        isLoading: false,
+        products: state.products.map(p => p.id === id ? updatedProduct : p)
+      }));
+      return true;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error toggling product activation';
+      set({ isLoading: false, error: errorMessage });
+      return false;
+    }
+  },
+
   updateProduct: async (id, updates) => {
     set({ isLoading: true, error: null });
     

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Plus, Edit2, Star, Search, Trash2, Printer, Tag } from 'lucide-react';
+import { Package, Plus, Edit2, Star, Search, Trash2, Printer, Tag , EyeOff, Eye } from 'lucide-react';
 import { Button, Modal, Input, useToast } from '../components/ui';
 import { useProductStore } from '../store';
 import { usePermissions } from '../hooks/usePermissions';
@@ -28,7 +28,7 @@ export const ProductsPage: React.FC = () => {
   const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
   const { showToast, ToastComponent } = useToast();
   
-  const { products, categories, addProduct, updateProduct, toggleProductFavorite, loadProducts, loadCategories, isLoading } = useProductStore();
+  const { products, categories, addProduct, updateProduct, toggleProductFavorite, loadProducts, loadCategories, isLoading, toggleProductActive } = useProductStore();
   const { canManageProducts } = usePermissions();
   
   // Cargar productos y categorías si están vacíos
@@ -222,6 +222,16 @@ export const ProductsPage: React.FC = () => {
       showToast('error', errorMessage);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+    const handleToggleActive = async (product: Product) => {
+    try {
+      await toggleProductActive(product.id);
+      showToast('success', `Producto ${product.isActive ? 'desactivado' : 'activado'} correctamente`);
+      await loadProducts();
+    } catch (error) {
+      showToast('error', 'Error al cambiar el estado del producto');
     }
   };
 
@@ -571,16 +581,14 @@ export const ProductsPage: React.FC = () => {
             {filteredProducts.map((product) => {
               const category = categories.find((c) => c.id === product.categoryId);
               return (
-                <tr key={product.id} className="hover:bg-gray-50">
+                <tr key={product.id} className={`hover:bg-gray-50 ${!product.isActive ? 'opacity-50 grayscale' : ''}`}>
                   <td className="px-6 py-4">
                     <div className="flex items-center">
                       {product.isFavorite && (
                         <Star className="w-4 h-4 text-accent-500 fill-current mr-2" />
                       )}
                       <div>
-                        <p className="font-semibold text-gray-900">
-                          {product.name}
-                        </p>
+                        <p className="font-semibold text-gray-900">{product.name} {!product.isActive && <span className="ml-2 text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">Inactivo</span>}</p>
                         <p className="text-sm text-gray-500">{product.sku}</p>
                       </div>
                     </div>
@@ -642,6 +650,13 @@ export const ProductsPage: React.FC = () => {
                             title="Editar"
                           >
                             <Edit2 className="w-4 h-4" />
+                          </button>
+                                                    <button
+                            onClick={() => handleToggleActive(product)}
+                            className={`p-2 transition-all rounded-lg ${product.isActive ? 'text-amber-600 hover:bg-amber-50' : 'text-green-600 hover:bg-green-50'}`}
+                            title={product.isActive ? 'Desactivar producto' : 'Activar producto'}
+                          >
+                            {product.isActive ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                           </button>
                           <button
                             onClick={() => handleDelete(product)}
