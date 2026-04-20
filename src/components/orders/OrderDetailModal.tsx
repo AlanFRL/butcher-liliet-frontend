@@ -317,7 +317,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order: initi
                             {itemDiscount > 0 && (
                               <>
                                 <p className="text-xs text-gray-500">Subtotal: Bs {itemSubtotalBeforeDiscount}</p>
-                                <p className="text-xs text-red-600">Descuento: -Bs {Math.round(itemDiscount)}</p>
+                                <p className="text-xs text-red-600">Descuento: Bs {Math.round(itemDiscount)}</p>
                               </>
                             )}
                         </td>
@@ -515,3 +515,4 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order: initi
     </>
   );
 };
+

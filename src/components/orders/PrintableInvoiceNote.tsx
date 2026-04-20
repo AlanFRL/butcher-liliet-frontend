@@ -35,6 +35,8 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
       totalDiscount: number;
       finalTotal: number; // Total después de descuentos
       notes?: string; // Combinar notas si existen
+        isWeight?: boolean;
+        anyItemHasAppliedUP?: boolean;
     }> = {};
 
     order.items.forEach(item => {
@@ -58,6 +60,12 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
       groups[key].totalAmount += item.qty * item.unitPrice; // Subtotal del item sin redondeo prematuro
       groups[key].totalDiscount += item.discount || 0;
       groups[key].finalTotal += item.total;
+        if (!groups[key].isWeight) {
+          groups[key].isWeight = (item as any).product?.saleType === 'WEIGHT' || (item as any).saleType === 'WEIGHT' || String(item.unit).toUpperCase().trim() === 'KG';
+        }
+        if (!groups[key].anyItemHasAppliedUP && (item as any).appliedUnitPrice !== undefined && (item as any).appliedUnitPrice !== null) {
+          groups[key].anyItemHasAppliedUP = true;
+        }
       
       // Combinar notas si hay múltiples diferentes
       if (item.notes && groups[key].notes !== item.notes) {
