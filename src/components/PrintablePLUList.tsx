@@ -121,7 +121,7 @@ export const PrintablePLUList: React.FC<PrintablePLUListProps> = ({ products, pr
               fontSize: '10pt',
               color: '#003366'
             }}>
-              {Math.round(product.price)}
+              {product.price.toFixed(2)}
             </td>
             <td style={{
               border: '1px solid #003366',
@@ -132,7 +132,7 @@ export const PrintablePLUList: React.FC<PrintablePLUListProps> = ({ products, pr
               color: product.discountActive && product.discountPrice ? '#006600' : '#999'
             }}>
               {product.discountActive && product.discountPrice 
-                ? Math.round(product.discountPrice) 
+                ? product.discountPrice.toFixed(2) 
                 : '-'}
             </td>
           </tr>

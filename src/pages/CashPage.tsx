@@ -171,14 +171,14 @@ export const CashPage: React.FC = () => {
               <div className="bg-white rounded-lg p-4">
                 <p className="text-sm text-gray-600 mb-1">Monto Inicial</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  Bs {Math.round(openingAmount)}
+                  Bs {openingAmount.toFixed(2)}
                 </p>
               </div>
               
               <div className="bg-white rounded-lg p-4">
                 <p className="text-sm text-gray-600 mb-1">Ventas ({salesCount} tickets)</p>
                 <p className="text-2xl font-bold text-green-600">
-                  Bs {Math.round(totalSales)}
+                  Bs {totalSales.toFixed(2)}
                 </p>
                 <div className="flex gap-2 mt-1">
                   <p className="text-xs text-gray-600">
@@ -193,16 +193,16 @@ export const CashPage: React.FC = () => {
               <div className="bg-white rounded-lg p-4">
                 <p className="text-sm text-gray-600 mb-1">Movimientos</p>
                 <p className="text-lg font-bold text-gray-900">
-                  <span className="text-green-600">+Bs {Math.round(cashIn)}</span>
+                  <span className="text-green-600">+Bs {cashIn.toFixed(2)}</span>
                   {' / '}
-                  <span className="text-red-600">-Bs {Math.round(cashOut)}</span>
+                  <span className="text-red-600">-Bs {cashOut.toFixed(2)}</span>
                 </p>
               </div>
               
               <div className="bg-primary-50 border-2 border-primary-300 rounded-lg p-4">
                 <p className="text-sm text-gray-600 mb-1">Efectivo Esperado</p>
                 <p className="text-2xl font-bold text-primary-700">
-                  Bs {Math.round(expectedCash)}
+                  Bs {expectedCash.toFixed(2)}
                 </p>
               </div>
             </div>
@@ -340,7 +340,7 @@ export const CashPage: React.FC = () => {
                           movement.type === 'DEPOSIT' ? 'text-green-600' : 'text-red-600'
                         }
                       >
-                        {movement.type === 'DEPOSIT' ? '+' : '-'}Bs {Math.round(Number(movement.amount || 0))}
+                        {movement.type === 'DEPOSIT' ? '+' : '-'}Bs {Number(movement.amount || 0).toFixed(2)}
                       </span>
                     </td>
                   </tr>

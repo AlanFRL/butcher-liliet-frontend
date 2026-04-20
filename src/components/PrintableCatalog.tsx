@@ -93,15 +93,15 @@ export const PrintableCatalog: React.FC<PrintableCatalogProps> = ({ products, ca
                       {hasDiscount ? (
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                           <span style={{ textDecoration: 'line-through', color: '#9ca3af', fontSize: '9pt' }}>
-                            Bs {Math.round(product.price)}
+                            Bs {product.price.toFixed(2)}
                           </span>
                           <span style={{ fontWeight: 'bold', color: '#b91c1c', fontSize: '12pt' }}>
-                            Bs {Math.round(finalPrice)}
+                            Bs {finalPrice.toFixed(2)}
                           </span>
                         </div>
                       ) : (
                         <span style={{ fontWeight: 'bold', fontSize: '12pt' }}>
-                          Bs {Math.round(product.price)}
+                          Bs {product.price.toFixed(2)}
                         </span>
                       )}
                     </div>

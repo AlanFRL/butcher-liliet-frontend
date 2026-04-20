@@ -78,7 +78,7 @@ export const SalesSummaryTab: React.FC<SalesSummaryTabProps> = ({
             </div>
           </div>
           <p className="text-3xl font-bold text-gray-900">
-            Bs {Math.round(statistics.summary.totalRevenue)}
+            Bs {statistics.summary.totalRevenue.toFixed(2)}
           </p>
           <p className="text-sm text-gray-500 mt-1">
             {statistics.summary.totalSales} tickets
@@ -93,7 +93,7 @@ export const SalesSummaryTab: React.FC<SalesSummaryTabProps> = ({
             </div>
           </div>
           <p className="text-3xl font-bold text-gray-900">
-            Bs {Math.round(statistics.summary.averageTicket)}
+            Bs {statistics.summary.averageTicket.toFixed(2)}
           </p>
         </div>
         
@@ -140,13 +140,13 @@ export const SalesSummaryTab: React.FC<SalesSummaryTabProps> = ({
                           {product.productName}
                         </p>
                         <p className="text-xs text-gray-500">
-                          {Math.round(product.quantity)} unidades · {product.salesCount} ventas
+                          {product.quantity.toFixed(2)} unidades · {product.salesCount} ventas
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-primary-700">
-                        Bs {Math.round(product.revenue)}
+                        Bs {product.revenue.toFixed(2)}
                       </p>
                     </div>
                   </div>
@@ -187,7 +187,7 @@ export const SalesSummaryTab: React.FC<SalesSummaryTabProps> = ({
                         </span>
                         <div className="text-right">
                           <span className="font-bold text-gray-900">
-                            Bs {Math.round(day.revenue)}
+                            Bs {day.revenue.toFixed(2)}
                           </span>
                           <span className="text-xs text-gray-500 ml-2">
                             ({day.salesCount} tickets)

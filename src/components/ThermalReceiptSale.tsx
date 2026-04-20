@@ -245,12 +245,12 @@ export const ThermalReceiptSale: React.FC<ThermalReceiptSaleProps> = ({ data, pr
               <>
                 <div className="flex justify-between text-xs mb-1">
                   <span>Pagado:</span>
-                  <span className="font-bold">Bs {Math.round(data.cashPaid)}</span>
+                  <span className="font-bold">Bs {data.cashPaid.toFixed(2)}</span>
                 </div>
                 {data.change !== undefined && data.change > 0 && (
                   <div className="flex justify-between text-xs font-bold">
                     <span>Cambio:</span>
-                    <span>Bs {Math.round(data.change)}</span>
+                    <span>Bs {Math.round(data.change).toFixed(2)}</span>
                   </div>
                 )}
               </>
@@ -261,19 +261,19 @@ export const ThermalReceiptSale: React.FC<ThermalReceiptSaleProps> = ({ data, pr
                 {(data as any).cashAmount > 0 && (
                    <div className="flex justify-between text-xs mb-1">
                     <span>Efectivo:</span>
-                    <span className="font-bold">Bs {Math.round((data as any).cashAmount)}</span>
+                    <span className="font-bold">Bs {(data as any).cashAmount.toFixed(2)}</span>
                   </div>
                 )}
                 {(data as any).transferAmount > 0 && (
                    <div className="flex justify-between text-xs mb-1">
                     <span>QR/Trns:</span>
-                    <span className="font-bold">Bs {Math.round((data as any).transferAmount)}</span>
+                    <span className="font-bold">Bs {(data as any).transferAmount.toFixed(2)}</span>
                   </div>
                 )}
                 {(data as any).cardAmount > 0 && (
                    <div className="flex justify-between text-xs mb-1">
                     <span>Tarjeta:</span>
-                    <span className="font-bold">Bs {Math.round((data as any).cardAmount)}</span>
+                    <span className="font-bold">Bs {(data as any).cardAmount.toFixed(2)}</span>
                   </div>
                 )}
               </>

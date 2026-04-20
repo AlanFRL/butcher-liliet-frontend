@@ -253,17 +253,17 @@ export const CashSessionDetail: React.FC<CashSessionDetailProps> = ({
                     <div className="space-y-2.5">
                       <div>
                         <p className="text-xs text-gray-500 mb-0.5">Saldo Inicial</p>
-                        <p className="text-lg font-bold text-gray-900">Bs {Math.round(openingBalance)}</p>
+                        <p className="text-lg font-bold text-gray-900">Bs {openingBalance.toFixed(2)}</p>
                       </div>
                       {session.closedAt && (
                         <>
                           <div className="border-t border-gray-100 pt-2.5">
                             <p className="text-xs text-gray-500 mb-0.5">Esperado en Caja</p>
-                            <p className="text-lg font-bold text-gray-900">Bs {Math.round(parseFloat(session.expectedAmount))}</p>
+                            <p className="text-lg font-bold text-gray-900">Bs {parseFloat(session.expectedAmount).toFixed(2)}</p>
                           </div>
                           <div className="border-t border-gray-100 pt-2.5">
                             <p className="text-xs text-gray-500 mb-0.5">Contado al Cerrar</p>
-                            <p className="text-lg font-bold text-gray-900">Bs {Math.round(closingBalance)}</p>
+                            <p className="text-lg font-bold text-gray-900">Bs {closingBalance.toFixed(2)}</p>
                           </div>
                         </>
                       )}
@@ -276,18 +276,18 @@ export const CashSessionDetail: React.FC<CashSessionDetailProps> = ({
                       <div>
                         <p className="text-xs text-gray-500 mb-0.5">Total Ventas</p>
                         <p className="text-lg font-bold text-gray-900">
-                          Bs {Math.round(totalAllSales)}
+                          Bs {totalAllSales.toFixed(2)}
                         </p>
                         <p className="text-xs text-gray-400">{sales.length} ventas</p>
                       </div>
                       <div className="border-t border-gray-100 pt-2.5">
                         <div className="flex justify-between items-center mb-1">
                           <span className="text-xs text-gray-600">Efectivo:</span>
-                          <span className="text-sm font-semibold text-gray-900">Bs {Math.round(totalCashSales)}</span>
+                          <span className="text-sm font-semibold text-gray-900">Bs {totalCashSales.toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-xs text-gray-600">Transferencia:</span>
-                          <span className="text-sm font-semibold text-gray-900">Bs {Math.round(totalTransferSales)}</span>
+                          <span className="text-sm font-semibold text-gray-900">Bs {totalTransferSales.toFixed(2)}</span>
                         </div>
                       </div>
                     </div>
@@ -302,13 +302,13 @@ export const CashSessionDetail: React.FC<CashSessionDetailProps> = ({
                           {totalDeposits > 0 && (
                             <div className="flex justify-between items-center mb-1">
                               <span className="text-xs text-green-600">Ingresos:</span>
-                              <span className="text-sm font-semibold text-green-600">+Bs {Math.round(totalDeposits)}</span>
+                              <span className="text-sm font-semibold text-green-600">+Bs {totalDeposits.toFixed(2)}</span>
                             </div>
                           )}
                           {totalWithdrawals > 0 && (
                             <div className="flex justify-between items-center">
                               <span className="text-xs text-red-600">Retiros:</span>
-                              <span className="text-sm font-semibold text-red-600">-Bs {Math.round(totalWithdrawals)}</span>
+                              <span className="text-sm font-semibold text-red-600">-Bs {totalWithdrawals.toFixed(2)}</span>
                             </div>
                           )}
                         </div>
@@ -321,7 +321,7 @@ export const CashSessionDetail: React.FC<CashSessionDetailProps> = ({
                             difference < 0 ? 'text-red-600' :
                             'text-gray-900'
                           }`}>
-                            {difference > 0 && '+'}Bs {Math.round(difference)}
+                            {difference > 0 && '+'}Bs {difference.toFixed(2)}
                           </p>
                         </div>
                       )}
@@ -386,7 +386,7 @@ export const CashSessionDetail: React.FC<CashSessionDetailProps> = ({
                             <span className="text-sm text-green-700 font-medium">Total Ingresos</span>
                           </div>
                           <span className="text-lg font-bold text-green-900">
-                            Bs {Math.round(totalDeposits)}
+                            Bs {totalDeposits.toFixed(2)}
                           </span>
                         </div>
                       </div>
@@ -397,7 +397,7 @@ export const CashSessionDetail: React.FC<CashSessionDetailProps> = ({
                             <span className="text-sm text-red-700 font-medium">Total Retiros</span>
                           </div>
                           <span className="text-lg font-bold text-red-900">
-                            Bs {Math.round(totalWithdrawals)}
+                            Bs {totalWithdrawals.toFixed(2)}
                           </span>
                         </div>
                       </div>
@@ -451,7 +451,7 @@ export const CashSessionDetail: React.FC<CashSessionDetailProps> = ({
                                     <span className={`text-sm font-bold ${
                                       isDeposit ? 'text-green-600' : 'text-red-600'
                                     }`}>
-                                      {isDeposit ? '+' : '-'}Bs {Math.round(amount)}
+                                      {isDeposit ? '+' : '-'}Bs {amount.toFixed(2)}
                                     </span>
                                   </td>
                                 </tr>
@@ -514,7 +514,7 @@ export const CashSessionDetail: React.FC<CashSessionDetailProps> = ({
                                 </td>
                                 <td className="px-4 py-3 text-right whitespace-nowrap">
                                   <span className="text-sm font-bold text-gray-900">
-                                    Bs {Math.round(parseFloat(sale.total))}
+                                    Bs {parseFloat(sale.total).toFixed(2)}
                                   </span>
                                 </td>
                                 <td className="px-4 py-3 text-center whitespace-nowrap">
@@ -568,7 +568,7 @@ export const CashSessionDetail: React.FC<CashSessionDetailProps> = ({
                               </td>
                               <td className="px-4 py-3 text-right whitespace-nowrap">
                                 <span className="text-sm font-bold text-gray-900">
-                                  Bs {Math.round(product.total)}
+                                  Bs {product.total.toFixed(2)}
                                 </span>
                               </td>
                             </tr>
@@ -771,10 +771,10 @@ export const CashSessionDetail: React.FC<CashSessionDetailProps> = ({
                               {parseFloat(item.quantity || item.qty || 0).toFixed(3)}
                             </td>
                             <td className="px-4 py-3 text-right text-sm text-gray-900">
-                              Bs {Math.round(parseFloat(item.unitPrice || 0))}
+                              Bs {parseFloat(item.unitPrice || 0).toFixed(2)}
                             </td>
                             <td className="px-4 py-3 text-right text-sm font-bold text-gray-900">
-                              Bs {Math.round(parseFloat(item.subtotal || item.total || 0))}
+                              Bs {parseFloat(item.subtotal || item.total || 0).toFixed(2)}
                             </td>
                           </tr>
                         ))}
@@ -788,27 +788,27 @@ export const CashSessionDetail: React.FC<CashSessionDetailProps> = ({
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Subtotal:</span>
                     <span className="font-semibold text-gray-900">
-                      Bs {Math.round(parseFloat(selectedSale.subtotal || 0))}
+                      Bs {parseFloat(selectedSale.subtotal || 0).toFixed(2)}
                     </span>
                   </div>
                   {parseFloat(selectedSale.discount || 0) > 0 && (
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Descuento:</span>
                       <span className="font-semibold text-red-600">
-                        -Bs {Math.round(parseFloat(selectedSale.discount))}
+                        -Bs {parseFloat(selectedSale.discount).toFixed(2)}
                       </span>
                     </div>
                   )}
                   <div className="flex justify-between text-lg border-t border-gray-300 pt-2">
                     <span className="font-bold text-gray-900">Total:</span>
                     <span className="font-bold text-primary-600">
-                      Bs {Math.round(parseFloat(selectedSale.total))}
+                      Bs {parseFloat(selectedSale.total).toFixed(2)}
                     </span>
                   </div>
                   {selectedSale.paymentMethod === 'CASH' && parseFloat(selectedSale.changeAmount || 0) > 0 && (
                     <div className="flex justify-between text-sm text-gray-600">
                       <span>Cambio:</span>
-                      <span>Bs {Math.round(parseFloat(selectedSale.changeAmount))}</span>
+                      <span>Bs {parseFloat(selectedSale.changeAmount).toFixed(2)}</span>
                     </div>
                   )}
 
@@ -816,16 +816,16 @@ export const CashSessionDetail: React.FC<CashSessionDetailProps> = ({
                     <>
                       <div className="flex justify-between text-sm text-gray-600">
                         <span>Efectivo cobrado:</span>
-                        <span>Bs {Math.round(parseFloat(selectedSale.cashAmount || 0))}</span>
+                        <span>Bs {parseFloat(selectedSale.cashAmount || 0).toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between text-sm text-gray-600">
                         <span>Transf. cobrada:</span>
-                        <span>Bs {Math.round(parseFloat(selectedSale.transferAmount || 0))}</span>
+                        <span>Bs {parseFloat(selectedSale.transferAmount || 0).toFixed(2)}</span>
                       </div>
                       {parseFloat(selectedSale.changeAmount || 0) > 0 && (
                         <div className="flex justify-between text-sm text-gray-600">
                           <span>Cambio (Efectivo):</span>
-                          <span>Bs {Math.round(parseFloat(selectedSale.changeAmount))}</span>
+                          <span>Bs {parseFloat(selectedSale.changeAmount).toFixed(2)}</span>
                         </div>
                       )}
                     </>

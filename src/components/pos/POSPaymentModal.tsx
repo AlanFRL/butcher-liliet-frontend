@@ -286,7 +286,7 @@ export const POSPaymentModal: React.FC<POSPaymentModalProps> = ({
               <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
                 <p className="text-xs text-purple-700 mb-0.5 font-medium">Monto por Transferencia/QR (Automático)</p>
                 <p className="text-xl font-bold text-purple-800">
-                  Bs {cashPaidNum >= 0 && cashPaidNum <= cartTotal ? Math.round((cartTotal - cashPaidNum)) : '0.00'}
+                  Bs {cashPaidNum >= 0 && cashPaidNum <= cartTotal ? (cartTotal - cashPaidNum).toFixed(2) : '0.00'}
                 </p>
               </div>
 

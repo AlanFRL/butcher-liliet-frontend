@@ -129,7 +129,7 @@ export const SalesHistoryTab: React.FC<SalesHistoryTabProps> = ({
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
                         <span className="text-lg font-bold text-primary-700">
-                          Bs {Math.round(total)}
+                          Bs {total.toFixed(2)}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -381,7 +381,7 @@ const SaleDetailModal: React.FC<{
                               )}
                               {itemDiscount > 0 && (
                                 <p className="text-xs text-red-600 mt-1 font-semibold">
-                                  Descuento: Bs {Math.round(itemDiscount)}
+                                  Descuento: Bs {itemDiscount.toFixed(2)}
                                 </p>
                               )}
                             </td>
@@ -398,12 +398,12 @@ const SaleDetailModal: React.FC<{
                                   if (item.appliedUnitPrice || (isWeight && hasDiscount)) {
                                     return (
                                       <div className="flex flex-col items-end">
-                                        <span className="line-through text-gray-400 text-xs">Bs {Math.round(unitPrice)}</span>
-                                        <span className="text-gray-900 font-bold">Bs {Math.round(appliedUP)}</span>
+                                        <span className="line-through text-gray-400 text-xs">Bs {unitPrice.toFixed(2)}</span>
+                                        <span className="text-gray-900 font-bold">Bs {appliedUP.toFixed(2)}</span>
                                       </div>
                                     );
                                   }
-                                  return <span>Bs {Math.round(unitPrice)}</span>;
+                                  return <span>Bs {unitPrice.toFixed(2)}</span>;
                                 })()}
                               </td>
                             <td className="px-4 py-3 text-right">
@@ -428,22 +428,22 @@ const SaleDetailModal: React.FC<{
                 <div className="space-y-2">
                   <div className="flex justify-between text-gray-600">
                     <span>Subtotal:</span>
-                    <span className="font-semibold">Bs {Math.round(calculatedSubtotal)}</span>
+                    <span className="font-semibold">Bs {calculatedSubtotal.toFixed(2)}</span>
                   </div>
                   {calculatedDiscount > 0 && (
                     <div className="flex justify-between text-gray-600">
                       <span>Descuento:</span>
-                      <span className="font-semibold text-red-600">Bs {Math.round(calculatedDiscount)}</span>
+                      <span className="font-semibold text-red-600">Bs {calculatedDiscount.toFixed(2)}</span>
                     </div>
                   )}
                   <div className="flex justify-between text-xl font-bold text-primary-700 pt-2 border-t border-gray-200">
                     <span>TOTAL:</span>
-                    <span>Bs {Math.round(calculatedTotal)}</span>
+                    <span>Bs {calculatedTotal.toFixed(2)}</span>
                   </div>
                   {changeAmount > 0 && (
                     <div className="flex justify-between text-gray-600">
                       <span>Cambio:</span>
-                      <span className="font-semibold">Bs {Math.round(changeAmount)}</span>
+                      <span className="font-semibold">Bs {changeAmount.toFixed(2)}</span>
                     </div>
                   )}
                 </div>
@@ -559,7 +559,7 @@ const SaleDetailModal: React.FC<{
                   <strong>Venta:</strong> #{sale.id.slice(-8).toUpperCase()}
                 </p>
                 <p className="text-sm text-gray-700">
-                  <strong>Total:</strong> Bs {Math.round(total)}
+                  <strong>Total:</strong> Bs {total.toFixed(2)}
                 </p>
                 <p className="text-sm text-gray-700">
                   <strong>Productos:</strong> {sale.items?.length || 0} items

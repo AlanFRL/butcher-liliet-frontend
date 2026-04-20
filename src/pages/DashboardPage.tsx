@@ -57,7 +57,7 @@ export const DashboardPage: React.FC = () => {
   const stats = [
     {
       title: 'Ventas Hoy',
-      value: `Bs ${Math.round(todaysTotal)}`,
+      value: `Bs ${todaysTotal.toFixed(2)}`,
       icon: TrendingUp,
       color: 'text-green-600',
       bgColor: 'bg-green-50',
@@ -71,7 +71,7 @@ export const DashboardPage: React.FC = () => {
     },
     {
       title: 'Ticket Promedio',
-      value: todaysCount > 0 ? `Bs ${Math.round((todaysTotal / todaysCount))}` : 'Bs 0.00',
+      value: todaysCount > 0 ? `Bs ${(todaysTotal / todaysCount).toFixed(2)}` : 'Bs 0.00',
       icon: TrendingUp,
       color: 'text-purple-600',
       bgColor: 'bg-purple-50',
@@ -98,7 +98,7 @@ export const DashboardPage: React.FC = () => {
             <div className="flex-1">
               <h3 className="font-semibold text-green-900">Caja Abierta</h3>
               <p className="text-sm text-green-700">
-                Sesión iniciada a las {new Date(currentSession.openedAt).toLocaleTimeString()} - Monto inicial: Bs {Math.round(currentSession.openingAmount)}
+                Sesión iniciada a las {new Date(currentSession.openedAt).toLocaleTimeString()} - Monto inicial: Bs {currentSession.openingAmount.toFixed(2)}
               </p>
             </div>
             <Link
@@ -210,7 +210,7 @@ export const DashboardPage: React.FC = () => {
                       {sale.items.length} items
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right font-semibold text-gray-900">
-                      Bs {Math.round(sale.total)}
+                      Bs {sale.total.toFixed(2)}
                     </td>
                   </tr>
                 ))}

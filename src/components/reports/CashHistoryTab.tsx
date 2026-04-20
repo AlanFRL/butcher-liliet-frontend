@@ -442,14 +442,14 @@ export const CashHistoryTab: React.FC<CashHistoryTabProps> = ({
                         {session.terminal.name}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-gray-900">
-                        Bs {Math.round(openingBalance)}
+                        Bs {openingBalance.toFixed(2)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right font-semibold text-blue-600">
-                        Bs {Math.round(expectedAmount)}
+                        Bs {expectedAmount.toFixed(2)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-gray-900">
                         {session.closedAt ? (
-                          `Bs ${Math.round(closingBalance)}`
+                          `Bs ${closingBalance.toFixed(2)}`
                         ) : (
                           <span className="text-gray-400">-</span>
                         )}
@@ -461,7 +461,7 @@ export const CashHistoryTab: React.FC<CashHistoryTabProps> = ({
                             difference < 0 ? 'text-red-600' : 
                             'text-gray-600'
                           }`}>
-                            {difference > 0 && '+'}Bs {Math.round(difference)}
+                            {difference > 0 && '+'}Bs {difference.toFixed(2)}
                           </span>
                         ) : (
                           <span className="text-gray-400">-</span>
