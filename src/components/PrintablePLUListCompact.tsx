@@ -59,13 +59,6 @@ export const PrintablePLUListCompact: React.FC<PrintablePLUListCompactProps> = (
   });
 
   // Dividir categorías: izquierda=cortes, derecha=resto
-  const leftCategories = allCategories.filter(cat => 
-    cat === 'CORTES TRADICIONALES' || cat === 'CORTES PARRILLEROS'
-  );
-  const rightCategories = allCategories.filter(cat => 
-    cat !== 'CORTES TRADICIONALES' && cat !== 'CORTES PARRILLEROS'
-  );
-
   const getPLUNumber = (barcode: string) => parseInt(barcode.slice(-5));
 
   // Componente de categoría reutilizable
@@ -186,48 +179,37 @@ export const PrintablePLUListCompact: React.FC<PrintablePLUListCompactProps> = (
         minHeight: 0,
         overflow: 'visible'
       }}>      
-      {/* Productos en 2 columnas */}
-      <div style={{
-        display: 'flex',
-        gap: '8px',
-        justifyContent: 'space-between'
-      }}>
-        {/* Columna izquierda */}
-        <div style={{ width: '49%' }}>
-          {leftCategories.map(category => (
-            <CategorySection key={category} category={category} />
-          ))}
-        </div>
-
-        {/* Columna derecha */}
-        <div style={{ width: '49%' }}>
-          {rightCategories.map(category => (
-            <CategorySection key={category} category={category} />
-          ))}
-          
-          {/* Título al final de la columna derecha */}
-          <div style={{
-            textAlign: 'center',
-            marginTop: '8px',
-            paddingTop: '6px',
-            borderTop: '2px solid #1a1a1a'
-          }}>
-            <div style={{
-              fontSize: '11pt',
-              fontWeight: 'bold',
-              color: '#1a1a1a',
-              letterSpacing: '0.3px'
-            }}>
-              LISTA PLU BALANZA - {printDate}
-            </div>
-            <div style={{
-              fontSize: '10pt',
-              color: '#1a1a1a',
-              marginTop: '2px'
-            }}>
-              Total: {pluProducts.length} productos
-            </div>
+      {/* Productos con diseño multicomuna CSS (Mismo que Catálogo) */}
+      <div style={{ columnCount: 2, columnGap: '16px' }}>
+        {allCategories.map(category => (
+          <div key={category} style={{ breakInside: 'avoid', pageBreakInside: 'avoid', marginBottom: '8px' }}>
+            <CategorySection category={category} />
           </div>
+        ))}
+      </div>
+
+      {/* Título al final */}
+      <div style={{
+        textAlign: 'center',
+        marginTop: '16px',
+        paddingTop: '8px',
+        borderTop: '2px solid #1a1a1a',
+        clear: 'both'
+      }}>
+        <div style={{
+          fontSize: '11pt',
+          fontWeight: 'bold',
+          color: '#1a1a1a',
+          letterSpacing: '0.3px'
+        }}>
+          LISTA PLU BALANZA - {printDate}
+        </div>
+        <div style={{
+          fontSize: '10pt',
+          color: '#1a1a1a',
+          marginTop: '2px'
+        }}>
+          Total: {pluProducts.length} productos
         </div>
       </div>
 
