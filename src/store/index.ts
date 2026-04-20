@@ -1037,8 +1037,7 @@ export const useCartStore = create<CartState>((set, get) => ({
         unit: orderItem.unit,
         qty: orderItem.qty,
         unitPrice,
-          appliedUnitPrice: orderItem.appliedUnitPrice,
-          discount: orderItem.discount || 0, // Cargar descuento del pedido
+        discount: orderItem.discount || 0, // Cargar descuento del pedido
         total: Math.round(orderItem.qty * unitPrice - (orderItem.discount || 0)),
         product: productData,
       };
@@ -1135,9 +1134,8 @@ export const useSalesStore = create<SalesState>((set, get) => ({
           return {
             productId: item.productId,
             quantity: Math.round(item.qty * 1000) / 1000, // Redondear a 3 decimales para peso
-            unitPrice: isDiscount ? Math.round(item.unitPrice) : Math.round(item.effectiveUnitPrice || item.unitPrice),
-              appliedUnitPrice: item.appliedUnitPrice ? item.appliedUnitPrice : ((item.product?.saleType === 'WEIGHT' || item.saleType === 'WEIGHT') && item.discount > 0 ? (item.effectiveUnitPrice || ((item.qty * item.unitPrice - item.discount) / item.qty)) : undefined),
-              discount: Math.round(item.discount || 0),
+            unitPrice: isDiscount ? Math.round(item.unitPrice) : Math.round(item.effectiveUnitPrice || item.unitPrice), // Sistema para descuentos, efectivo para sobrecargas
+            discount: Math.round(item.discount || 0), // Redondear descuento
           };
         }),
         discount: Math.round(cartState.globalDiscount || 0), // Redondear descuento global
@@ -1556,7 +1554,9 @@ export const useOrderStore = create<OrderState>((set, get) => ({
       const backendItems = data.items.map(item => ({
         productId: item.productId,
         quantity: Math.round(item.qty * 1000) / 1000, // Redondear a 3 decimales para peso
-          appliedUnitPrice: item.appliedUnitPrice ? item.appliedUnitPrice : ((item.product?.saleType === 'WEIGHT' || item.saleType === 'WEIGHT') && item.discount > 0 ? (item.effectiveUnitPrice || ((item.qty * item.unitPrice - item.discount) / item.qty)) : undefined),
+        discount: Math.round(item.discount || 0), // Descuento (incluye ajustes de balanza)
+        notes: item.notes,
+      }));
 
       const response = await ordersApi.create({
         customerId: data.customerId, // Add customer ID
@@ -1691,7 +1691,10 @@ export const useOrderStore = create<OrderState>((set, get) => ({
         updateData.items = updates.items.map(item => ({
           productId: item.productId,
           quantity: Math.round(item.qty * 1000) / 1000, // Redondear a 3 decimales para peso
-            appliedUnitPrice: item.appliedUnitPrice ? item.appliedUnitPrice : ((item.product?.saleType === 'WEIGHT' || item.saleType === 'WEIGHT') && item.discount > 0 ? (item.effectiveUnitPrice || ((item.qty * item.unitPrice - item.discount) / item.qty)) : undefined),
+          discount: Math.round(item.discount || 0), // Redondear descuento a entero
+          notes: item.notes,
+        }));
+      }
 
       const response = await ordersApi.update(orderId, updateData);
 
@@ -1819,7 +1822,3 @@ export const useOrderStore = create<OrderState>((set, get) => ({
     );
   },
 }));
-
-
-
-

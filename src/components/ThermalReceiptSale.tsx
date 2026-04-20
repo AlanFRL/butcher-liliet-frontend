@@ -180,12 +180,12 @@ export const ThermalReceiptSale: React.FC<ThermalReceiptSaleProps> = ({ data, pr
                   </div>
                   <div className="flex justify-between text-xs">
                       <span>{(() => {
-                        const isWeight = item.saleType === 'WEIGHT' || item.product?.saleType === 'WEIGHT' || item.unit === 'KG' || item.unit?.toLowerCase() === 'kg' || effectiveUnit === 'kg';
+                        const isWeight = (item as any).saleType === 'WEIGHT' || (item as any).product?.saleType === 'WEIGHT' || item.unit === 'KG' || item.unit?.toLowerCase() === 'kg' || effectiveUnit === 'kg';
                         const hasDiscount = itemDiscount > 0;
                         const fallbackUIPrice = (item.subtotal && effectiveQuantity) ? item.subtotal / effectiveQuantity : (itemSubtotalBeforeDiscount - itemDiscount) / effectiveQuantity;
-                        const appliedUP = item.appliedUnitPrice ?? (isWeight && hasDiscount ? fallbackUIPrice : item.price);
+                        const appliedUP = (item as any).appliedUnitPrice ?? (isWeight && hasDiscount ? fallbackUIPrice : item.price);
                         
-                        if (item.appliedUnitPrice || (isWeight && hasDiscount)) {
+                        if ((item as any).appliedUnitPrice || (isWeight && hasDiscount)) {
                           return (
                             <>
                               {effectiveQuantity.toFixed(effectiveUnit === "kg" ? 3 : 0)} {effectiveUnit} &times; Bs{" "}

@@ -300,12 +300,12 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order: initi
                         </td>
                         <td className="px-4 py-3 text-right">
                             {(() => {
-                              const isWeight = item.product?.saleType === 'WEIGHT' || item.saleType === 'WEIGHT' || item.unit === 'KG' || item.unit === 'kg';
+                              const isWeight = (item as any).product?.saleType === 'WEIGHT' || (item as any).saleType === 'WEIGHT' || item.unit === 'KG' || item.unit === 'kg';
                               const hasDiscount = itemDiscount > 0;
                               const fallbackUIPrice = (item.total / item.qty);
-                              const appliedUP = item.appliedUnitPrice ?? (isWeight && hasDiscount ? fallbackUIPrice : item.unitPrice);
+                              const appliedUP = (item as any).appliedUnitPrice ?? (isWeight && hasDiscount ? fallbackUIPrice : item.unitPrice);
                               
-                              return (item.appliedUnitPrice || (isWeight && hasDiscount)) ? (
+                              return ((item as any).appliedUnitPrice || (isWeight && hasDiscount)) ? (
                                 <>
                                   <span className="line-through text-gray-400 text-xs">Bs {Math.round(item.unitPrice)}</span>
                                   <p className="text-gray-900 font-bold">Bs {Math.round(appliedUP)}</p>
