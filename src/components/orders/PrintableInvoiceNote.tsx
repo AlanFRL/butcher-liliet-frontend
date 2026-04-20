@@ -312,14 +312,25 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
                   {group.unit === 'kg' ? group.totalQty.toFixed(3) : group.totalQty} {group.unit}
                 </td>
                 <td style={{
-                  padding: '10px',
-                  color: '#1a1a1a',
-                  textAlign: 'right',
-                  border: '1px solid #e5e7eb',
-                  fontSize: '14px'
-                }}>
-                  Bs {avgUnitPrice.toFixed(2)}
-                </td>
+                    padding: '10px',
+                    color: '#1a1a1a',
+                    textAlign: 'right',
+                    border: '1px solid #e5e7eb',
+                    fontSize: '14px'
+                  }}>
+                    {hasGroupDiscount || group.anyItemHasAppliedUP ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'center' }}>
+                        <div style={{ color: '#9ca3af', textDecoration: 'line-through', fontSize: '11px', lineHeight: '1' }}>
+                          Bs {avgUnitPrice.toFixed(2)}
+                        </div>
+                        <div style={{ color: '#111827', fontWeight: 'bold' }}>
+                          Bs {(group.finalTotal / group.totalQty).toFixed(2)}
+                        </div>
+                      </div>
+                    ) : (
+                      <span>Bs {avgUnitPrice.toFixed(2)}</span>
+                    )}
+                  </td>
                 <td style={{
                   padding: '10px',
                   color: '#1a1a1a',
@@ -377,7 +388,7 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
               borderBottom: '1px solid #e5e7eb'
             }}>
               <span>Descuento:</span>
-              <span>-Bs {order.discount.toFixed(2)}</span>
+              <span>Bs {order.discount.toFixed(2)}</span>
             </div>
           </>
         ) : null}

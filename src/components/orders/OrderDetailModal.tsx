@@ -344,7 +344,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order: initi
                           Descuento Global:
                         </td>
                         <td className="px-4 py-2 text-right text-sm font-semibold text-red-600">
-                          -Bs {Math.round(currentOrder.discount)}
+                          Bs {Math.round(currentOrder.discount)}
                         </td>
                       </tr>
                     </>

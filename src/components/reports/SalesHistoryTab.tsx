@@ -381,7 +381,7 @@ const SaleDetailModal: React.FC<{
                               )}
                               {itemDiscount > 0 && (
                                 <p className="text-xs text-red-600 mt-1 font-semibold">
-                                  Descuento: -Bs {itemDiscount.toFixed(2)}
+                                  Descuento: Bs {itemDiscount.toFixed(2)}
                                 </p>
                               )}
                             </td>
@@ -433,7 +433,7 @@ const SaleDetailModal: React.FC<{
                   {calculatedDiscount > 0 && (
                     <div className="flex justify-between text-gray-600">
                       <span>Descuento:</span>
-                      <span className="font-semibold text-red-600">-Bs {calculatedDiscount.toFixed(2)}</span>
+                      <span className="font-semibold text-red-600">Bs {calculatedDiscount.toFixed(2)}</span>
                     </div>
                   )}
                   <div className="flex justify-between text-xl font-bold text-primary-700 pt-2 border-t border-gray-200">
