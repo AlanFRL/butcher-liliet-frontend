@@ -329,13 +329,11 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
                   fontSize: '14px'
                 }}>
                   {hasGroupDiscount ? (
-                    <div>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                       <div style={{ fontSize: '12px', color: '#6b7280', textDecoration: 'line-through', fontWeight: 400 }}>
                         Bs {originalRoundedTotal.toFixed(2)}
                       </div>
-                      <div style={{ color: '#dc2626', fontSize: '11px', fontWeight: 400 }}>
-                        -Bs {group.totalDiscount.toFixed(2)}
-                      </div>
+                      
                       <div style={{ color: '#1a1a1a' }}>
                         Bs {group.finalTotal.toFixed(2)}
                       </div>

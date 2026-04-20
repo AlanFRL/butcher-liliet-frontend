@@ -299,31 +299,32 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order: initi
                           {`${item.qty} ${item.unit}`}
                         </td>
                         <td className="px-4 py-3 text-right">
-                            {(() => {
-                              const isWeight = (item as any).product?.saleType === 'WEIGHT' || (item as any).saleType === 'WEIGHT' || item.unit === 'KG' || item.unit === 'kg';
-                              const hasDiscount = itemDiscount > 0;
-                              const fallbackUIPrice = (item.total / item.qty);
-                              const appliedUP = (item as any).appliedUnitPrice ?? (isWeight && hasDiscount ? fallbackUIPrice : item.unitPrice);
-                              
-                              return ((item as any).appliedUnitPrice || (isWeight && hasDiscount)) ? (
-                                <>
-                                  <span className="line-through text-gray-400 text-xs">Bs {Math.round(item.unitPrice)}</span>
-                                  <p className="text-gray-900 font-bold">Bs {Math.round(appliedUP)}</p>
-                                </>
-                              ) : (
-                                <p className="text-gray-900">Bs {Math.round(item.unitPrice)}</p>
-                              );
-                            })()}
-                            {itemDiscount > 0 && (
-                              <>
-                                <p className="text-xs text-gray-500">Subtotal: Bs {itemSubtotalBeforeDiscount}</p>
-                                <p className="text-xs text-red-600">Descuento: Bs {Math.round(itemDiscount)}</p>
-                              </>
+                              {(() => {
+                                const isWeight = (item as any).product?.saleType === 'WEIGHT' || (item as any).saleType === 'WEIGHT' || String(item.unit).toUpperCase().trim() === 'KG';
+                                const hasDiscount = itemDiscount > 0;
+                                const fallbackUIPrice = (item.total / item.qty);
+                                const appliedUP = (item as any).appliedUnitPrice ?? (isWeight && hasDiscount ? fallbackUIPrice : item.unitPrice);
+
+                                return ((item as any).appliedUnitPrice !== undefined && (item as any).appliedUnitPrice !== null) || (isWeight && hasDiscount) ? (
+                                  <div className="flex flex-col items-end">
+                                    <span className="line-through text-gray-400 text-xs">Bs {Math.round(item.unitPrice)}</span>
+                                    <span className="text-gray-900 font-bold">Bs {Math.round(appliedUP)}</span>
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-900">Bs {Math.round(item.unitPrice)}</span>
+                                );
+                              })()}
+                          </td>
+                          <td className="px-4 py-3 text-right font-semibold text-gray-900">
+                            {itemDiscount > 0 ? (
+                              <div className="flex flex-col items-end">
+                                <span className="line-through text-gray-400 text-xs font-normal">Bs {itemSubtotalBeforeDiscount}</span>
+                                <span>Bs {itemFinalTotal}</span>
+                              </div>
+                            ) : (
+                              <span>Bs {itemFinalTotal}</span>
                             )}
-                        </td>
-                        <td className="px-4 py-3 text-right font-semibold text-gray-900">
-                          Bs {itemFinalTotal}
-                        </td>
+                          </td>
                       </tr>
                     );
                   })}
