@@ -40,25 +40,24 @@ export const PrintableCatalog: React.FC<PrintableCatalogProps> = ({ products, ca
   const currentYear = new Date().getFullYear();
 
   return (
-    <div style={{ fontFamily: 'Arial, sans-serif', color: '#1f2937', padding: '15px', maxWidth: '800px', margin: '0 auto' }}>
+    <div style={{ fontFamily: 'Arial, sans-serif', color: '#1f2937', padding: '5px', maxWidth: '800px', margin: '0 auto' }}>
       {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: '15px', borderBottom: '2px solid #b91c1c', paddingBottom: '10px' }}>
-        <h1 style={{ fontSize: '20pt', margin: '0 0 5px 0', color: '#b91c1c', textTransform: 'uppercase', letterSpacing: '1px' }}>Butcher Lilieth</h1>
-        <h2 style={{ fontSize: '14pt', margin: '0 0 2px 0', color: '#374151' }}>Catálogo de Productos y Precios</h2>
-        <p style={{ fontSize: '11pt', margin: '0 0 2px 0', color: '#6b7280', fontStyle: 'italic' }}>Precios de {getMonthName()} {currentYear}</p>
-        <p style={{ fontSize: '8pt', margin: '0', color: '#9ca3af' }}>Generado: {printDate}</p>
+      <div style={{ textAlign: 'center', marginBottom: '8px', borderBottom: '2px solid #b91c1c', paddingBottom: '4px' }}>
+        <h1 style={{ fontSize: '16pt', margin: '0 0 2px 0', color: '#b91c1c', textTransform: 'uppercase', letterSpacing: '1px' }}>Butcher Lilieth</h1>
+        <h2 style={{ fontSize: '12pt', margin: '0 0 2px 0', color: '#374151' }}>Catálogo de Productos y Precios</h2>
+        <p style={{ fontSize: '10pt', margin: '0', color: '#6b7280', fontStyle: 'italic' }}>Precios de {getMonthName()} {currentYear}</p>
       </div>
 
       {/* Categories and Products - 2 Columns */}
-      <div style={{ columnCount: 2, columnGap: '40px' }}>
+      <div style={{ columnCount: 2, columnGap: '20px' }}>
         {allCategories.map(category => (
-          <div key={category} style={{ marginBottom: '20px' }}>
+          <div key={category} style={{ marginBottom: '10px' }}>
             <h3 style={{
               backgroundColor: '#b91c1c',
               color: 'white',
-              padding: '6px 10px',
-              margin: '0 0 8px 0',
-              fontSize: '12pt',
+              padding: '4px 8px',
+              margin: '0 0 4px 0',
+              fontSize: '11pt',
               borderRadius: '4px',
               breakAfter: 'avoid',
               pageBreakAfter: 'avoid',
@@ -68,7 +67,7 @@ export const PrintableCatalog: React.FC<PrintableCatalogProps> = ({ products, ca
               {category}
             </h3>
             
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
               {groupedProducts[category].map(product => {
                 const hasDiscount = product.discountActive && product.discountPrice !== undefined && product.discountPrice > 0;
                 const finalPrice = hasDiscount ? product.discountPrice! : product.price;
@@ -79,28 +78,28 @@ export const PrintableCatalog: React.FC<PrintableCatalogProps> = ({ products, ca
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     borderBottom: '1px dashed #e5e7eb',
-                    paddingBottom: '4px',
+                    paddingBottom: '2px',
                     breakInside: 'avoid',
                     pageBreakInside: 'avoid'
                   }}>
-                    <div style={{ flex: 1, paddingRight: '10px' }}>
-                      <span style={{ fontWeight: 'bold', fontSize: '11pt' }}>{product.name}</span>
-                      <span style={{ fontSize: '9pt', color: '#6b7280', marginLeft: '5px' }}>
+                    <div style={{ flex: 1, paddingRight: '5px' }}>
+                      <span style={{ fontWeight: 'bold', fontSize: '10pt' }}>{product.name}</span>
+                      <span style={{ fontSize: '8pt', color: '#6b7280', marginLeft: '4px' }}>
                         x {product.saleType === 'WEIGHT' ? 'Kg' : 'Unid'}
                       </span>
                     </div>
                     <div style={{ textAlign: 'right' }}>
                       {hasDiscount ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                          <span style={{ textDecoration: 'line-through', color: '#9ca3af', fontSize: '9pt' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', lineHeight: '1' }}>
+                          <span style={{ textDecoration: 'line-through', color: '#9ca3af', fontSize: '8pt' }}>
                             Bs {product.price.toFixed(2)}
                           </span>
-                          <span style={{ fontWeight: 'bold', color: '#b91c1c', fontSize: '12pt' }}>
+                          <span style={{ fontWeight: 'bold', color: '#b91c1c', fontSize: '11pt' }}>
                             Bs {finalPrice.toFixed(2)}
                           </span>
                         </div>
                       ) : (
-                        <span style={{ fontWeight: 'bold', fontSize: '12pt' }}>
+                        <span style={{ fontWeight: 'bold', fontSize: '11pt' }}>
                           Bs {product.price.toFixed(2)}
                         </span>
                       )}
@@ -115,17 +114,26 @@ export const PrintableCatalog: React.FC<PrintableCatalogProps> = ({ products, ca
 
       {/* Footer */}
       <div style={{
-        marginTop: '40px',
-        paddingTop: '20px',
+        marginTop: '15px',
+        paddingTop: '8px',
         borderTop: '2px solid #e5e7eb',
         textAlign: 'center',
-        fontSize: '11pt',
+        fontSize: '9pt',
         color: '#4b5563'
       }}>
-        <p style={{ margin: '0 0 5px 0', fontWeight: 'bold' }}>📍 Dirección: 3er anillo interno, entre av. centenario y calle urubó, al frente de mueblres Inti.</p>
-        <p style={{ margin: '0 0 5px 0' }}>🕒 Horario de atención: 8:00 a 20:00 (Lunes a Domingo)</p>
+        <p style={{ margin: '0 0 2px 0', fontWeight: 'bold' }}>📍 Dirección: 3er anillo interno, entre av. centenario y calle urubó, al frente de mueblres Inti.</p>
+        <p style={{ margin: '0 0 2px 0' }}>🕒 Horario de atención: 8:00 a 20:00 (Lunes a Domingo)</p>
         <p style={{ margin: '0', fontWeight: 'bold', color: '#b91c1c' }}>📱 Referencias y Pedidos: 76276838</p>
       </div>
+
+      <style>{`
+        @media print {
+          @page {
+            size: letter;
+            margin: 0.5cm;
+          }
+        }
+      `}</style>
     </div>
   );
 };
