@@ -82,7 +82,7 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
     <div style={{
       maxWidth: '21cm',
       margin: '0 auto',
-      padding: '1.5cm',
+      padding: '0.5cm 1cm',
       backgroundColor: 'white',
       fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
       color: '#1a1a1a',
@@ -94,8 +94,8 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
         gridTemplateColumns: '140px 1fr auto',
         gap: '20px',
         alignItems: 'center',
-        marginBottom: '20px',
-        paddingBottom: '15px',
+        marginBottom: '10px',
+        paddingBottom: '10px',
         borderBottom: '3px solid #0f3460'
       }}>
         {/* Logo */}
@@ -160,8 +160,8 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
         display: 'grid',
         gridTemplateColumns: '1fr 1fr',
         gap: '20px',
-        margin: '20px 0',
-        padding: '15px',
+        margin: '10px 0',
+        padding: '10px 15px',
         backgroundColor: '#f9fafb',
         borderRadius: '6px'
       }}>
@@ -204,7 +204,7 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
       <table style={{
         width: '100%',
         borderCollapse: 'collapse',
-        margin: '20px 0',
+        margin: '10px 0',
         fontSize: '13px'
       }}>
         <thead style={{
@@ -213,10 +213,10 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
         }}>
           <tr>
             <th style={{
-              padding: '12px 10px',
+              padding: '8px 10px',
               fontWeight: 600,
               textTransform: 'uppercase',
-              fontSize: '12px',
+              fontSize: '11px',
               color: 'white',
               textAlign: 'left',
               border: '1px solid #0f3460'
@@ -224,10 +224,10 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
               Producto
             </th>
             <th style={{
-              padding: '12px 10px',
+              padding: '8px 10px',
               fontWeight: 600,
               textTransform: 'uppercase',
-              fontSize: '12px',
+              fontSize: '11px',
               color: 'white',
               textAlign: 'center',
               border: '1px solid #0f3460',
@@ -236,10 +236,10 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
               Cantidad
             </th>
             <th style={{
-              padding: '12px 10px',
+              padding: '8px 10px',
               fontWeight: 600,
               textTransform: 'uppercase',
-              fontSize: '12px',
+              fontSize: '11px',
               color: 'white',
               textAlign: 'right',
               border: '1px solid #0f3460',
@@ -248,10 +248,10 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
               P. Unit.
             </th>
             <th style={{
-              padding: '12px 10px',
+              padding: '8px 10px',
               fontWeight: 600,
               textTransform: 'uppercase',
-              fontSize: '12px',
+              fontSize: '11px',
               color: 'white',
               textAlign: 'right',
               border: '1px solid #0f3460',
@@ -275,18 +275,18 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
                 backgroundColor: index % 2 === 0 ? 'white' : '#f9fafb'
               }}>
                 <td style={{
-                  padding: '10px',
+                  padding: '6px 10px',
                   color: '#1a1a1a',
                   border: '1px solid #e5e7eb'
                 }}>
-                  <div style={{ fontWeight: 600, color: '#1a1a1a', fontSize: '14px' }}>
+                  <div style={{ fontWeight: 600, color: '#1a1a1a', fontSize: '13px' }}>
                     {group.productName}
                   </div>
                   {group.productSku && (
                     <div style={{
                       fontSize: '11px',
                       color: '#6b7280',
-                      marginTop: '3px'
+                      marginTop: '2px'
                     }}>
                       SKU: {group.productSku}
                     </div>
@@ -296,27 +296,27 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
                       fontSize: '11px',
                       color: '#dc2626',
                       fontStyle: 'italic',
-                      marginTop: '3px'
+                      marginTop: '2px'
                     }}>
                       {group.notes}
                     </div>
                   )}
                 </td>
                 <td style={{
-                  padding: '10px',
+                  padding: '6px 10px',
                   color: '#1a1a1a',
                   textAlign: 'center',
                   border: '1px solid #e5e7eb',
-                  fontSize: '14px'
+                  fontSize: '13px'
                 }}>
                   {group.unit === 'kg' ? group.totalQty.toFixed(3) : group.totalQty} {group.unit}
                 </td>
                 <td style={{
-                    padding: '10px',
+                    padding: '6px 10px',
                     color: '#1a1a1a',
                     textAlign: 'right',
                     border: '1px solid #e5e7eb',
-                    fontSize: '14px'
+                    fontSize: '13px'
                   }}>
                     {hasGroupDiscount || group.anyItemHasAppliedUP ? (
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'center' }}>
@@ -332,16 +332,16 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
                     )}
                   </td>
                 <td style={{
-                  padding: '10px',
+                  padding: '6px 10px',
                   color: '#1a1a1a',
                   textAlign: 'right',
                   fontWeight: 600,
                   border: '1px solid #e5e7eb',
-                  fontSize: '14px'
+                  fontSize: '13px'
                 }}>
                   {hasGroupDiscount ? (
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                      <div style={{ fontSize: '12px', color: '#6b7280', textDecoration: 'line-through', fontWeight: 400 }}>
+                      <div style={{ fontSize: '11px', color: '#6b7280', textDecoration: 'line-through', fontWeight: 400 }}>
                         Bs {Math.round(originalRoundedTotal)}
                       </div>
                       
@@ -361,7 +361,7 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
 
       {/* Totales */}
       <div style={{
-        margin: '25px 0 20px auto',
+        margin: '15px 0 10px auto',
         width: '45%',
         minWidth: '320px'
       }}>
@@ -411,10 +411,10 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
       {/* Monto en letras */}
       <div style={{
         backgroundColor: '#f3f4f6',
-        padding: '15px',
+        padding: '10px 15px',
         borderLeft: '4px solid #dc2626',
-        margin: '20px 0',
-        fontSize: '14px'
+        margin: '10px 0',
+        fontSize: '13px'
       }}>
         <p style={{ color: '#1a1a1a', margin: 0 }}>
           <strong style={{ color: '#0f3460' }}>Son:</strong> {amountToWords(order.total)}
@@ -424,8 +424,8 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
       {/* Notas adicionales */}
       {order.notes && (
         <div style={{
-          margin: '20px 0',
-          padding: '12px',
+          margin: '10px 0',
+          padding: '10px 12px',
           backgroundColor: '#fef3c7',
           borderLeft: '4px solid #f59e0b',
           borderRadius: '6px'
@@ -433,13 +433,13 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
           <h3 style={{
             fontSize: '12px',
             color: '#92400e',
-            margin: '0 0 8px 0',
+            margin: '0 0 6px 0',
             textTransform: 'uppercase'
           }}>
             Notas:
           </h3>
           <p style={{
-            fontSize: '13px',
+            fontSize: '12px',
             margin: 0,
             color: '#78350f'
           }}>
@@ -451,20 +451,20 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
       {/* Pie de página */}
       <div style={{
         textAlign: 'center',
-        marginTop: '30px',
-        paddingTop: '20px',
+        marginTop: '15px',
+        paddingTop: '15px',
         borderTop: '3px solid #dc2626'
       }}>
         <p style={{
-          margin: '5px 0',
-          fontSize: '14px',
+          margin: '4px 0',
+          fontSize: '13px',
           color: '#0f3460',
           fontWeight: 600
         }}>
           Gracias por su preferencia
         </p>
         <p style={{
-          margin: '5px 0',
+          margin: '4px 0',
           fontSize: '11px',
           color: '#9ca3af',
           fontWeight: 'normal'
@@ -478,6 +478,8 @@ export const PrintableInvoiceNote: React.FC<PrintableInvoiceNoteProps> = ({ orde
         @media print {
           @page {
             size: letter;
+            margin: 0.5cm;
+          }
             margin: 1cm;
           }
           body {
